@@ -1,0 +1,50 @@
+--- src/App.tsx
++++ src/App.tsx
+@@ -4,42 +4,11 @@
+ export default function App() {
+   useEffect(() => {
+-    (window as any).app = {
+-      switchTab: (tabId) => {
+-        document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+-        document.querySelectorAll('.nav-btn').forEach(el => el.classList.remove('active'));
+-        const targetTab = document.getElementById('tab-' + tabId);
+-        if (targetTab) targetTab.classList.add('active');
+-        const targetBtn = document.querySelector(`[data-tab="${tabId}"]`);
+-        if (targetBtn) targetBtn.classList.add('active');
+-      },
+-      generateMasterRef: () => { console.log('generateMasterRef'); },
+-      loadTemplate: () => { console.log('loadTemplate'); },
+-      setSource: (src) => { console.log('setSource', src); },
+-      handleAgentSelect: (val) => { console.log('handleAgentSelect', val); },
+-      toggleDropdown: (id) => { document.getElementById(id)?.classList.toggle('show'); },
+-      syncTags: () => { console.log('syncTags'); },
+-      addGuest: () => { console.log('addGuest'); },
+-      addTransfer: () => { console.log('addTransfer'); },
+-      setCar: (type, cost, el) => { console.log('setCar', type, cost); },
+-      autoAssignRooms: () => { console.log('autoAssignRooms'); },
+-      openHotelModal: () => { console.log('openHotelModal'); },
+-      updateRate: (curr, val) => { console.log('updateRate', curr, val); },
+-      exportNativePDF: (type) => { console.log('exportNativePDF', type); },
+-      closePreview: () => { document.getElementById('pdf-modal')?.classList.remove('active'); },
+-      closeTagsModal: () => { document.getElementById('tags-modal')?.classList.remove('active'); },
+-      closeHotelModal: () => { document.getElementById('hotel-modal')?.classList.remove('active'); },
+-      filterHotelModal: () => { console.log('filterHotelModal'); },
+-      addCustomHotel: () => { console.log('addCustomHotel'); },
+-      closeActivityModal: () => { document.getElementById('activity-modal')?.classList.remove('active'); },
+-      filterModal: () => { console.log('filterModal'); },
+-      addCustomActivity: () => { console.log('addCustomActivity'); },
+-      closeDropdowns: (e) => {
+-        const target = e;
+-        if(!target.target.closest('.relative')) {
+-          document.querySelectorAll('.dropdown-content.show').forEach(el => el.classList.remove('show'));
+-        }
+-      }
++    const script = document.createElement('script');
++    script.src = '/app.js';
++    script.type = 'text/javascript';
++    document.body.appendChild(script);
++    
++    return () => {
++      document.body.removeChild(script);
+     };
+   }, []);
