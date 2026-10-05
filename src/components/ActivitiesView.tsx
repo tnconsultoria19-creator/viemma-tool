@@ -629,17 +629,19 @@ export const ActivitiesView: React.FC<ActivitiesViewProps> = ({
                         ))}
                       </select>
                     </div>
-                    <div className="space-y-1.5">
-                      <label className="text-[11px] text-gray-500 font-bold uppercase tracking-wider block">Guide Contact</label>
-                      <div className="w-full h-11 px-4 rounded-xl border border-gray-200 bg-slate-50 flex items-center text-xs font-semibold text-gray-700">
-                        {aForm.guidePhone || 'Select a guide'}
+                    <div className="space-y-3">
+                      <div className="space-y-1.5">
+                        <label className="text-[11px] text-gray-500 font-bold uppercase tracking-wider block">Guide Contact</label>
+                        <div className="w-full h-11 px-4 rounded-xl border border-gray-200 bg-slate-50 flex items-center text-xs font-semibold text-gray-700">
+                          {aForm.guidePhone || 'Select a guide'}
+                        </div>
                       </div>
-                    <div className="space-y-1.5">
-                      <label className="text-[11px] text-gray-500 font-bold uppercase tracking-wider block">Source Agent / Agency</label>
-                      <div className="w-full h-11 px-4 rounded-xl border border-gray-200 bg-slate-50 flex items-center text-xs font-semibold text-gray-700">
-                        {aForm.guideSourceAgentName || 'Not assigned'}
+                      <div className="space-y-1.5">
+                        <label className="text-[11px] text-gray-500 font-bold uppercase tracking-wider block">Source Agent / Agency</label>
+                        <div className="w-full h-11 px-4 rounded-xl border border-gray-200 bg-slate-50 flex items-center text-xs font-semibold text-gray-700">
+                          {aForm.guideSourceAgentName || 'Not assigned'}
+                        </div>
                       </div>
-                    </div>
                     </div>
                   </div>
                 </div>
