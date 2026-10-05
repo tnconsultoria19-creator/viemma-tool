@@ -313,6 +313,8 @@ export interface Activity {
   guideId?: string;
   guideName?: string;
   guidePhone?: string;
+  guideSourceAgentId?: string;
+  guideSourceAgentName?: string;
 }
 
 export interface ExperienceLibraryItem {
