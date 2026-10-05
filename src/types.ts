@@ -384,6 +384,20 @@ export interface Vehicle {
   imageUrl?: string;
 }
 
+export interface Guide {
+  id: string;
+  name: string;
+  phone: string;
+  whatsapp: string;
+  languages: {
+    portuguese: boolean;
+    spanish: boolean;
+    english: boolean | null;
+  };
+  sourceAgentId?: string;
+  sourceAgentName?: string;
+}
+
 export interface Driver {
   id: string;
   name: string;
@@ -426,6 +440,7 @@ export interface AppState {
   rooms: Room[];
   activities: Activity[];
   vehicles: Vehicle[];
+  guides?: Guide[];
   drivers: Driver[];
   experienceLibrary: ExperienceLibraryItem[];
   destinationLibrary: DestinationLibraryItem[];
