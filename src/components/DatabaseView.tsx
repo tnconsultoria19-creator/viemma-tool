@@ -4,8 +4,12 @@ import {
   Briefcase, 
   Hotel, 
   Compass, 
-  Car, 
-  Plus, 
+  Car,
+  Plus,
+  Users,
+  Phone,
+  Mail,
+  MessageCircle, 
   Check, 
   Database,
   Globe,
@@ -14,7 +18,7 @@ import {
 } from 'lucide-react';
 
 export const DatabaseView: React.FC = () => {
-  const [subTab, setSubTab] = useState<'hotels' | 'activities' | 'extras' | 'agents' | 'drivers'>('hotels');
+  const [subTab, setSubTab] = useState<'hotels' | 'activities' | 'extras' | 'agents' | 'guides' | 'drivers'>('hotels');
 
   return (
     <div className="space-y-8 max-w-[1500px] mx-auto animate-in fade-in duration-500">
@@ -38,7 +42,8 @@ export const DatabaseView: React.FC = () => {
           { id: 'hotels', label: 'Hotel Properties', icon: <Hotel size={14} /> },
           { id: 'activities', label: 'Experiences & Excursions', icon: <Compass size={14} /> },
           { id: 'extras', label: 'Welcoming Amenities', icon: <Plus size={14} /> },
-          { id: 'agents', label: 'Partnership Agents', icon: <Briefcase size={14} /> },
+          { id: 'agents', label: 'Partner Agencies', icon: <Briefcase size={14} /> },
+          { id: 'guides', label: 'Guide Contacts', icon: <Users size={14} /> },
           { id: 'drivers', label: 'Drivers & Fleet Vehicles', icon: <Car size={14} /> }
         ].map(tab => {
           const isSelected = subTab === tab.id;
@@ -183,35 +188,101 @@ export const DatabaseView: React.FC = () => {
           <div className="space-y-6">
             <div className="flex items-center justify-between pb-3 border-b border-gray-100">
               <div>
-                <h3 className="font-bold text-gray-900 text-base font-sans">Partner Travel Agents Master List</h3>
-                <p className="text-xs text-gray-400">Agencies referring high-net-worth client accounts</p>
+                <h3 className="font-bold text-gray-900 text-base font-sans">Partner Agency Contacts</h3>
+                <p className="text-xs text-gray-400">Quick-access contact directory supplied by Viemma</p>
               </div>
-              <span className="text-[10px] font-bold text-[#D4AF37] bg-yellow-50 border border-[#D4AF37]/20 px-3 py-1 rounded-xl uppercase tracking-wider">4 active presets</span>
+              <span className="text-[10px] font-bold text-[#D4AF37] bg-yellow-50 border border-[#D4AF37]/20 px-3 py-1 rounded-xl uppercase tracking-wider">
+                {DB_DEFAULT.agents.length} contacts
+              </span>
             </div>
 
             <div className="overflow-hidden rounded-2xl border border-gray-100">
               <table className="w-full text-left border-collapse text-xs">
                 <thead>
                   <tr className="bg-slate-50 border-b border-gray-100 text-gray-400 font-bold uppercase tracking-wider text-[10px]">
-                    <th className="p-4 pl-6">Partner Agency</th>
-                    <th className="p-4">Coordinator</th>
-                    <th className="p-4">Contact Email</th>
-                    <th className="p-4">Phone Line</th>
-                    <th className="p-4 pr-6 text-right">Standard Comm</th>
+                    <th className="p-4 pl-6">Agency</th>
+                    <th className="p-4">Email</th>
+                    <th className="p-4">Phone</th>
+                    <th className="p-4 pr-6 text-right">Quick Access</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-50 text-gray-600 font-medium">
-                  {DB_DEFAULT.agents.map(ag => (
-                    <tr key={ag.id} className="hover:bg-slate-50/50 transition">
-                      <td className="p-4 pl-6 font-bold text-[#1A3326]">{ag.name}</td>
-                      <td className="p-4 text-gray-900">{ag.contact}</td>
-                      <td className="p-4 text-gray-500">{ag.email}</td>
-                      <td className="p-4 text-gray-500">{ag.phone || '—'}</td>
-                      <td className="p-4 pr-6 text-right text-emerald-700 font-extrabold">{ag.comm}</td>
+                  {DB_DEFAULT.agents.map(agent => (
+                    <tr key={agent.id} className="hover:bg-slate-50/50 transition">
+                      <td className="p-4 pl-6 font-bold text-[#1A3326]">{agent.name}</td>
+                      <td className="p-4 text-gray-500">{agent.email || '—'}</td>
+                      <td className="p-4 text-gray-500">{agent.phone || '—'}</td>
+                      <td className="p-4 pr-6">
+                        <div className="flex justify-end gap-2">
+                          {agent.phone && (
+                            <a href={`tel:${agent.phone}`} className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-emerald-50 text-emerald-800 font-bold hover:bg-emerald-100" aria-label={`Call ${agent.name}`}>
+                              <Phone size={11} /> Call
+                            </a>
+                          )}
+                          {agent.email && (
+                            <a href={`mailto:${agent.email}`} className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-slate-50 text-slate-700 font-bold hover:bg-slate-100" aria-label={`Email ${agent.name}`}>
+                              <Mail size={11} /> Email
+                            </a>
+                          )}
+                        </div>
+                      </td>
                     </tr>
                   ))}
                 </tbody>
               </table>
+            </div>
+          </div>
+        )}
+
+        {subTab === 'guides' && (
+          <div className="space-y-6">
+            <div className="flex items-center justify-between pb-3 border-b border-gray-100">
+              <div>
+                <h3 className="font-bold text-gray-900 text-base font-sans">Guide Contact Directory</h3>
+                <p className="text-xs text-gray-400">Quick-access guide contacts and language details supplied in the contact list.</p>
+              </div>
+              <span className="text-[10px] font-bold text-[#D4AF37] bg-yellow-50 border border-[#D4AF37]/20 px-3 py-1 rounded-xl uppercase tracking-wider">
+                {DB_DEFAULT.guides.length} contacts
+              </span>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+              {DB_DEFAULT.guides.map(guide => (
+                <div key={guide.id} className="rounded-2xl border border-gray-100 bg-slate-50/60 p-4 space-y-3">
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <h4 className="font-bold text-[#1A3326] text-sm">{guide.name}</h4>
+                      <p className="text-[10px] text-gray-400 mt-0.5">{guide.phone}</p>
+                    </div>
+                    <div className="flex gap-1.5">
+                      <a
+                        href={`tel:${guide.phone}`}
+                        className="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-800 flex items-center justify-center hover:bg-emerald-100"
+                        aria-label={`Call ${guide.name}`}
+                        title={`Call ${guide.name}`}
+                      >
+                        <Phone size={13} />
+                      </a>
+                      <a
+                        href={`https://wa.me/${guide.whatsapp.replace(/[^0-9]/g, '')}`}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="w-8 h-8 rounded-lg bg-green-50 text-green-700 flex items-center justify-center hover:bg-green-100"
+                        aria-label={`WhatsApp ${guide.name}`}
+                        title={`WhatsApp ${guide.name}`}
+                      >
+                        <MessageCircle size={13} />
+                      </a>
+                    </div>
+                  </div>
+                  <div className="flex flex-wrap gap-1.5">
+                    {guide.languages.portuguese === true && <span className="px-2 py-1 rounded-full bg-amber-50 text-amber-800 text-[9px] font-bold">Portuguese</span>}
+                    {guide.languages.spanish === true && <span className="px-2 py-1 rounded-full bg-sky-50 text-sky-800 text-[9px] font-bold">Spanish</span>}
+                    {guide.languages.english === true && <span className="px-2 py-1 rounded-full bg-emerald-50 text-emerald-800 text-[9px] font-bold">English</span>}
+                    {guide.languages.english === null && <span className="px-2 py-1 rounded-full bg-gray-100 text-gray-500 text-[9px] font-bold">English: not listed</span>}
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
         )}
