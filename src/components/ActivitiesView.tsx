@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { AppState, Activity } from '../types';
+import { AppState, Activity, Guide } from '../types';
 import { DB_DEFAULT } from '../dbDefaults';
 import { 
   Route, 
@@ -45,6 +45,7 @@ export const ActivitiesView: React.FC<ActivitiesViewProps> = ({
   const [aForm, setAForm] = useState<Partial<Activity>>({});
   const [activeTab, setActiveTab] = useState<'basic' | 'operational' | 'pricing' | 'pax'>('basic');
   const [expandedActivityIds, setExpandedActivityIds] = useState<number[]>([]);
+  const guides = state.guides?.length ? state.guides : DB_DEFAULT.guides as Guide[];
 
   const toggleActivityExpand = (id: number) => {
     setExpandedActivityIds(prev => 
@@ -116,7 +117,12 @@ export const ActivitiesView: React.FC<ActivitiesViewProps> = ({
       photographyOpportunities: a.photographyOpportunities || '',
       seasonalAvailability: a.seasonalAvailability || 'Year-round',
       faqs: a.faqs || [],
-      guideNotes: a.guideNotes || a.notes || ''
+      guideNotes: a.guideNotes || a.notes || '',
+      guideId: a.guideId || '',
+      guideName: a.guideName || '',
+      guidePhone: a.guidePhone || '',
+      guideSourceAgentId: a.guideSourceAgentId || '',
+      guideSourceAgentName: a.guideSourceAgentName || ''
     });
     setActiveTab('basic');
     setEditingActivityId(a.id);
@@ -212,7 +218,9 @@ export const ActivitiesView: React.FC<ActivitiesViewProps> = ({
       guideNotes: aForm.guideNotes || '',
       guideId: aForm.guideId || '',
       guideName: aForm.guideName || '',
-      guidePhone: aForm.guidePhone || ''
+      guidePhone: aForm.guidePhone || '',
+      guideSourceAgentId: aForm.guideSourceAgentId || '',
+      guideSourceAgentName: aForm.guideSourceAgentName || ''
     };
 
     if (editingActivityId === -1) {
@@ -601,18 +609,20 @@ export const ActivitiesView: React.FC<ActivitiesViewProps> = ({
                       <select
                         value={aForm.guideId || ''}
                         onChange={e => {
-                          const guide = DB_DEFAULT.guides.find(g => g.id === e.target.value);
+                          const guide = guides.find(g => g.id === e.target.value);
                           setAForm({
                             ...aForm,
                             guideId: guide?.id || '',
                             guideName: guide?.name || '',
-                            guidePhone: guide?.phone || ''
+                            guidePhone: guide?.phone || '',
+                            guideSourceAgentId: guide?.sourceAgentId || '',
+                            guideSourceAgentName: guide?.sourceAgentName || ''
                           });
                         }}
                         className="w-full h-11 px-4 rounded-xl border border-gray-200 text-xs font-semibold text-gray-700 bg-white focus:border-[#D4AF37] transition"
                       >
                         <option value="">Select guide...</option>
-                        {DB_DEFAULT.guides.map(guide => (
+                        {guides.map(guide => (
                           <option key={guide.id} value={guide.id}>
                             {guide.name} — {guide.phone}
                           </option>
@@ -624,6 +634,12 @@ export const ActivitiesView: React.FC<ActivitiesViewProps> = ({
                       <div className="w-full h-11 px-4 rounded-xl border border-gray-200 bg-slate-50 flex items-center text-xs font-semibold text-gray-700">
                         {aForm.guidePhone || 'Select a guide'}
                       </div>
+                    <div className="space-y-1.5">
+                      <label className="text-[11px] text-gray-500 font-bold uppercase tracking-wider block">Source Agent / Agency</label>
+                      <div className="w-full h-11 px-4 rounded-xl border border-gray-200 bg-slate-50 flex items-center text-xs font-semibold text-gray-700">
+                        {aForm.guideSourceAgentName || 'Not assigned'}
+                      </div>
+                    </div>
                     </div>
                   </div>
                 </div>
