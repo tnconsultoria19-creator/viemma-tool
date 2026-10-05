@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { AppState, Guest, GroupManagement, TripStatus } from '../types';
 import { InfoTooltip } from './InfoTooltip';
-import { COUNTRIES } from '../dbDefaults';
+import { COUNTRIES, DB_DEFAULT } from '../dbDefaults';
 import { 
   Users, 
   User, 
@@ -124,18 +124,12 @@ export const IntakeView: React.FC<IntakeViewProps> = ({
 
   const handleAgentSelect = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const val = e.target.value;
-    const agents = {
-      safari_dreams: { id: 'safari_dreams', agencyName: 'Safari Dreams UK', contact: 'Emma Williams', email: 'emma@safaridreams.co.uk', comm: '12%' },
-      wanderlust: { id: 'wanderlust', agencyName: 'Wanderlust Reisen DE', contact: 'Hans Müller', email: 'hans@wanderlust.de', comm: '10%' },
-      cape_connect: { id: 'cape_connect', agencyName: 'Cape Connect Tours', contact: 'Mike Johnson', email: 'mike@capeconnect.com', comm: '15%' },
-      bespoke_africa: { id: 'bespoke_africa', agencyName: 'Bespoke Africa Partners', contact: 'Claire Thompson', email: 'claire@bespokeafrica.au', comm: '8%' }
-    };
+    const selectedAgent = DB_DEFAULT.agents.find(a => a.id === val);
 
-    const selectedAgent = agents[val as keyof typeof agents];
     onUpdateState({
       agent: {
         id: val,
-        agencyName: selectedAgent?.agencyName || '',
+        agencyName: selectedAgent?.name || '',
         contact: selectedAgent?.contact || '',
         email: selectedAgent?.email || '',
         comm: selectedAgent?.comm || ''
@@ -930,24 +924,44 @@ export const IntakeView: React.FC<IntakeViewProps> = ({
                 </div>
               </div>
 
-              {/* Partner Agent Dropdown (if source === 'agent') */}
+              {/* Partner Agency Dropdown */}
               {state.source === 'agent' && (
-                <div className="space-y-1.5 pt-3 border-t border-gray-100 animate-in fade-in duration-200">
+                <div className="space-y-2 pt-3 border-t border-gray-100 animate-in fade-in duration-200">
                   <label htmlFor="partner-agent-select" className="text-[11px] text-gray-700 font-bold uppercase block">
-                    Partner Agent <InfoTooltip text="Select the wholesale or retail B2B partner agency responsible for this client." />
+                    Partner Agency <InfoTooltip text="Select the wholesale or retail B2B partner agency responsible for this client." />
                   </label>
-                  <select 
+                  <select
                     id="partner-agent-select"
                     value={state.agent.id}
-                    onChange={handleAgentSelect} 
+                    onChange={handleAgentSelect}
                     className="w-full h-10 px-3 rounded-xl border border-gray-200 text-xs font-semibold text-gray-700 bg-white focus:outline-none focus:ring-2 focus:ring-[#D4AF37] focus:border-transparent transition"
                   >
-                    <option value="">Select travel agency partner...</option>
-                    <option value="safari_dreams">Safari Dreams (UK) — 12% Commission</option>
-                    <option value="wanderlust">Wanderlust (DE) — 10% Commission</option>
-                    <option value="cape_connect">Cape Connect — 15% Commission</option>
-                    <option value="bespoke_africa">Bespoke Africa Partners — 8% Commission</option>
+                    <option value="">Select partner agency...</option>
+                    {DB_DEFAULT.agents.map(agent => (
+                      <option key={agent.id} value={agent.id}>
+                        {agent.name}{agent.phone ? ` — ${agent.phone}` : ''}
+                      </option>
+                    ))}
                   </select>
+                  {state.agent.id && (() => {
+                    const partner = DB_DEFAULT.agents.find(agent => agent.id === state.agent.id);
+                    if (!partner) return null;
+                    return (
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400 mr-1">Quick contact</span>
+                        {partner.phone && (
+                          <a href={`tel:${partner.phone}`} className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-emerald-50 text-emerald-800 text-[10px] font-bold hover:bg-emerald-100 transition">
+                            <Phone size={11} /> Call
+                          </a>
+                        )}
+                        {partner.email && (
+                          <a href={`mailto:${partner.email}`} className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-slate-50 text-slate-700 text-[10px] font-bold hover:bg-slate-100 transition">
+                            <Mail size={11} /> Email
+                          </a>
+                        )}
+                      </div>
+                    );
+                  })()}
                 </div>
               )}
             </div>
