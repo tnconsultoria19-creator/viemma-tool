@@ -444,7 +444,7 @@ export const IntakeView: React.FC<IntakeViewProps> = ({
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               
               <div className="space-y-1.5">
-                <label className="text-[11px] text-gray-500 font-bold uppercase tracking-wider block">Lead Group/Dossier Name</label>
+                <label className="text-[11px] text-gray-500 font-bold uppercase tracking-wider block">Lead Group/Dossier Name <InfoTooltip text={"The name used to identify this client group or booking dossier."} /></label>
                 <input 
                   type="text" 
                   value={state.client.name} 
@@ -455,7 +455,7 @@ export const IntakeView: React.FC<IntakeViewProps> = ({
               </div>
 
               <div className="space-y-1.5">
-                <label className="text-[11px] text-gray-500 font-bold uppercase tracking-wider block">Lead Traveler Email</label>
+                <label className="text-[11px] text-gray-500 font-bold uppercase tracking-wider block">Lead Traveler Email <InfoTooltip text={"The primary email address for the lead traveller or main client contact."} /></label>
                 <div className="relative">
                   <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-gray-400">
                     <Mail size={12} />
@@ -471,7 +471,7 @@ export const IntakeView: React.FC<IntakeViewProps> = ({
               </div>
 
               <div className="space-y-1.5">
-                <label className="text-[11px] text-gray-500 font-bold uppercase tracking-wider block">Contact Phone Number</label>
+                <label className="text-[11px] text-gray-500 font-bold uppercase tracking-wider block">Contact Phone Number <InfoTooltip text={"The main telephone number for contacting the lead traveller or client."} /></label>
                 <div className="relative">
                   <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-gray-400">
                     <Phone size={12} />
@@ -487,7 +487,7 @@ export const IntakeView: React.FC<IntakeViewProps> = ({
               </div>
 
               <div className="space-y-1.5 relative">
-                <label className="text-[11px] text-gray-500 font-bold uppercase tracking-wider block">Origin Country</label>
+                <label className="text-[11px] text-gray-500 font-bold uppercase tracking-wider block">Origin Country <InfoTooltip text={"The country where the traveller or client is based."} /></label>
                 <div className="relative">
                   <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-gray-400">
                     <Globe size={12} />
@@ -535,7 +535,7 @@ export const IntakeView: React.FC<IntakeViewProps> = ({
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-end">
               <div className="space-y-1.5">
-                <label className="text-[11px] text-gray-500 font-bold uppercase tracking-wider block">Safari Arrival Date</label>
+                <label className="text-[11px] text-gray-500 font-bold uppercase tracking-wider block">Safari Arrival Date <InfoTooltip text={"The date the travel programme or safari begins."} /></label>
                 <input 
                   type="date" 
                   value={state.client.startDate} 
@@ -545,7 +545,7 @@ export const IntakeView: React.FC<IntakeViewProps> = ({
               </div>
 
               <div className="space-y-1.5">
-                <label className="text-[11px] text-gray-500 font-bold uppercase tracking-wider block">Safari Departure Date</label>
+                <label className="text-[11px] text-gray-500 font-bold uppercase tracking-wider block">Safari Departure Date <InfoTooltip text={"The date the travel programme ends."} /></label>
                 <input 
                   type="date" 
                   value={state.client.endDate} 
@@ -575,7 +575,7 @@ export const IntakeView: React.FC<IntakeViewProps> = ({
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-4">
                 <div className="space-y-1.5">
-                  <label className="text-[11px] text-gray-500 font-bold uppercase tracking-wider block">Group Dynamics Typology</label>
+                  <label className="text-[11px] text-gray-500 font-bold uppercase tracking-wider block">Group Dynamics Typology <InfoTooltip text={"The type of travelling group, used to guide rooming, service and operational planning."} /></label>
                   <select 
                     value={groupMgmt.groupType}
                     onChange={e => handleUpdateGroupMgmt({ groupType: e.target.value as any })}
@@ -595,7 +595,7 @@ export const IntakeView: React.FC<IntakeViewProps> = ({
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="text-[11px] text-gray-500 font-bold uppercase tracking-wider block">Rooming & Sharing Strategy</label>
+                  <label className="text-[11px] text-gray-500 font-bold uppercase tracking-wider block">Rooming & Sharing Strategy <InfoTooltip text={"Record how guests should share rooms, including couples, children, singles or special rooming needs."} /></label>
                   <textarea 
                     value={groupMgmt.sharingPreferences}
                     onChange={e => handleUpdateGroupMgmt({ sharingPreferences: e.target.value })}
@@ -661,7 +661,7 @@ export const IntakeView: React.FC<IntakeViewProps> = ({
 
             <div className="space-y-6">
               <div>
-                <label className="text-[11px] text-gray-400 font-bold uppercase tracking-wider block mb-2">Proposal Priority</label>
+                <label className="text-[11px] text-gray-400 font-bold uppercase tracking-wider block mb-2">Proposal Priority <InfoTooltip text={"Shows how urgently this enquiry or confirmed booking should be handled."} /></label>
                 <div className="grid grid-cols-3 gap-2">
                   {['high', 'medium', 'confirmed'].map(p => (
                     <button 
@@ -680,7 +680,7 @@ export const IntakeView: React.FC<IntakeViewProps> = ({
               </div>
 
               <div>
-                <label className="text-[11px] text-gray-400 font-bold uppercase tracking-wider block mb-2">Acquisition Source</label>
+                <label className="text-[11px] text-gray-400 font-bold uppercase tracking-wider block mb-2">Acquisition Source <InfoTooltip text={"Shows how this client or booking reached Viemma Tours."} /></label>
                 <div className="grid grid-cols-2 gap-2">
                   {['direct', 'agent', 'referral', 'website'].map(s => (
                     <button 
@@ -705,7 +705,7 @@ export const IntakeView: React.FC<IntakeViewProps> = ({
 
               {state.source === 'agent' && (
                 <div className="space-y-2 pt-3 border-t border-gray-50 animate-in fade-in duration-300">
-                  <label className="text-[11px] text-gray-400 font-bold uppercase block">Partner Agent</label>
+                  <label className="text-[11px] text-gray-400 font-bold uppercase block">Partner Agent <InfoTooltip text={"Select the travel partner responsible for the booking when the acquisition source is Agent."} /></label>
                   <select 
                     value={state.agent.id}
                     onChange={handleAgentSelect} 
@@ -920,7 +920,7 @@ export const IntakeView: React.FC<IntakeViewProps> = ({
                 <div className="space-y-6 animate-in fade-in duration-150">
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <label className="text-[10px] text-gray-400 font-bold uppercase block tracking-wider mb-2">First Name</label>
+                      <label className="text-[10px] text-gray-400 font-bold uppercase block tracking-wider mb-2">First Name <InfoTooltip text={"The traveller's first or given name as it should appear in the booking."} /></label>
                       <input 
                         type="text" 
                         value={modalGuest.first || ''} 
@@ -930,7 +930,7 @@ export const IntakeView: React.FC<IntakeViewProps> = ({
                       />
                     </div>
                     <div>
-                      <label className="text-[10px] text-gray-400 font-bold uppercase block tracking-wider mb-2">Last Name</label>
+                      <label className="text-[10px] text-gray-400 font-bold uppercase block tracking-wider mb-2">Last Name <InfoTooltip text={"The traveller's family or surname as it should appear in the booking."} /></label>
                       <input 
                         type="text" 
                         value={modalGuest.last || ''} 
@@ -943,7 +943,7 @@ export const IntakeView: React.FC<IntakeViewProps> = ({
 
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <label className="text-[10px] text-gray-400 font-bold uppercase block tracking-wider mb-2">Preferred / Call Name</label>
+                      <label className="text-[10px] text-gray-400 font-bold uppercase block tracking-wider mb-2">Preferred / Call Name <InfoTooltip text={"The name the traveller prefers staff and guides to use."} /></label>
                       <input 
                         type="text" 
                         value={modalGuest.preferredName || ''} 
@@ -1031,7 +1031,7 @@ export const IntakeView: React.FC<IntakeViewProps> = ({
 
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                       <div>
-                        <label className="text-[9px] text-gray-400 font-bold uppercase block mb-1">Contact Name</label>
+                        <label className="text-[9px] text-gray-400 font-bold uppercase block mb-1">Contact Name <InfoTooltip text={"The name of the person's emergency contact."} /></label>
                         <input
                           type="text"
                           value={modalGuest.emergencyContactName || ''}
@@ -1041,7 +1041,7 @@ export const IntakeView: React.FC<IntakeViewProps> = ({
                         />
                       </div>
                       <div>
-                        <label className="text-[9px] text-gray-400 font-bold uppercase block mb-1">Phone Number</label>
+                        <label className="text-[9px] text-gray-400 font-bold uppercase block mb-1">Phone Number <InfoTooltip text={"The emergency contact's best telephone number."} /></label>
                         <input
                           type="text"
                           value={modalGuest.emergencyContactPhone || ''}
@@ -1051,7 +1051,7 @@ export const IntakeView: React.FC<IntakeViewProps> = ({
                         />
                       </div>
                       <div>
-                        <label className="text-[9px] text-gray-400 font-bold uppercase block mb-1">Relationship</label>
+                        <label className="text-[9px] text-gray-400 font-bold uppercase block mb-1">Relationship <InfoTooltip text={"The emergency contact's relationship to the traveller."} /></label>
                         <input
                           type="text"
                           value={modalGuest.emergencyContactRelation || ''}
@@ -1066,7 +1066,7 @@ export const IntakeView: React.FC<IntakeViewProps> = ({
 
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <label className="text-[10px] text-gray-400 font-bold uppercase block tracking-wider mb-2">Age Category</label>
+                      <label className="text-[10px] text-gray-400 font-bold uppercase block tracking-wider mb-2">Age Category <InfoTooltip text={"Used to classify the traveller for rooming, pricing, transport and operational planning."} /></label>
                       <select 
                         value={modalGuest.age || 'Adult'} 
                         onChange={e => setModalGuest({ ...modalGuest, age: e.target.value as any })}
@@ -1081,7 +1081,7 @@ export const IntakeView: React.FC<IntakeViewProps> = ({
                     </div>
 
                     <div>
-                      <label className="text-[10px] text-gray-400 font-bold uppercase block tracking-wider mb-2">Primary Spoken Language</label>
+                      <label className="text-[10px] text-gray-400 font-bold uppercase block tracking-wider mb-2">Primary Spoken Language <InfoTooltip text={"The traveller's main spoken language so the team can plan communication appropriately."} /></label>
                       <select 
                         value={modalGuest.languagesSpoken?.[0] || 'English'} 
                         onChange={e => setModalGuest({ ...modalGuest, languagesSpoken: [e.target.value] })}
@@ -1144,7 +1144,7 @@ export const IntakeView: React.FC<IntakeViewProps> = ({
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4 border-t border-gray-100">
                     <div className="space-y-3">
-                      <label className="text-[10px] text-gray-400 font-bold uppercase tracking-wider block">Visual Support</label>
+                      <label className="text-[10px] text-gray-400 font-bold uppercase tracking-wider block">Visual Support <InfoTooltip text={"Record any visual assistance or accessibility requirement."} /></label>
                       <div className="flex flex-wrap gap-1.5">
                         {['Blind', 'Low vision', 'Large print preferred', 'Guide dog travelling'].map(item => {
                           const isSelected = modalGuest.accessibilityVision?.includes(item) || false;
@@ -1164,7 +1164,7 @@ export const IntakeView: React.FC<IntakeViewProps> = ({
                     </div>
 
                     <div className="space-y-3">
-                      <label className="text-[10px] text-gray-400 font-bold uppercase tracking-wider block">Hearing Support</label>
+                      <label className="text-[10px] text-gray-400 font-bold uppercase tracking-wider block">Hearing Support <InfoTooltip text={"Record any hearing assistance or communication requirement."} /></label>
                       <div className="flex flex-wrap gap-1.5">
                         {['Deaf', 'Hard of hearing', 'Hearing aid', 'Sign language assistance'].map(item => {
                           const isSelected = modalGuest.accessibilityHearing?.includes(item) || false;
@@ -1185,7 +1185,7 @@ export const IntakeView: React.FC<IntakeViewProps> = ({
                   </div>
 
                   <div className="space-y-1.5 pt-4 border-t border-gray-100">
-                    <label className="text-[10px] text-gray-400 font-bold uppercase tracking-wider block">Critical Medical Operational Notes</label>
+                    <label className="text-[10px] text-gray-400 font-bold uppercase tracking-wider block">Critical Medical Operational Notes <InfoTooltip text={"Record important operational medical information that staff may need to plan the trip safely."} /></label>
                     <input 
                       type="text"
                       value={modalGuest.medicalOperationalNotes || ''}
@@ -1203,7 +1203,7 @@ export const IntakeView: React.FC<IntakeViewProps> = ({
                   
                   {/* Category: Religious */}
                   <div className="space-y-2.5">
-                    <label className="text-[10px] text-gray-400 font-bold uppercase tracking-wider block">Religious / Spiritual Observance</label>
+                    <label className="text-[10px] text-gray-400 font-bold uppercase tracking-wider block">Religious / Spiritual Observance <InfoTooltip text={"Record religious or spiritual dietary requirements or observances."} /></label>
                     <div className="flex flex-wrap gap-2">
                       {['Halal', 'Kosher', 'Jain'].map(item => {
                         const isSelected = modalGuest.dietaryReligious?.includes(item) || false;
@@ -1224,7 +1224,7 @@ export const IntakeView: React.FC<IntakeViewProps> = ({
 
                   {/* Category: Lifestyle */}
                   <div className="space-y-2.5 pt-4 border-t border-gray-100">
-                    <label className="text-[10px] text-gray-400 font-bold uppercase tracking-wider block">Lifestyle Diet</label>
+                    <label className="text-[10px] text-gray-400 font-bold uppercase tracking-wider block">Lifestyle Diet <InfoTooltip text={"Record lifestyle-based dietary requirements such as vegetarian or vegan."} /></label>
                     <div className="flex flex-wrap gap-2">
                       {['Vegetarian', 'Vegan', 'Pescatarian'].map(item => {
                         const isSelected = modalGuest.dietaryLifestyle?.includes(item) || false;
@@ -1245,7 +1245,7 @@ export const IntakeView: React.FC<IntakeViewProps> = ({
 
                   {/* Category: Medical Allergens */}
                   <div className="space-y-2.5 pt-4 border-t border-gray-100">
-                    <label className="text-[10px] text-gray-400 font-bold uppercase tracking-wider block text-rose-600">Medical / Allergen Constraints</label>
+                    <label className="text-[10px] text-gray-400 font-bold uppercase tracking-wider block text-rose-600">Medical / Allergen Constraints <InfoTooltip text={"Record food allergies, medical diets or other safety-critical dietary restrictions."} /></label>
                     <div className="flex flex-wrap gap-2">
                       {[
                         'Gluten Free', 'Dairy Free', 'Nut Allergy', 'Shellfish Allergy', 
@@ -1269,7 +1269,7 @@ export const IntakeView: React.FC<IntakeViewProps> = ({
 
                   {/* Category: Preferences */}
                   <div className="space-y-2.5 pt-4 border-t border-gray-100">
-                    <label className="text-[10px] text-gray-400 font-bold uppercase tracking-wider block">Kitchen Preferences</label>
+                    <label className="text-[10px] text-gray-400 font-bold uppercase tracking-wider block">Kitchen Preferences <InfoTooltip text={"Record practical meal preferences for kitchens, lodges and restaurants."} /></label>
                     <div className="flex flex-wrap gap-2">
                       {['Mild Food Only', 'No Pork', 'No Beef', 'Child Meals', 'Soft Foods'].map(item => {
                         const isSelected = modalGuest.dietaryPreferences?.includes(item) || false;
@@ -1297,7 +1297,7 @@ export const IntakeView: React.FC<IntakeViewProps> = ({
                   
                   {/* Accommodation Comfort */}
                   <div className="space-y-2.5">
-                    <label className="text-[10px] text-gray-400 font-bold uppercase tracking-wider block">Lodge / Suite Comfort</label>
+                    <label className="text-[10px] text-gray-400 font-bold uppercase tracking-wider block">Lodge / Suite Comfort <InfoTooltip text={"Record accommodation preferences such as room type, views, beds or accessibility."} /></label>
                     <div className="flex flex-wrap gap-2">
                       {[
                         'King Bed', 'Twin Beds', 'Separate Beds', 'Quiet Room', 'High Floor', 'Low Floor', 
@@ -1322,7 +1322,7 @@ export const IntakeView: React.FC<IntakeViewProps> = ({
 
                   {/* Transport Comfort */}
                   <div className="space-y-2.5 pt-4 border-t border-gray-100">
-                    <label className="text-[10px] text-gray-400 font-bold uppercase tracking-wider block">Vehicular Dispatch Comfort</label>
+                    <label className="text-[10px] text-gray-400 font-bold uppercase tracking-wider block">Vehicular Dispatch Comfort <InfoTooltip text={"Record transport preferences such as seating, air conditioning or child-seat needs."} /></label>
                     <div className="flex flex-wrap gap-2">
                       {[
                         'Front Seat', 'Window Seat', 'Air Conditioning', 'Wi-Fi', 'Extra Leg Room', 
@@ -1346,7 +1346,7 @@ export const IntakeView: React.FC<IntakeViewProps> = ({
 
                   {/* Experience Interests */}
                   <div className="space-y-2.5 pt-4 border-t border-gray-100">
-                    <label className="text-[10px] text-gray-400 font-bold uppercase tracking-wider block">Curation Focus & Interests</label>
+                    <label className="text-[10px] text-gray-400 font-bold uppercase tracking-wider block">Curation Focus & Interests <InfoTooltip text={"Record the traveller's interests to help tailor experiences."} /></label>
                     <div className="flex flex-wrap gap-2">
                       {[
                         'Wildlife', 'Photography', 'Bird Watching', 'Wine', 'Food Experiences', 
@@ -1370,7 +1370,7 @@ export const IntakeView: React.FC<IntakeViewProps> = ({
 
                   {/* General Custom Notes */}
                   <div className="space-y-1.5 pt-4 border-t border-gray-100">
-                    <label className="text-[10px] text-gray-400 font-bold uppercase tracking-wider block">Bespoke Guest Notes & Operational Guidelines</label>
+                    <label className="text-[10px] text-gray-400 font-bold uppercase tracking-wider block">Bespoke Guest Notes & Operational Guidelines <InfoTooltip text={"Add any useful guest-specific notes or service instructions for the operations team."} /></label>
                     <textarea 
                       value={modalGuest.notes || ''} 
                       onChange={e => setModalGuest({ ...modalGuest, notes: e.target.value })}
