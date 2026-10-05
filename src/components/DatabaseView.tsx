@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { DB_DEFAULT } from '../dbDefaults';
+import { AppState, Guide } from '../types';
 import { 
   Briefcase, 
   Hotel, 
@@ -17,8 +18,28 @@ import {
   Star
 } from 'lucide-react';
 
-export const DatabaseView: React.FC = () => {
+interface DatabaseViewProps {
+  state: AppState;
+  onUpdateState: (updates: Partial<AppState>) => void;
+}
+
+export const DatabaseView: React.FC<DatabaseViewProps> = ({ state, onUpdateState }) => {
   const [subTab, setSubTab] = useState<'hotels' | 'activities' | 'extras' | 'agents' | 'guides' | 'drivers'>('hotels');
+  const guides = state.guides?.length ? state.guides : DB_DEFAULT.guides as Guide[];
+
+  const handleGuideSourceAgentChange = (guideId: string, sourceAgentId: string) => {
+    const selectedAgent = DB_DEFAULT.agents.find(agent => agent.id === sourceAgentId);
+    const updatedGuides = guides.map(guide =>
+      guide.id === guideId
+        ? {
+            ...guide,
+            sourceAgentId,
+            sourceAgentName: selectedAgent?.name || ''
+          }
+        : guide
+    );
+    onUpdateState({ guides: updatedGuides });
+  };
 
   return (
     <div className="space-y-8 max-w-[1500px] mx-auto animate-in fade-in duration-500">
@@ -242,12 +263,12 @@ export const DatabaseView: React.FC = () => {
                 <p className="text-xs text-gray-400">Quick-access guide contacts and language details supplied in the contact list.</p>
               </div>
               <span className="text-[10px] font-bold text-[#D4AF37] bg-yellow-50 border border-[#D4AF37]/20 px-3 py-1 rounded-xl uppercase tracking-wider">
-                {DB_DEFAULT.guides.length} contacts
+                {guides.length} contacts
               </span>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-              {DB_DEFAULT.guides.map(guide => (
+              {guides.map(guide => (
                 <div key={guide.id} className="rounded-2xl border border-gray-100 bg-slate-50/60 p-4 space-y-3">
                   <div className="flex items-start justify-between gap-3">
                     <div>
@@ -274,6 +295,21 @@ export const DatabaseView: React.FC = () => {
                         <MessageCircle size={13} />
                       </a>
                     </div>
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-[9px] text-gray-400 font-bold uppercase tracking-wider block">
+                      Source Agent / Agency
+                    </label>
+                    <select
+                      value={guide.sourceAgentId || ''}
+                      onChange={e => handleGuideSourceAgentChange(guide.id, e.target.value)}
+                      className="w-full h-9 px-2.5 rounded-lg border border-gray-200 bg-white text-[10px] font-semibold text-gray-700 focus:border-[#D4AF37] focus:outline-none"
+                    >
+                      <option value="">Not assigned</option>
+                      {DB_DEFAULT.agents.map(agent => (
+                        <option key={agent.id} value={agent.id}>{agent.name}</option>
+                      ))}
+                    </select>
                   </div>
                   <div className="flex flex-wrap gap-1.5">
                     {guide.languages.portuguese === true && <span className="px-2 py-1 rounded-full bg-amber-50 text-amber-800 text-[9px] font-bold">Portuguese</span>}
