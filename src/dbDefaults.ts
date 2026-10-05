@@ -50,10 +50,32 @@ export const DB_DEFAULT = {
     { id: "ex3", name: "Premium Welcome South African Cabernet", basePrice: 480 }
   ],
   agents: [
-    { id: "safari_dreams", name: "Safari Dreams Travel", contact: "Emma Williams", email: "emma@safaridreams.co.uk", phone: "+44 20 7946 0192", comm: "12%" },
-    { id: "wanderlust", name: "Wanderlust Adventures", contact: "Hans Müller", email: "hans@wanderlust.de", comm: "10%" },
-    { id: "cape_connect", name: "Cape Connect Tours", contact: "Mike Johnson", email: "mike@capeconnect.com", comm: "15%" },
-    { id: "bespoke_africa", name: "Bespoke Africa Partners", contact: "Claire Thompson", email: "claire@bespokeafrica.au", comm: "8%" }
+    { id: "into_africa", name: "Into Africa", contact: "", email: "alex@intoafrica.co.za", phone: "079 429 1627", comm: "" },
+    { id: "carina", name: "Carina", contact: "", email: "", phone: "+55 11 95037 3777", comm: "" },
+    { id: "catalina_tours", name: "Catalina Tours", contact: "", email: "patricia@catalinatourssa.com", phone: "082 551 1216", comm: "" },
+    { id: "piscarol", name: "Piscarol", contact: "", email: "pisco@piscomaurer.co.za", phone: "072 084 8553", comm: "" },
+    { id: "rethink", name: "Rethink", contact: "", email: "keely@rethink-africa.co.za", phone: "081 407 9558", comm: "" },
+    { id: "tour_a_la_carte", name: "Tour a la Carte", contact: "", email: "", phone: "+55 47 9139 5770", comm: "" },
+    { id: "green_route", name: "Green Route", contact: "", email: "micayla@dragonfly.co.za", phone: "0693788981", comm: "" },
+    { id: "thomson_travel", name: "Thomson travel", contact: "", email: "abhijit.oza@thompsonafrica.co.za", phone: "0633468966", comm: "" },
+    { id: "momento", name: "Momento", contact: "", email: "camila@momentoviagens.com.br", phone: "+5541992180204", comm: "" },
+    { id: "heloa_trips", name: "Heloa Trips", contact: "", email: "reservas@heloatrips.com", phone: "+5521968746794", comm: "" },
+    { id: "amazing_africa", name: "Amazing Africa", contact: "", email: "nats@amazing-africa.co.za", phone: "0789004859", comm: "" },
+    { id: "hello_africa", name: "Hello Africa", contact: "", email: "helloafricaadventures@gmail.com", phone: "+5511970295991", comm: "" }
+  ],
+  guides: [
+    { id: "sebastiao_pedro", name: "Sebastiao Pedro", phone: "0681712985", whatsapp: "0681712985", languages: { portuguese: true, spanish: false, english: null } },
+    { id: "tarcio_sylvestre", name: "Tarcio Sylvestre", phone: "0817461041", whatsapp: "0817461041", languages: { portuguese: true, spanish: true, english: null } },
+    { id: "moises_padre", name: "Moises Padre", phone: "+244935164259", whatsapp: "+244935164259", languages: { portuguese: true, spanish: false, english: null } },
+    { id: "daniel", name: "Daniel", phone: "0632819301", whatsapp: "0632819301", languages: { portuguese: true, spanish: false, english: null } },
+    { id: "javier_herrera", name: "Javier Herrera", phone: "0795225594", whatsapp: "0795225594", languages: { portuguese: true, spanish: true, english: true } },
+    { id: "gilberto_futre", name: "Gilberto Futre", phone: "0846065550", whatsapp: "0846065550", languages: { portuguese: true, spanish: false, english: null } },
+    { id: "sergito_matsinhe", name: "Sergito Matsinhe", phone: "0760853430", whatsapp: "0760853430", languages: { portuguese: false, spanish: true, english: null } },
+    { id: "feliz_afonso", name: "Feliz Afonso", phone: "0683828240", whatsapp: "0683828240", languages: { portuguese: true, spanish: true, english: true } },
+    { id: "danny", name: "Danny", phone: "0624382841", whatsapp: "0624382841", languages: { portuguese: false, spanish: true, english: null } },
+    { id: "abdul", name: "Abdul", phone: "0783587405", whatsapp: "0783587405", languages: { portuguese: false, spanish: true, english: null } },
+    { id: "nathi", name: "Nathi", phone: "0711567172", whatsapp: "0711567172", languages: { portuguese: false, spanish: true, english: null } },
+    { id: "jana_trojan", name: "Jana Trojan", phone: "0825677771", whatsapp: "0825677771", languages: { portuguese: false, spanish: true, english: null } }
   ],
   drivers: [
     { id: "sipho", name: "Sipho Khumalo", phone: "+27 60 555 1234" },
