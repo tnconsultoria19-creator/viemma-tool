@@ -1452,7 +1452,10 @@ export default function App() {
               )}
 
               {activeTab === 'database' && (
-                <DatabaseView />
+                <DatabaseView
+                  state={state}
+                  onUpdateState={handleUpdateState}
+                />
               )}
 
               {activeTab === 'library' && (
