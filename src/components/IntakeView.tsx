@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { AppState, Guest, GroupManagement } from '../types';
+import { InfoTooltip } from './InfoTooltip';
 import { COUNTRIES } from '../dbDefaults';
 import { 
   Users, 
@@ -357,13 +358,13 @@ export const IntakeView: React.FC<IntakeViewProps> = ({
     <div className="space-y-12 max-w-[1500px] mx-auto animate-in fade-in duration-500">
       
       {/* Title Header */}
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 pb-6 border-b border-gray-100">
+      <div className="relative flex flex-col md:flex-row md:items-end justify-between gap-6 p-5 md:p-6 -m-5 md:-m-6 rounded-[24px] bg-gradient-to-r from-white/92 via-white/72 to-white/10 backdrop-blur-[2px] border-b border-white/60 shadow-[0_10px_30px_-20px_rgba(0,0,0,0.35)]">
         <div className="space-y-2">
           <span className="text-xs uppercase tracking-[0.2em] font-bold text-[#D4AF37] flex items-center gap-2">
             <Users size={14} /> DMC OPERATIONS COMMAND
           </span>
-          <h1 className="text-3xl font-bold tracking-tight text-gray-900 font-sans">Traveller Intake & Operations Desk</h1>
-          <p className="text-gray-500 max-w-2xl text-sm leading-relaxed">
+          <h1 className="text-3xl font-bold tracking-tight text-[#10233f] font-sans drop-shadow-[0_1px_0_rgba(255,255,255,0.65)]">Traveller Intake & Operations Desk</h1>
+          <p className="text-gray-700/90 max-w-2xl text-sm leading-relaxed drop-shadow-[0_1px_0_rgba(255,255,255,0.75)]">
             Configure confirmed lead client dossiers, scheduled safari calendar ranges, intelligent group dynamics, and professional Operational Traveller Profiles.
           </p>
         </div>
@@ -953,7 +954,7 @@ export const IntakeView: React.FC<IntakeViewProps> = ({
                     </div>
                     <div>
                       <div className="flex items-center justify-between mb-2">
-                        <label className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Nationality / Passport</label>
+                        <label className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Nationality / Passport <InfoTooltip text="The traveller's nationality or passport-country information." /></label>
                         {state.client.country && (
                           <button
                             type="button"
@@ -1115,7 +1116,7 @@ export const IntakeView: React.FC<IntakeViewProps> = ({
                 <div className="space-y-6 animate-in fade-in duration-150">
                   <div className="space-y-3">
                     <label className="text-xs font-extrabold text-[#1A3326] flex items-center gap-1.5 uppercase tracking-wider">
-                      <Accessibility size={14} className="text-[#D4AF37]" /> Physical Mobility Status
+                      <Accessibility size={14} className="text-[#D4AF37]" /> Physical Mobility Status <InfoTooltip text="Record any mobility limitation or accessibility requirement that affects transport, walking, stairs or rooming." />
                     </label>
                     <div className="flex flex-wrap gap-2">
                       {[
