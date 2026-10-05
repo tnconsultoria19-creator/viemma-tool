@@ -44,3 +44,19 @@ body {
 
 
 
+
+
+/* Readability veil for headings that sit over the photographic page canvas. */
+.photo-canvas-readability {
+  position: relative;
+  isolation: isolate;
+}
+.photo-canvas-readability::before {
+  content: "";
+  position: absolute;
+  inset: -1.5rem;
+  z-index: -1;
+  border-radius: 1.5rem;
+  background: linear-gradient(90deg, rgba(255,255,255,0.92) 0%, rgba(255,255,255,0.70) 52%, rgba(255,255,255,0.10) 100%);
+  pointer-events: none;
+}
