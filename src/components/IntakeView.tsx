@@ -358,7 +358,7 @@ export const IntakeView: React.FC<IntakeViewProps> = ({
     <div className="space-y-12 max-w-[1500px] mx-auto animate-in fade-in duration-500">
       
       {/* Title Header */}
-      <div className="relative flex flex-col md:flex-row md:items-end justify-between gap-6 p-5 md:p-6 -m-5 md:-m-6 rounded-[24px] bg-gradient-to-r from-white/92 via-white/72 to-white/10 backdrop-blur-[2px] border-b border-white/60 shadow-[0_10px_30px_-20px_rgba(0,0,0,0.35)]">
+      <div className="relative flex flex-col md:flex-row md:items-end justify-between gap-6 p-5 md:p-6 -m-5 md:-m-6 rounded-[24px] bg-gradient-to-r from-white/[0.92] via-white/[0.72] to-white/[0.10] backdrop-blur-[2px] border-b border-white/60 shadow-[0_10px_30px_-20px_rgba(0,0,0,0.35)]">
         <div className="space-y-2">
           <span className="text-xs uppercase tracking-[0.2em] font-bold text-[#D4AF37] flex items-center gap-2">
             <Users size={14} /> DMC OPERATIONS COMMAND
@@ -1405,4 +1405,3 @@ export const IntakeView: React.FC<IntakeViewProps> = ({
 
     </div>
   );
-};
