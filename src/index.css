@@ -54,9 +54,9 @@ body {
 .photo-canvas-readability::before {
   content: "";
   position: absolute;
-  inset: -1.5rem;
+  inset: 0;
   z-index: -1;
-  border-radius: 1.5rem;
-  background: linear-gradient(90deg, rgba(255,255,255,0.92) 0%, rgba(255,255,255,0.70) 52%, rgba(255,255,255,0.10) 100%);
+  border-radius: 1rem;
+  background: linear-gradient(90deg, rgba(255,255,255,0.95) 0%, rgba(255,255,255,0.85) 60%, rgba(255,255,255,0.20) 100%);
   pointer-events: none;
 }

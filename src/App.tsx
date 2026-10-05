@@ -1407,6 +1407,7 @@ export default function App() {
                   onRemoveGuest={handleRemoveGuest}
                   onSetLeadGuest={handleSetLeadGuest}
                   onUpdateGuest={handleUpdateGuest}
+                  onNavigateTab={(tab) => setActiveTab(tab)}
                 />
               )}
 
