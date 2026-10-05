@@ -1,0 +1,94 @@
+Viemma Tours - Workspace OS
+================================================================================
+03 - FEATURE GAP ANALYSIS
+================================================================================
+Target Audience: Executive Leadership, Product Management, Engineering
+Context: Comparison of "Viemma Tours Workspace OS" against industry leaders
+(Tourwriter, Wetu, Travefy, Safari Portal, Monday, Notion, Salesforce, Airbnb)
+
+The current application functions as a high-fidelity local-first drafting tool.
+While visually polished and functional for single-user offline drafting, it
+operates as an isolated entity compared to the integrated ecosystems of the
+platforms evaluated.
+
+================================================================================
+1. GAP ANALYSIS SUMMARY
+================================================================================
+
+--------------------------------------------------------------------------------
+A. Missing Features (Functional)
+--------------------------------------------------------------------------------
+* Real-Time Collaboration: Lack of multi-user editing; agents cannot work
+  concurrently on the same itinerary.
+* Live GDS Integration: No live flight/data feed from Amadeus/Sabre/Galileo; all
+  entry is manual.
+* Payment Gateway: No integrated merchant portal for collecting client deposits
+  or supplier settlements.
+* Communication Hub: No integrated email, chat, or WhatsApp messaging for
+  supplier/client communication.
+* Dynamic Map Integration: Static views instead of dynamic, interactive maps
+  showing live transit routes.
+
+--------------------------------------------------------------------------------
+B. Weak Workflows
+--------------------------------------------------------------------------------
+* Supplier Management: No automated workflow to request availability from
+  lodges or operators.
+* Sales Funnel: No pipeline visualization for prospective versus booked trips.
+* Client Onboarding: Data entry is fully manual; lacks digital intake forms
+  for clients to fill out directly (like Travefy's client forms).
+* Document Versioning: Version history is manual/text-based; lacks full state
+  rollback functionality per field.
+
+--------------------------------------------------------------------------------
+C. Missing Automation
+--------------------------------------------------------------------------------
+* Triggered Communications: No automated booking confirmations, status updates,
+  or "Day Before" briefing emails.
+* Pricing Engine: Manual entry of margins and fees; lacks formula-based
+  pricing based on dynamic supplier catalogs (Wetu/Tourwriter).
+* PDF Distribution: Manual PDF download/email; lacks "Client Portal" email
+  automation.
+
+--------------------------------------------------------------------------------
+D. Missing AI
+--------------------------------------------------------------------------------
+* Generative Content: While the SDK exists, AI is not utilized to generate
+  itinerary narratives, daily briefs, or personalized client marketing copy.
+* Intelligent Matching: No AI-driven matching of client preferences against
+  the destination library.
+* Sentiment Analysis: No tracking or analysis of client communications.
+* Financial Forecasting: No AI-based analysis of margin trends or expense
+  anomalies.
+
+--------------------------------------------------------------------------------
+E. Missing UX / Ergonomics
+--------------------------------------------------------------------------------
+* Mobile-First Editing: The app is optimized for desktop creation; mobile UI
+  is read-only/display-only.
+* Accessibility: Lacks audit for WCAG compliance on high-complexity tables.
+* Dashboard Customization: Agents cannot configure their own personalized
+  planning dashboard (unlike Monday/Notion).
+
+--------------------------------------------------------------------------------
+F. Missing Integrations
+--------------------------------------------------------------------------------
+* Accounting: No API sync with Xero, QuickBooks, or similar systems.
+* Email: No API integration with Gmail or Outlook (Workspace Integration).
+* CRM: No integration with industry-standard CRMs for lead management.
+
+--------------------------------------------------------------------------------
+G. Missing Admin Tools
+--------------------------------------------------------------------------------
+* RBAC: No role-based access control; all users have full system access.
+* Audit Logs: Lacks detailed tracking of which agent performed which mutation
+  (vital for legal compliance).
+* Organizational Analytics: No ability to report on agency KPIs (Revenue
+  velocity, agent productivity, top supplier performance).
+
+--------------------------------------------------------------------------------
+H. Missing Reporting
+--------------------------------------------------------------------------------
+* Supplier Settlement Reports: Automated generation of payment schedules.
+* Tax Reporting: Export capabilities for VAT and destination-specific travel taxes.
+* Executive P&L: Real-time, aggregate view of company-wide financial performance.

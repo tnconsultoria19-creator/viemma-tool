@@ -5,13 +5,15 @@ import {
   Plane, 
   Hotel, 
   Route, 
-  Coins, 
   Printer, 
-  Clock, 
-  Signal, 
-  CheckCircle, 
   FolderOpen,
-  Car
+  Car,
+  ChevronRight,
+  Plus,
+  Sparkles,
+  Truck,
+  Calendar,
+  ShieldCheck
 } from 'lucide-react';
 
 interface HomeViewProps {
@@ -19,200 +21,269 @@ interface HomeViewProps {
   onSwitchTab: (tabId: string) => void;
   onLoadTemplate: () => void;
   onNewBooking: () => void;
-  totalCost: number;
-  netProfit: number;
+  totalCost?: number;
+  netProfit?: number;
 }
 
 export const HomeView: React.FC<HomeViewProps> = ({
   state,
   onSwitchTab,
   onLoadTemplate,
-  onNewBooking,
-  totalCost,
-  netProfit
+  onNewBooking
 }) => {
   const dateStr = new Date().toLocaleDateString('en-ZA', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
 
+  // Calculate operational stats
+  const activeTransfersCount = state.transfers?.length || 0;
+  const arrivalsCount = state.transfers?.filter(t => t.type === 'Airport Arrival').length || 0;
+  const activeTripsCount = state.client?.name && state.client.name !== '' ? 1 : 0;
+  const driversAssignedCount = state.drivers?.filter(d => d.status === 'Assigned').length || 0;
+
   return (
-    <div className="space-y-6">
-      {/* Hero Welcome banner - UNBLURRED background */}
+    <div className="w-full space-y-6 md:space-y-7 animate-in fade-in duration-300">
+      
+      {/* Hero Welcome banner - Clean Editorial Rectangular Card */}
       <div 
-        className="w-full min-h-[260px] rounded-lg border border-gray-300 relative flex items-end overflow-hidden shadow-sm"
+        className="w-full min-h-[320px] md:min-h-[380px] rounded-2xl md:rounded-3xl relative flex items-end overflow-hidden shadow-lg border border-white/10"
         style={{
-          backgroundImage: `linear-gradient(to right, rgba(255,255,255,0.92) 0%, rgba(255,255,255,0.65) 50%, rgba(255,255,255,0.1) 100%), url('https://images.pexels.com/photos/20406699/pexels-photo-20406699.jpeg?auto=compress&cs=tinysrgb&w=1200')`,
+          backgroundImage: `url('https://images.pexels.com/photos/7843687/pexels-photo-7843687.jpeg')`,
           backgroundSize: 'cover',
-          backgroundPosition: 'center'
+          backgroundPosition: 'center center',
+          backgroundRepeat: 'no-repeat'
         }}
       >
-        <div className="p-6 md:p-8 max-w-2xl relative z-10">
-          <div className="flex items-center gap-2 mb-3">
-            <span className="text-[10px] uppercase tracking-[0.15em] font-bold text-[#065f46] bg-white px-3 py-1 rounded-full border border-accentBorder shadow-sm">Workspace Home</span>
-            <span className="text-[10px] uppercase tracking-[0.15em] font-bold text-gray-500 bg-white px-3 py-1 rounded-full border border-gray-200 shadow-sm">{dateStr}</span>
-          </div>
-          <h1 className="text-3xl font-serif font-bold text-gray-900 tracking-tight">Viemma Tours Workspace OS</h1>
-          <p className="text-xs font-medium text-gray-700 leading-relaxed mt-1.5">
-            Configure premium multi-day itineraries and regional corridor logistics across Southern Africa. Start planning for your group.
-          </p>
+        {/* Controlled Hero Readability System: Natural photographic gradient vignette */}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/60 to-black/25 sm:from-black/90 sm:via-black/50 sm:to-black/20 z-0" />
+        <div className="absolute inset-0 bg-gradient-to-r from-black/85 via-black/40 to-transparent z-0" />
 
-          {/* Mini Stats Row */}
-          <div className="flex flex-wrap items-center gap-2.5 mt-5">
-            <div className="bg-white/90 border border-gray-200 rounded-lg px-4 py-2 shadow-sm min-w-[100px]">
-              <span className="text-[9px] text-gray-400 font-bold uppercase tracking-wider block">Est. Revenue</span>
-              <span className="text-sm font-bold text-gray-900">R {(totalCost + (state.finance.marginType === '%' ? totalCost * (state.finance.margin / 100) : state.finance.margin)).toLocaleString()}</span>
-            </div>
-            <div className="bg-white/90 border border-gray-200 rounded-lg px-4 py-2 shadow-sm min-w-[100px]">
-              <span className="text-[9px] text-[#065f46] font-bold uppercase tracking-wider block">Net Profit</span>
-              <span className="text-sm font-bold text-[#065f46]">R {netProfit.toLocaleString()}</span>
-            </div>
-            <div className="bg-white/90 border border-gray-200 rounded-lg px-4 py-2 shadow-sm min-w-[100px]">
-              <span className="text-[9px] text-gray-400 font-bold uppercase tracking-wider block">Guests Roster</span>
-              <span className="text-sm font-bold text-gray-900">{state.guests.length} Pax</span>
-            </div>
-            <div className="bg-white/90 border border-gray-200 rounded-lg px-4 py-2 shadow-sm min-w-[100px]">
-              <span className="text-[9px] text-gray-400 font-bold uppercase tracking-wider block">Days</span>
-              <span className="text-sm font-bold text-[#065f46]">{state.client.startDate && state.client.endDate ? state.client.durationText : '—'}</span>
-            </div>
+        <div className="p-6 md:p-10 w-full max-w-4xl relative z-10 text-white space-y-4">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-[10px] uppercase tracking-[0.2em] font-bold text-[#D4AF37] bg-white/10 backdrop-blur-md px-3.5 py-1 rounded-full border border-white/10 shadow-xs">
+              Operational Command Centre
+            </span>
+            <span className="text-[10px] uppercase tracking-[0.2em] font-bold text-gray-200 bg-white/10 backdrop-blur-md px-3.5 py-1 rounded-full border border-white/10 shadow-xs">
+              {dateStr}
+            </span>
+          </div>
+          
+          <div className="space-y-2">
+            <h1 className="text-3xl md:text-5xl font-extrabold tracking-tight text-white font-serif leading-tight">
+              Viemma Tours Operations
+            </h1>
+            <p className="text-xs md:text-sm text-gray-100 font-medium max-w-2xl leading-relaxed">
+              Real-time dispatching, fleet tracking, driver itineraries, and multi-day luxury safari execution.
+            </p>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-3 pt-2">
+            <button
+              onClick={onNewBooking}
+              className="px-5 py-2.5 rounded-xl bg-[#D4AF37] text-[#1A3326] font-black text-xs hover:bg-[#b89528] transition shadow-md flex items-center gap-2"
+            >
+              <Plus size={15} /> Create New Itinerary
+            </button>
+            <button
+              onClick={onLoadTemplate}
+              className="px-5 py-2.5 rounded-xl bg-white/10 backdrop-blur-md text-white font-bold text-xs hover:bg-white/20 transition border border-white/20 flex items-center gap-2"
+            >
+              Load Sample Template
+            </button>
           </div>
         </div>
       </div>
 
-      {/* QUICK ACTIONS GRID */}
-      <div>
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-sm font-bold text-gray-900 flex items-center gap-1.5">
-            <i className="fa-solid fa-bolt text-accent text-xs"></i> Quick Planning Modules
+      {/* TODAY'S BUSINESS METRICS (Operational Command Centre) */}
+      <div className="space-y-3">
+        <div className="flex items-center justify-between">
+          <h2 className="text-xs uppercase tracking-[0.15em] font-bold text-[#1A3326] flex items-center gap-1.5">
+            <Sparkles size={13} className="text-[#D4AF37]" /> Today's Business Overview
           </h2>
-          <span className="text-[10px] text-gray-400 font-semibold uppercase">Jump to workflow</span>
+          <span className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">Real-Time Status</span>
         </div>
 
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3.5">
-          <button onClick={() => onSwitchTab('guests')} className="action-card bg-white border border-gray-200 hover:border-accent hover:shadow-md p-4 rounded-lg flex flex-col items-center gap-2.5 text-center transition group">
-            <div className="w-10 h-10 rounded-lg bg-purple-50 text-[#7c3aed] flex items-center justify-center text-sm group-hover:scale-110 transition">
-              <Users size={16} />
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="bg-white rounded-2xl p-5 border border-gray-100 shadow-xs space-y-2">
+            <div className="flex items-center justify-between text-gray-400">
+              <span className="text-[10px] font-bold uppercase tracking-wider">Today's Transfers</span>
+              <Car size={16} className="text-emerald-700" />
+            </div>
+            <div className="text-3xl font-extrabold text-[#1A3326]">{activeTransfersCount}</div>
+            <p className="text-[11px] text-gray-500">Scheduled transfers & dispatches</p>
+          </div>
+
+          <div className="bg-white rounded-2xl p-5 border border-gray-100 shadow-xs space-y-2">
+            <div className="flex items-center justify-between text-gray-400">
+              <span className="text-[10px] font-bold uppercase tracking-wider">Arrivals</span>
+              <Plane size={16} className="text-blue-600" />
+            </div>
+            <div className="text-3xl font-extrabold text-[#1A3326]">{arrivalsCount}</div>
+            <p className="text-[11px] text-gray-500">Airport arrivals expected</p>
+          </div>
+
+          <div className="bg-white rounded-2xl p-5 border border-gray-100 shadow-xs space-y-2">
+            <div className="flex items-center justify-between text-gray-400">
+              <span className="text-[10px] font-bold uppercase tracking-wider">Active Trips</span>
+              <FolderOpen size={16} className="text-amber-600" />
+            </div>
+            <div className="text-3xl font-extrabold text-[#1A3326]">{activeTripsCount}</div>
+            <p className="text-[11px] text-gray-500">Active itineraries in workspace</p>
+          </div>
+
+          <div className="bg-white rounded-2xl p-5 border border-gray-100 shadow-xs space-y-2">
+            <div className="flex items-center justify-between text-gray-400">
+              <span className="text-[10px] font-bold uppercase tracking-wider">Driver Assignments</span>
+              <Truck size={16} className="text-purple-600" />
+            </div>
+            <div className="text-3xl font-extrabold text-[#1A3326]">{driversAssignedCount}</div>
+            <p className="text-[11px] text-gray-500">Drivers currently dispatched</p>
+          </div>
+        </div>
+      </div>
+
+      {/* QUICK SHORTCUTS TO OPERATIONAL MODULES */}
+      <div className="space-y-3">
+        <div className="flex items-center justify-between">
+          <h2 className="text-xs uppercase tracking-[0.15em] font-bold text-[#1A3326] flex items-center gap-1.5">
+            <Sparkles size={13} className="text-[#D4AF37]" /> Operational Modules
+          </h2>
+        </div>
+
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3.5 md:gap-4">
+          <button 
+            onClick={() => onSwitchTab('guests')} 
+            className="group bg-white border border-gray-100 p-4 md:p-5 rounded-2xl flex flex-col items-center gap-3 text-center transition-all duration-300 hover:shadow-md hover:-translate-y-1 relative overflow-hidden focus:outline-none"
+          >
+            <div className="absolute top-0 left-0 w-full h-1 bg-[#1A3326]" />
+            <div className="w-11 h-11 rounded-xl bg-purple-50 text-[#7c3aed] flex items-center justify-center group-hover:scale-110 transition duration-300 shrink-0">
+              <Users size={19} />
             </div>
             <div>
-              <span className="text-xs font-bold text-gray-900 block">Intake & Guests</span>
-              <span className="text-[9px] text-gray-400 font-medium">Roster & Profile</span>
+              <span className="text-xs font-bold text-gray-900 block font-sans">Clients & Pax</span>
+              <span className="text-[9px] text-gray-400 font-semibold uppercase tracking-wider block mt-0.5">Roster</span>
             </div>
           </button>
 
-          <button onClick={() => onSwitchTab('flights')} className="action-card bg-white border border-gray-200 hover:border-accent hover:shadow-md p-4 rounded-lg flex flex-col items-center gap-2.5 text-center transition group">
-            <div className="w-10 h-10 rounded-lg bg-blue-50 text-[#2563eb] flex items-center justify-center text-sm group-hover:scale-110 transition">
-              <Plane size={16} />
+          <button 
+            onClick={() => onSwitchTab('flights')} 
+            className="group bg-white border border-gray-100 p-4 md:p-5 rounded-2xl flex flex-col items-center gap-3 text-center transition-all duration-300 hover:shadow-md hover:-translate-y-1 relative overflow-hidden focus:outline-none"
+          >
+            <div className="absolute top-0 left-0 w-full h-1 bg-[#1A3326]" />
+            <div className="w-11 h-11 rounded-xl bg-blue-50 text-[#2563eb] flex items-center justify-center group-hover:scale-110 transition duration-300 shrink-0">
+              <Plane size={19} />
             </div>
             <div>
-              <span className="text-xs font-bold text-gray-900 block">Flights Panel</span>
-              <span className="text-[9px] text-gray-400 font-medium">Airlines & Stops</span>
+              <span className="text-xs font-bold text-gray-900 block font-sans">Flights</span>
+              <span className="text-[9px] text-gray-400 font-semibold uppercase tracking-wider block mt-0.5">Schedules</span>
             </div>
           </button>
 
-          <button onClick={() => onSwitchTab('transfers')} className="action-card bg-white border border-gray-200 hover:border-accent hover:shadow-md p-4 rounded-lg flex flex-col items-center gap-2.5 text-center transition group">
-            <div className="w-10 h-10 rounded-lg bg-amber-50 text-[#d97706] flex items-center justify-center text-sm group-hover:scale-110 transition">
-              <Car size={16} />
+          <button 
+            onClick={() => onSwitchTab('transfers')} 
+            className="group bg-white border border-gray-100 p-4 md:p-5 rounded-2xl flex flex-col items-center gap-3 text-center transition-all duration-300 hover:shadow-md hover:-translate-y-1 relative overflow-hidden focus:outline-none"
+          >
+            <div className="absolute top-0 left-0 w-full h-1 bg-[#1A3326]" />
+            <div className="w-11 h-11 rounded-xl bg-amber-50 text-[#d97706] flex items-center justify-center group-hover:scale-110 transition duration-300 shrink-0">
+              <Car size={19} />
             </div>
             <div>
-              <span className="text-xs font-bold text-gray-900 block">Logistics Transfers</span>
-              <span className="text-[9px] text-gray-400 font-medium">Split Assigned Pax</span>
+              <span className="text-xs font-bold text-gray-900 block font-sans">Transfers</span>
+              <span className="text-[9px] text-gray-400 font-semibold uppercase tracking-wider block mt-0.5">Dispatch</span>
             </div>
           </button>
 
-          <button onClick={() => onSwitchTab('rooming')} className="action-card bg-white border border-gray-200 hover:border-accent hover:shadow-md p-4 rounded-lg flex flex-col items-center gap-2.5 text-center transition group">
-            <div className="w-10 h-10 rounded-lg bg-emerald-50 text-[#0d9668] flex items-center justify-center text-sm group-hover:scale-110 transition">
-              <Hotel size={16} />
+          <button 
+            onClick={() => onSwitchTab('fleet')} 
+            className="group bg-white border border-gray-100 p-4 md:p-5 rounded-2xl flex flex-col items-center gap-3 text-center transition-all duration-300 hover:shadow-md hover:-translate-y-1 relative overflow-hidden focus:outline-none"
+          >
+            <div className="absolute top-0 left-0 w-full h-1 bg-[#1A3326]" />
+            <div className="w-11 h-11 rounded-xl bg-emerald-50 text-emerald-800 flex items-center justify-center group-hover:scale-110 transition duration-300 shrink-0">
+              <Truck size={19} />
             </div>
             <div>
-              <span className="text-xs font-bold text-gray-900 block">Rooming Board</span>
-              <span className="text-[9px] text-gray-400 font-medium">Nights & Matrices</span>
+              <span className="text-xs font-bold text-gray-900 block font-sans">Transport Fleet</span>
+              <span className="text-[9px] text-gray-400 font-semibold uppercase tracking-wider block mt-0.5">Vehicles</span>
             </div>
           </button>
 
-          <button onClick={() => onSwitchTab('activities')} className="action-card bg-white border border-gray-200 hover:border-accent hover:shadow-md p-4 rounded-lg flex flex-col items-center gap-2.5 text-center transition group">
-            <div className="w-10 h-10 rounded-lg bg-rose-50 text-[#e11d48] flex items-center justify-center text-sm group-hover:scale-110 transition">
-              <Route size={16} />
+          <button 
+            onClick={() => onSwitchTab('drivers')} 
+            className="group bg-white border border-gray-100 p-4 md:p-5 rounded-2xl flex flex-col items-center gap-3 text-center transition-all duration-300 hover:shadow-md hover:-translate-y-1 relative overflow-hidden focus:outline-none"
+          >
+            <div className="absolute top-0 left-0 w-full h-1 bg-[#1A3326]" />
+            <div className="w-11 h-11 rounded-xl bg-purple-50 text-purple-700 flex items-center justify-center group-hover:scale-110 transition duration-300 shrink-0">
+              <Users size={19} />
             </div>
             <div>
-              <span className="text-xs font-bold text-gray-900 block">Activities</span>
-              <span className="text-[9px] text-gray-400 font-medium">Timeline Timeline</span>
+              <span className="text-xs font-bold text-gray-900 block font-sans">Drivers</span>
+              <span className="text-[9px] text-gray-400 font-semibold uppercase tracking-wider block mt-0.5">Directory</span>
             </div>
           </button>
 
-          <button onClick={() => onSwitchTab('exporthub')} className="action-card bg-white border border-gray-200 hover:border-accent hover:shadow-md p-4 rounded-lg flex flex-col items-center gap-2.5 text-center transition group">
-            <div className="w-10 h-10 rounded-lg bg-gray-50 text-gray-600 flex items-center justify-center text-sm group-hover:scale-110 transition">
-              <Printer size={16} />
+          <button 
+            onClick={() => onSwitchTab('timelines')} 
+            className="group bg-white border border-gray-100 p-4 md:p-5 rounded-2xl flex flex-col items-center gap-3 text-center transition-all duration-300 hover:shadow-md hover:-translate-y-1 relative overflow-hidden focus:outline-none"
+          >
+            <div className="absolute top-0 left-0 w-full h-1 bg-[#1A3326]" />
+            <div className="w-11 h-11 rounded-xl bg-indigo-50 text-indigo-700 flex items-center justify-center group-hover:scale-110 transition duration-300 shrink-0">
+              <Calendar size={19} />
             </div>
             <div>
-              <span className="text-xs font-bold text-gray-900 block">Print Hub</span>
-              <span className="text-[9px] text-gray-400 font-medium">Generate PDFs</span>
+              <span className="text-xs font-bold text-gray-900 block font-sans">Daily Timelines</span>
+              <span className="text-[9px] text-gray-400 font-semibold uppercase tracking-wider block mt-0.5">Operations</span>
             </div>
           </button>
         </div>
       </div>
 
-      {/* TWO COLUMN ROW: RECENT FILES & SYSTEM STATUS */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-        
-        {/* RECENT FILES */}
-        <div className="bg-white rounded-lg border border-gray-200 p-5 shadow-sm">
-          <div className="flex items-center justify-between mb-4 pb-2 border-b border-gray-100">
-            <h3 className="text-xs font-bold text-gray-900 flex items-center gap-2">
-              <FolderOpen size={14} className="text-accent" />
-              Recent Tour Profiles
-            </h3>
-            <span className="text-[9px] font-bold text-gray-400 uppercase">LocalStorage</span>
-          </div>
-
-          <div className="space-y-2">
-            <div onClick={onLoadTemplate} className="flex items-center justify-between p-3 bg-gray-50 hover:bg-[#ecfdf5] border border-transparent hover:border-[#a7f3d0] rounded-lg transition cursor-pointer group">
-              <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded bg-[#ecfdf5] flex items-center justify-center text-accent border border-accentBorder"><i className="fa-solid fa-folder"></i></div>
-                <div>
-                  <span className="text-xs font-bold text-gray-900 block">Angola - SA Premium Corridor</span>
-                  <span className="text-[9px] text-gray-400 font-medium">VT-2026-9999 • 6 Days • 4 Pax</span>
-                </div>
-              </div>
-              <span className="text-[10px] text-accent font-bold group-hover:translate-x-1 transition flex items-center">Load Template <i className="fa-solid fa-chevron-right ml-1"></i></span>
-            </div>
-
-            <div onClick={onNewBooking} className="flex items-center justify-between p-3 bg-gray-50 hover:bg-gray-100 border border-transparent rounded-lg transition cursor-pointer group">
-              <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded bg-gray-200 flex items-center justify-center text-gray-500"><i className="fa-solid fa-plus"></i></div>
-                <div>
-                  <span className="text-xs font-bold text-gray-900 block">Start Fresh Worksheet</span>
-                  <span className="text-[9px] text-gray-400 font-medium">Completely reset and create new file master</span>
-                </div>
-              </div>
-              <span className="text-[10px] text-gray-400 group-hover:text-gray-900 font-medium transition">Reset</span>
-            </div>
-          </div>
+      {/* RECENT TOUR PROFILES & FILE ACTIONS */}
+      <div className="bg-white rounded-2xl md:rounded-3xl border border-gray-100 p-5 md:p-6 shadow-xs space-y-4">
+        <div className="flex items-center justify-between pb-3 border-b border-gray-100">
+          <h3 className="text-xs font-bold text-gray-900 uppercase tracking-wider flex items-center gap-2">
+            <FolderOpen size={15} className="text-[#D4AF37]" />
+            Recent Tour Profiles & File Actions
+          </h3>
+          <span className="text-[9px] font-bold text-emerald-800 uppercase tracking-widest bg-emerald-50 px-2.5 py-1 rounded-lg">
+            Active Dossier: {state.ref || 'VT-2026-9999'}
+          </span>
         </div>
 
-        {/* SYSTEM STATUS */}
-        <div className="bg-white rounded-lg border border-gray-200 p-5 shadow-sm">
-          <div className="flex items-center justify-between mb-4 pb-2 border-b border-gray-100">
-            <h3 className="text-xs font-bold text-gray-900 flex items-center gap-2">
-              <Signal size={14} className="text-accent" />
-              Local Workspace Services
-            </h3>
-            <span className="badge bg-[#ecfdf5] text-[#065f46] border border-[#a7f3d0]">Online</span>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5 md:gap-4">
+          <div 
+            onClick={onLoadTemplate} 
+            className="flex items-center justify-between p-4 md:p-5 bg-slate-50 hover:bg-[#1A3326]/5 border border-gray-100 hover:border-[#1A3326]/20 rounded-2xl transition cursor-pointer group"
+          >
+            <div className="flex items-center gap-3.5">
+              <div className="w-11 h-11 rounded-xl bg-emerald-50 text-[#1A3326] flex items-center justify-center border border-emerald-100 shrink-0">
+                <FolderOpen size={19} />
+              </div>
+              <div>
+                <span className="text-sm font-bold text-gray-900 block">Angola - SA Premium Corridor [Template]</span>
+                <span className="text-xs text-gray-400 font-medium block mt-0.5">VT-2026-9999 • 6 Days • 4 Pax</span>
+              </div>
+            </div>
+            <span className="text-xs text-[#1A3326] font-bold group-hover:translate-x-1 transition flex items-center gap-1">
+              Load Template <ChevronRight size={14} />
+            </span>
           </div>
 
-          <div className="space-y-2">
-            <div className="flex items-center justify-between p-2.5 bg-gray-50 rounded-lg border border-gray-200 text-xs">
-              <span className="font-medium text-gray-700 flex items-center gap-2"><i className="fa-solid fa-calculator text-[#065f46]"></i> Commercial Pricing Engine</span>
-              <span className="font-bold text-[#065f46] flex items-center gap-1"><i className="fa-solid fa-circle-check"></i> Active</span>
+          <div 
+            onClick={onNewBooking} 
+            className="flex items-center justify-between p-4 md:p-5 bg-slate-50 hover:bg-rose-50 border border-gray-100 hover:border-rose-100 rounded-2xl transition cursor-pointer group"
+          >
+            <div className="flex items-center gap-3.5">
+              <div className="w-11 h-11 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center shrink-0">
+                <Plus size={19} />
+              </div>
+              <div>
+                <span className="text-sm font-bold text-gray-900 block">Start Fresh Worksheet</span>
+                <span className="text-xs text-gray-400 font-medium block mt-0.5">Completely reset and create new file master</span>
+              </div>
             </div>
-            <div className="flex items-center justify-between p-2.5 bg-gray-50 rounded-lg border border-gray-200 text-xs">
-              <span className="font-medium text-gray-700 flex items-center gap-2"><i className="fa-solid fa-cloud-arrow-up text-blue-500"></i> Auto-Save (LocalStorage)</span>
-              <span className="font-bold text-[#065f46] flex items-center gap-1"><i className="fa-solid fa-circle-check"></i> Active</span>
-            </div>
-            <div className="flex items-center justify-between p-2.5 bg-gray-50 rounded-lg border border-gray-200 text-xs">
-              <span className="font-medium text-gray-700 flex items-center gap-2"><i className="fa-solid fa-print text-[#7c3aed]"></i> jsPDF Document Compiler</span>
-              <span className="font-bold text-[#065f46] flex items-center gap-1"><i className="fa-solid fa-circle-check"></i> Active</span>
-            </div>
+            <span className="text-xs text-gray-400 group-hover:text-rose-700 font-bold transition">Reset Worksheet</span>
           </div>
         </div>
-
       </div>
+
     </div>
   );
 };

@@ -1,0 +1,451 @@
+Viemma Tours - Workspace OS
+================================================================================
+02 - FUNCTIONAL SPECIFICATION & SYSTEM LANDSCAPE DESIGN DOCUMENT
+================================================================================
+Target Audience: Senior Software Engineers, Solution Architects, QA Leads
+Context: Enterprise Planning & Bespoke Luxury Itinerary Coordination Engine
+Version: 1.0.4
+Author: Senior Enterprise Solution Architect
+
+================================================================================
+1. ARCHITECTURAL OVERVIEW & ENGINE DESIGN
+================================================================================
+Viemma Tours Workspace OS is a full-stack, state-synchronized single-page 
+planning workstation tailored for ultra-luxury Southern African travel 
+curation. 
+
+Key State Architecture Rules:
+* Single-Source-Of-Truth (SSOT) AppState interface representing flights, 
+  transfers, rooming blocks, experiences, guest rosters, and financial matrices.
+* Memory State is fully synchronized with LocalStorage for zero-loss drafting.
+* Client-Side compiling using jsPDF (v2.5.1) and custom local asset pipelines 
+  guarantees 100% offline, zero-latency document compilation.
+* Typography system is locked to "Plus Jakarta Sans" (General UI, Body text, 
+  logistics) and "Outfit" (Elegant Display headings, Hero titles, luxury accents).
+* Palette System:
+  - Safari Dark (#1A3326) : Rich jungle-lodge backdrop and priority components.
+  - Safari Gold (#D4AF37) : Accent highlights, crown badges, and timeline indicators.
+  - Safari Sand (#FAF9F6) : Soft cards and bento backplates.
+
+================================================================================
+2. COMPONENT-BY-COMPONENT SPECIFICATION
+================================================================================
+
+--------------------------------------------------------------------------------
+A. APPLICATION SHELL & MASTER CONTROLLER (App.tsx)
+--------------------------------------------------------------------------------
+1. Purpose:
+   Coordinates active workspace loading, auto-saving logic, responsive scaling 
+   management, navigation tabs, and system settings overlays. Acting as the 
+   global layout master, it hosts the master AppState hooks.
+
+2. Intended User:
+   Viemma Tours Luxury Travel Coordinator & Systems Administrator.
+
+3. Controls, Fields, & Buttons:
+   * Header Logo Button: Resets active tab to 'home' and closes Client View.
+   * File Master Badge: Visual string rendering `state.ref` and active status.
+   * "Save Workspace" Button: Triggers manual JSON compression and pushes cache.
+   * "Client Portal Link" Toggle Button: Switches UI shell dynamically into 
+     read-only luxury client portal simulation.
+   * "Publish Output" Button: Quick-switches workspace viewport to Print Hub.
+   * "Gear Settings" Overlay Button: Displays systemic parameters.
+   * Workspace Settings Modal:
+     - Consultant Name input text field.
+     - Itinerary Reference input text field.
+     - Operations Priority dropdown selection (hot, confirmed, exploratory, pending).
+     - Save & Refresh button.
+     - Cancel / Close button.
+
+4. System Interactions & Lifecycle:
+   * Click 'Save Workspace' -> Triggers a transient alert state variable, saves 
+     lz-string-compressed base64 raw state to LocalStorage (`viemma_active_sheet`).
+   * Click 'Client Portal Link' -> Toggles boolean state `isClientView`. Hides 
+     all administrative panels and sidebars; loads the responsive ClientView component.
+   * Click 'Gear Settings' -> Mounts the settings modal with stateful backing fields. 
+     Modifying inputs updates local form values. Click 'Save' -> Mutates master state, 
+     triggers LocalStorage write, updates UI labels.
+
+5. Validation, Dependencies, & Error Handling:
+   * Validation: Reference code must match regex `VT-[0-9]{4}-[0-9]{4}` if 
+     strict validation is active, defaulting gracefully to open-text fallback.
+   * Dependencies: Uses Lucide-React icons, LocalStorage browser API, and lz-string.
+   * Error Handling: If LocalStorage quota exceeds limit, wraps call in try/catch 
+     block and emits console warning.
+
+--------------------------------------------------------------------------------
+B. HOME VIEW (HomeView.tsx)
+--------------------------------------------------------------------------------
+1. Purpose:
+   Primary launcher dashboard displaying commercial trends, active folder references, 
+   modular landing gates, and systemic operations health diagnostics.
+
+2. Intended User:
+   All Operations Agents and Account Directors.
+
+3. Controls, Fields, & Buttons:
+   * Intake & Guests Module Gate Button: Switches workspace tab to 'guests'.
+   * Flights Panel Gate Button: Switches workspace tab to 'flights'.
+   * Transfers & Fleet Gate Button: Switches workspace tab to 'transfers'.
+   * Rooming Board Gate Button: Switches workspace tab to 'rooming'.
+   * Experiences Gate Button: Switches workspace tab to 'activities'.
+   * Print Hub Gate Button: Switches workspace tab to 'exporthub'.
+   * "Angola - SA Premium Corridor" Quick Template: Pre-populates the workspace state with 
+     high-fidelity mock safari data.
+   * "Start Fresh Worksheet" Action Button: Dispatches reset state.
+
+4. System Interactions & Lifecycle:
+   * Click 'Load Template' -> Dispatches `onLoadTemplate()` event, overwriting 
+     local React AppState with defaults defined in `dbDefaults.ts`, then autosaves.
+   * Click 'Start Fresh Worksheet' -> Dispatches `onNewBooking()` which clears 
+     all relational arrays (flights, guests, activities, transfers) and resets 
+     client metadata.
+   * Status indicators query runtime parameters: checks browser-support, 
+     local storage availability, and database state to show active checkmarks.
+
+5. Validation, Dependencies, & Error Handling:
+   * Validation: Resets prompt confirmation to prevent accidental sheet destruction.
+   * Dependencies: Lucide-React, HomeViewProps interface.
+   * Error Handling: Gracefully falls back to zeroed integers for totalCosts 
+     and netProfit if calculations encounter null elements.
+
+--------------------------------------------------------------------------------
+C. INTAKE & GUESTS VIEW (IntakeView.tsx)
+--------------------------------------------------------------------------------
+1. Purpose:
+   Lead capturing module, client profiling workspace, and guest manifest master roster.
+
+2. Intended User:
+   Sales Coordinators and Concierge leads.
+
+3. Controls, Fields, & Buttons:
+   * Client Name (text), Email (email), Phone (tel) fields.
+   * Preferred Contact Method dropdown (WhatsApp, Email, Phone Call).
+   * Trip Type, Proposal Priority, Acquisition Source dropdown controls.
+   * Travel parameters: Start Date, End Date (calendars), Origin, Destination, Occasion.
+   * Global Dietary & Mobility checklist badges.
+   * Quick Manifest Adders (Couple, Family, Solo, Group 8).
+   * Roster Cards list: 'Edit' and 'Delete' button on each.
+   * "Add Traveler" Crown Button: Mounts Guest Profile Modal.
+   * Guest Profile Modal:
+     - First Name, Last Name inputs.
+     - Age category, Nationality autocomplete fields.
+     - "Lead Contact" Checkbox.
+     - Dietary tags list (Vegan, Halal, Kosher, Diabetic, Gluten-Free, None).
+     - Guest notes textarea.
+
+4. System Interactions & Lifecycle:
+   * Field Editing -> Directly binds to client state structure, firing dispatch updates 
+     on change and writing to state database.
+   * Click "Family Quick Template" -> Appends predefined guest records 
+     (Lead, Spouse, two children) to traveler array.
+   * Click "Add Traveler" -> Mounts fresh Modal. Input fields validate strings. 
+     Click "Save Guest Profile" -> Runs schema check, inserts guest record with unique 
+     integer ID, triggers overall financial recalculation, and closes modal.
+
+5. Validation, Dependencies, & Error Handling:
+   * Validation: Requires at least one Lead Booking Contact in manifest; throws 
+     non-blocking warning banner if missing. Dates must validate chronological progression (Start <= End).
+   * Dependencies: Lucide-React.
+   * Error Handling: Malformed phone or email inputs are outlined in red.
+
+--------------------------------------------------------------------------------
+D. FLIGHTS PANEL (FlightsView.tsx)
+--------------------------------------------------------------------------------
+1. Purpose:
+   Aviation sector manager mapping inbound international, outbound regional, 
+   and internal bush charters.
+
+2. Intended User:
+   Aviation Coordinators and GDS Operators.
+
+3. Controls, Fields, & Buttons:
+   * "Register Flight Sector" Action Button: Opens Flight Modal.
+   * Segment Cards list: 'Edit' and 'Delete' controls.
+   * Flight Modal Fields:
+     - Direction dropdown (Inbound, Outbound, Internal).
+     - Carrier/Airline text, Flight No, PNR code.
+     - Cabin Class (Economy, Premium, Business, First).
+     - Status (Quoted, Booked, Ticketed, Cancelled).
+     - Origin & Destination IATA Codes.
+     - Take-off Date/Time, Landing Date/Time, Duration inputs.
+     - Multi-Stop Corridor Planner: Add Intermediate Transit Point (Airport, Times).
+     - Passenger checklist linking directly to Intake Guest Manifest.
+     - Ledger Inputs: Passenger Quantity, Net Unit Cost, Per-Seat Margin Markup.
+     - Luggage parameters: Hand, Checked, Oversized counters.
+     - Notes textarea.
+
+4. System Interactions & Lifecycle:
+   * Passenger Checklist -> Dynamic lookup map of Intake roster. Checking or unchecking 
+     updates `paxIds` integer array within that specific flight sector.
+   * Pricing Calculus -> Changing Unit Cost or Markup automatically multiplies 
+     `(Cost + Markup) * Passenger Quantity` in memory reactively, updating the 
+     card's grand retail totals instantly.
+   * Click 'Save Flight' -> Compresses modal fields, matches internal sector relations, 
+     updates ledger arrays in top-level app state, and hides modal.
+
+5. Validation, Dependencies, & Error Handling:
+   * Validation: Seat Markups must be non-negative; PNR codes are validated against 
+     standard 6-character alphanumeric bounds.
+   * Dependencies: Lucide-React.
+   * Error Handling: Empty passenger links display a caution alert badge but do not crash.
+
+--------------------------------------------------------------------------------
+E. TRANSFERS & FLEET VIEW (TransfersView.tsx)
+--------------------------------------------------------------------------------
+1. Purpose:
+   Ground dispatch logistics terminal managing luxury SUVs, bush charter 
+   meet-and-greets, and private chauffeur operations.
+
+2. Intended User:
+   Ground Dispatch Managers, Logistics Teams.
+
+3. Controls, Fields, & Buttons:
+   * "Add Fleet Transfer" Button.
+   * Transfer Item list cards: 'Edit' and 'Delete' triggers.
+   * Transfer Entry Modal:
+     - Type dropdown (Airport Arrival, Airport Departure, Inter-Hotel, Full-Day, etc.).
+     - Driver Name (text), Driver Phone (tel), Vehicle model input text.
+     - Greet Placard text input.
+     - Origin (From) and Drop-off (To) fields.
+     - Date & Departure Time, Duration, Distance parameters.
+     - Logistical Waypoints Builder: Waypoint fields (Location name, wait duration).
+     - Passenger Count & Passenger link checklist (guests manifest).
+     - Commercial estimate: Net Cost, Tolls, Parking fees.
+     - In-Vehicle Amenities Checklist (Wi-Fi, Champagne, Child Seats, Game Tracker).
+
+4. System Interactions & Lifecycle:
+   * Click 'Add Waypoint' -> Pushes blank waypoint object into local modal array.
+   * State Sync -> Waypoint inputs modify state element directly. Clicking 'Save' 
+     updates the transfer entity in the master database array.
+   * Total Cost Formula -> Sums `Cost + Tolls + Parking` dynamically.
+
+5. Validation, Dependencies, & Error Handling:
+   * Validation: Chauffeur phone fields must be numeric.
+   * Dependencies: Lucide-React.
+   * Error Handling: Unassigned drivers automatically display "Unassigned Chauffeur" 
+     with gray status badges, prompting dispatch attention.
+
+--------------------------------------------------------------------------------
+F. ROOMING BOARD (RoomingView.tsx)
+--------------------------------------------------------------------------------
+1. Purpose:
+   Hotel suite assignment registry and settlement status dashboard.
+
+2. Intended User:
+   In-country Accommodation Specialists, Guest Relations Executives.
+
+3. Controls, Fields, & Buttons:
+   * "Create Property Booking" Button.
+   * Suite Cards list: 'Edit' and 'Delete' triggers.
+   * Accommodation Entry Modal:
+     - Property/Lodge Name text input.
+     - Conf/Voucher Number string.
+     - Suite/Room Category string.
+     - Bedding config, Meal Basis dropdown menus.
+     - Check-In & Check-Out calendar date components.
+     - Stay Nights integer count.
+     - Net Nightly Base Rate (number), Conservation Fee / Single Supp (number) inputs.
+     - Guest roster checklists.
+     - Special requests checklist (Honeymoon setup, ground floor, private plunge pool).
+     - Notes textarea.
+
+4. System Interactions & Lifecycle:
+   * Check-In/Out change -> Automatically recalculates check-out night difference, 
+     updating the Stay Nights integer control.
+   * Room Valuation -> Evaluates retail valuation: `(Base Rate * Nights) + (Conservation * Guests Assigned)`.
+   * Click 'Save' -> Appends suite record, updates ledger, updates active status.
+
+5. Validation, Dependencies, & Error Handling:
+   * Validation: Minimum 1 night stay. Double check-in alerts if check-in occurs after check-out.
+   * Dependencies: Lucide-React.
+
+--------------------------------------------------------------------------------
+G. EXPERIENCES VIEW (ActivitiesView.tsx)
+--------------------------------------------------------------------------------
+1. Purpose:
+   Bespoke daily excursion itinerary timeline builder.
+
+2. Intended User:
+   Itinerary Curators.
+
+3. Controls, Fields, & Buttons:
+   * "Add Daily Experience" Button.
+   * Excursion card timeline view: 'Edit' and 'Delete' controls.
+   * Activity Detail Modal:
+     - Itinerary Day selection spinner/dropdown.
+     - Daily Slot dropdown (Morning, Afternoon, Evening, Full Day).
+     - Experience Name (autocomplete/text), Description, Supplier Name, Supplier Phone.
+     - Pickup Location, Start Time, Duration, Booking Voucher Code.
+     - Activity Operating Status dropdown (Planned, Requested, Confirmed, Cancelled).
+     - Headcount Pricing: Adult Qty, Child Qty, Adult Net, Child Net. Flat Rate Toggle.
+     - Ticket Inclusions checklist (Transport, Meals, Specialized Gear, Permits).
+     - Adverse Weather Contingency text field.
+
+4. System Interactions & Lifecycle:
+   * Experience Name autocomplete -> Queries preset catalogs defined in DatabaseView. 
+     Selecting an excursion autofills the Description, Supplier, and Base Rates.
+   * Pricing logic -> Checks flat-rate toggle status. If true, outputs flat value. 
+     If false, computes `(Adult Qty * Adult Net) + (Child Qty * Child Net)`.
+
+5. Validation, Dependencies, & Error Handling:
+   * Validation: Restricts day inputs to the trip's calculated duration bounds.
+   * Dependencies: Lucide-React.
+
+--------------------------------------------------------------------------------
+H. ANALYTICS & INSIGHTS (AnalyticsView.tsx)
+--------------------------------------------------------------------------------
+1. Purpose:
+   Management overview, visual commercial trends, performance indicators, 
+   and passenger list checks.
+
+2. Intended User:
+   Luxury agency directors, quality control checkers.
+
+3. Controls, Fields, & Buttons:
+   * Chart Segment Buttons: Allows auditing budget components.
+   * Diagnostic list checkpoints: Evaluates workspace errors.
+
+4. System Interactions & Lifecycle:
+   * Render charts -> Uses custom scalable inline SVG components (Donut segment tracks 
+     and area chart coordinates) to graph revenue against net operating costs.
+   * Integrity checks -> Automatically scans state variables, throwing real-time 
+     warnings if no flights are registered, or if guest counts mismatch room spaces.
+
+5. Validation, Dependencies, & Error Handling:
+   * Dependencies: Direct browser SVG rendering APIs.
+   * Error Handling: Handles division-by-zero during percentage breakdowns gracefully.
+
+--------------------------------------------------------------------------------
+I. PRINT & PUBLISH HUB (PrintHubView.tsx)
+--------------------------------------------------------------------------------
+1. Purpose:
+   Production center of the application, compiling high-definition PDFs 
+   and configuring public digital itinerary portals.
+
+2. Intended User:
+   Administrative Directors and Account Managers.
+
+3. Controls, Fields, & Buttons:
+   * Hub Tabs: "Web Link & Client View" and "Direct Client Email".
+   * Web Link Controls:
+     - Device Viewport selection (Desktop, Tablet, Mobile).
+     - Interactive preview frame.
+     - Version list table.
+     - Publication Remark input.
+     - "Publish Dynamic Experience" Button.
+   * Email Composer Controls:
+     - Welcome Message personalization textarea.
+     - HTML output template.
+     - Send/Copy output button.
+   * PDF Generator Triggers:
+     - "Download Internal Ledger" (Operations layout).
+     - "Download Private Client Proposal" (Luxury curation layout).
+     - "Download Ground Transport Pass" (Logistics layout).
+
+4. System Interactions & Lifecycle:
+   * Web Link Viewport Selection -> Adjusts styling of preview iframe container 
+     instantly.
+   * "Publish Dynamic Experience" -> Serializes current state, increments version counter, 
+     saves draft history block, and publishes changes.
+   * "Download Private Client Proposal" -> Runs a high-performance native jsPDF 
+     sequence. It programmatically draws decorative headers, inserts branding 
+     images using proxy headers, maps days in a grid, and yields a direct file download.
+
+5. Validation, Dependencies, & Error Handling:
+   * Dependencies: jsPDF (v2.5.1), ClientView iframe component.
+   * Error Handling: Wraps jsPDF drawing in safety block. If an image loading 
+     error occurs, falls back to text-only placeholder boxes.
+
+--------------------------------------------------------------------------------
+J. DATABASE REGISTRIES (DatabaseView.tsx)
+--------------------------------------------------------------------------------
+1. Purpose:
+   Read-only operations registry reference, holding supplier rates, 
+   fleet specs, and partner listings.
+
+2. Intended User:
+   Account managers.
+
+3. Controls, Fields, & Buttons:
+   * Master Catalog Tables (Excursions, Welcome gifts, Travel Agents, Driver rosters).
+
+4. System Interactions & Lifecycle:
+   * Displays centralized state tables that serve as validation and autocomplete sources.
+
+--------------------------------------------------------------------------------
+K. EXPERIENCE LIBRARY (ExperienceLibraryView.tsx)
+--------------------------------------------------------------------------------
+1. Purpose:
+   Dynamic library to add, modify, or delete custom excursion templates and 
+   destination profiles.
+
+2. Intended User:
+   Global Travel Curators, Product managers.
+
+3. Controls, Fields, & Buttons:
+   * Category filters, difficulty selectors.
+   * Experience card detail triggers.
+   * Destination detail modals (Climate, currency, regional nuanced advice).
+
+4. System Interactions & Lifecycle:
+   * Editing experience attributes updates local database templates.
+   * Allows adding packing suggestions or local emergency contacts.
+
+--------------------------------------------------------------------------------
+L. FINANCE & LEDGER (FinanceView.tsx)
+--------------------------------------------------------------------------------
+1. Purpose:
+   Commercial workstation managing base currencies, margin types, 
+   discounts, and global ledger totals.
+
+2. Intended User:
+   Agency Finance Controllers.
+
+3. Controls, Fields, & Buttons:
+   * Global Currency dropdown.
+   * Markup overrides (% or fixed value).
+   * Gateways & Surcharges selectors.
+   * Safety buffer input.
+   * Currency exchange rates grid (USD, EUR, BRL, AOA vs ZAR).
+
+4. System Interactions & Lifecycle:
+   * Changing exchange rate inputs immediately converts base costs 
+     across the commercial ledger.
+   * Sums all operational components (Rooms, Aviation, Transfers, Activities) 
+     against margins, discounts, and buffers.
+
+--------------------------------------------------------------------------------
+M. CLIENT VIEW (ClientView.tsx)
+--------------------------------------------------------------------------------
+1. Purpose:
+   Luxury, read-only digital client portal, replicating an elegant, premium, 
+   safari-themed travel companion.
+
+2. Intended User:
+   The High-Net-Worth luxury traveler.
+
+3. Controls, Fields, & Buttons:
+   * Hero Welcome Banner.
+   * Dynamic Day navigation selector buttons.
+   * Chronological Daily Itinerary item rows.
+   * Location, climate, and accommodation overview.
+   * Excursion Detail Overlay Card.
+
+4. System Interactions & Lifecycle:
+   * Click Day Button -> Smoothly updates active view, filtering current day's itinerary, 
+     switches active destinations, and loads accommodation profiles.
+   * Click Excursion Row -> Displays a custom overlay card containing supplier-vetted 
+     activity descriptions, inclusions, and checklists.
+
+================================================================================
+3. SYSTEM BOUNDARIES, APIS, AND LOGICAL MAPS
+================================================================================
+* Database updates: Currently persisted inside client-side LocalStorage 
+  (`viemma_active_sheet`). All updates are synchronized synchronously upon changes.
+* Cloudflare calls: Asset imagery routes utilize secure Cloudflare CDN caching networks.
+* Gemini calls: The system is designed to interface with Google's Gemini SDK on the 
+  server side (`server.ts`) using the `process.env.GEMINI_API_KEY` for context 
+  and smart categorization when requested. No API keys are exposed to the client.
+* Validation and error boundaries: Inputs validate standard bounds. If any computation 
+  encounters anomalous state properties, values default cleanly to 0.00 base.

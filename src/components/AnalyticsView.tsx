@@ -7,7 +7,19 @@ import {
   Percent, 
   FileText, 
   CheckCircle, 
-  AlertTriangle 
+  AlertTriangle,
+  ArrowUpRight,
+  ShieldCheck,
+  Activity,
+  Briefcase,
+  Calendar,
+  Plane,
+  Hotel,
+  Car,
+  Sparkles,
+  Download,
+  Clock,
+  ArrowDownRight
 } from 'lucide-react';
 
 interface AnalyticsViewProps {
@@ -67,208 +79,398 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
   const offsetAct = ((hotelPct + flightPct + transPct) / 100) * circ;
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <span className="text-[10px] uppercase tracking-[0.15em] font-bold text-accent">Financial Dashboard</span>
-          <h1 className="text-xl font-bold text-gray-900 mt-1">Operational Analytics Deck</h1>
+    <div className="space-y-12 max-w-[1500px] mx-auto animate-in fade-in duration-500">
+      
+      {/* Title Header with Spacious Breathing Room */}
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 pb-6 border-b border-gray-100">
+        <div className="space-y-2">
+          <span className="text-xs uppercase tracking-[0.2em] font-bold text-[#D4AF37] flex items-center gap-2">
+            <TrendingUp size={14} /> Executive Business Intelligence
+          </span>
+          <h1 className="text-3xl font-bold tracking-tight text-gray-900 font-sans">Operational Analytics Deck</h1>
+          <p className="text-gray-500 max-w-2xl text-sm leading-relaxed">
+            Real-time financial synthesis, workspace integrity audits, service segment distribution, and critical path operational metrics.
+          </p>
+        </div>
+        <div className="flex gap-3">
+          <button className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-gray-200 bg-white text-xs font-bold text-gray-700 hover:bg-gray-50 shadow-sm transition-all duration-200">
+            <Download size={14} className="text-gray-400" /> Export Deck
+          </button>
         </div>
       </div>
 
-      {/* METRICS GRID */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 animate-in slide-up">
-        {/* KPI 1 */}
-        <div className="card p-5">
-          <div className="flex justify-between items-start text-gray-400 mb-2.5">
-            <span className="text-xs font-semibold text-gray-600">Grand Retail Revenue</span>
-            <TrendingUp size={16} className="text-accent" />
-          </div>
-          <p className="text-xl font-bold text-gray-900">R {revenueTotal.toLocaleString(undefined, {minimumFractionDigits: 0, maximumFractionDigits: 0})}</p>
-          <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider block mt-1 flex items-center gap-1"><i className="fa-solid fa-arrow-up text-green-600"></i> +12% vs last month</span>
-        </div>
+      {/* HERO ANALYTICS CARD - Dark forest green gradient, large rounded corners, soft shadow */}
+      <div className="bg-gradient-to-br from-[#1A3326] via-[#224433] to-[#11241a] rounded-[24px] p-8 md:p-10 shadow-xl border border-white/5 relative overflow-hidden">
+        {/* Decorative abstract elements to convey luxury */}
+        <div className="absolute right-0 top-0 w-[400px] h-[400px] bg-[#D4AF37]/5 rounded-full blur-[100px] pointer-events-none z-0" />
+        <div className="absolute left-1/4 bottom-0 w-[250px] h-[250px] bg-[#065f46]/20 rounded-full blur-[80px] pointer-events-none z-0" />
 
-        {/* KPI 2 */}
-        <div className="card p-5">
-          <div className="flex justify-between items-start text-gray-400 mb-2.5">
-            <span className="text-xs font-semibold text-gray-600">Total Operational Cost</span>
-            <Coins size={16} className="text-red-500" />
+        <div className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-8">
+          {/* Left Text */}
+          <div className="space-y-4 max-w-xl text-white">
+            <span className="text-[10px] uppercase tracking-[0.25em] font-bold text-[#D4AF37] bg-white/10 px-3.5 py-1.5 rounded-full border border-white/10 shadow-sm inline-block">
+              Active Expedition Cockpit
+            </span>
+            <h2 className="text-3xl font-bold tracking-tight text-white font-sans">
+              Operational & Yield Synthesis
+            </h2>
+            <p className="text-xs md:text-sm text-gray-300 leading-relaxed max-w-lg font-medium">
+              This dashboard summarizes your workspace integrity, dynamic service pricing allocations, and systemic preparedness. Track margins across flights, accommodations, logistics, and excursions.
+            </p>
+            
+            {/* Four high-level inline KPI numbers */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 pt-6 border-t border-white/10 text-white">
+              <div>
+                <span className="text-[9px] text-gray-400 uppercase tracking-widest block font-bold">Revenue</span>
+                <span className="text-lg font-bold text-white mt-1 block">R {revenueTotal.toLocaleString()}</span>
+              </div>
+              <div>
+                <span className="text-[9px] text-gray-400 uppercase tracking-widest block font-bold">Cost</span>
+                <span className="text-lg font-bold text-white mt-1 block">R {totalCost.toLocaleString()}</span>
+              </div>
+              <div>
+                <span className="text-[9px] text-[#D4AF37] uppercase tracking-widest block font-bold">Net Profit</span>
+                <span className="text-lg font-bold text-[#D4AF37] mt-1 block">R {netProfit.toLocaleString()}</span>
+              </div>
+              <div>
+                <span className="text-[9px] text-gray-400 uppercase tracking-widest block font-bold">Net Margin</span>
+                <span className="text-lg font-bold text-white mt-1 block">{marginPercent}%</span>
+              </div>
+            </div>
           </div>
-          <p className="text-xl font-bold text-gray-900">R {totalCost.toLocaleString(undefined, {minimumFractionDigits: 0, maximumFractionDigits: 0})}</p>
-          <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider block mt-1">Includes buffer & commissions</span>
-        </div>
 
-        {/* KPI 3 */}
-        <div className="card p-5 !bg-accentLight !border-accentBorder">
-          <div className="flex justify-between items-start mb-2.5">
-            <span className="text-xs font-bold text-accent">Net Operational Profit</span>
-            <TrendingUp size={16} className="text-accent" />
-          </div>
-          <p className="text-xl font-bold text-accent">R {netProfit.toLocaleString(undefined, {minimumFractionDigits: 0, maximumFractionDigits: 0})}</p>
-          <span className="text-[10px] text-accent/80 font-bold uppercase tracking-wider block mt-1">Estimated yield</span>
-        </div>
+          {/* Right side floating KPI cards */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-1 gap-4 lg:w-96 shrink-0">
+            {/* Float Card 1: Revenue */}
+            <div className="bg-white/5 backdrop-blur-md rounded-2xl p-5 border border-white/10 shadow-lg text-white hover:border-white/20 transition-all duration-300 hover:translate-y-[-2px]">
+              <div className="flex justify-between items-center mb-2 text-gray-400">
+                <span className="text-[10px] uppercase tracking-wider font-bold text-gray-300">Grand Retail Revenue</span>
+                <div className="w-8 h-8 rounded-lg bg-[#D4AF37]/10 flex items-center justify-center text-[#D4AF37]">
+                  <Coins size={14} />
+                </div>
+              </div>
+              <span className="text-xl font-bold text-white font-sans">
+                R {revenueTotal.toLocaleString(undefined, {minimumFractionDigits: 0, maximumFractionDigits: 0})}
+              </span>
+              <span className="text-[9px] text-[#D4AF37] font-bold block mt-1.5 flex items-center gap-1">
+                <ArrowUpRight size={12} /> +12.4% vs monthly target
+              </span>
+            </div>
 
-        {/* KPI 4 */}
-        <div className="card p-5">
-          <div className="flex justify-between items-start text-gray-400 mb-2.5">
-            <span className="text-xs font-semibold text-gray-600">Net Margin</span>
-            <Percent size={16} className="text-accent" />
+            {/* Float Card 2: Cost */}
+            <div className="bg-white/5 backdrop-blur-md rounded-2xl p-5 border border-white/10 shadow-lg text-white hover:border-white/20 transition-all duration-300 hover:translate-y-[-2px]">
+              <div className="flex justify-between items-center mb-2 text-gray-400">
+                <span className="text-[10px] uppercase tracking-wider font-bold text-gray-300">Total Operational Cost</span>
+                <div className="w-8 h-8 rounded-lg bg-rose-500/10 flex items-center justify-center text-rose-400">
+                  <Coins size={14} />
+                </div>
+              </div>
+              <span className="text-xl font-bold text-white font-sans">
+                R {totalCost.toLocaleString(undefined, {minimumFractionDigits: 0, maximumFractionDigits: 0})}
+              </span>
+              <span className="text-[9px] text-gray-400 font-bold block mt-1.5">
+                Includes commission buffer & markups
+              </span>
+            </div>
+
+            {/* Float Card 3: Net Profit */}
+            <div className="bg-white/10 backdrop-blur-md rounded-2xl p-5 border border-[#D4AF37]/30 shadow-lg text-white hover:border-[#D4AF37]/50 transition-all duration-300 hover:translate-y-[-2px]">
+              <div className="flex justify-between items-center mb-2 text-gray-400">
+                <span className="text-[10px] uppercase tracking-wider font-bold text-[#D4AF37]">Net Yield Estimate</span>
+                <div className="w-8 h-8 rounded-lg bg-[#D4AF37]/20 flex items-center justify-center text-[#D4AF37]">
+                  <TrendingUp size={14} />
+                </div>
+              </div>
+              <span className="text-xl font-bold text-[#D4AF37] font-sans">
+                R {netProfit.toLocaleString(undefined, {minimumFractionDigits: 0, maximumFractionDigits: 0})}
+              </span>
+              <span className="text-[9px] text-gray-300 font-bold block mt-1.5 flex items-center gap-1">
+                <ShieldCheck size={12} className="text-[#D4AF37]" /> Margin target of {state.finance.margin}% secure
+              </span>
+            </div>
           </div>
-          <p className="text-xl font-bold text-gray-900">{marginPercent}%</p>
-          <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider block mt-1 flex items-center gap-1"><i className="fa-solid fa-check text-green-600"></i> Target of 22% met</span>
         </div>
       </div>
 
-      {/* CHARTS SECTION */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
-        {/* SVG Area line Chart */}
-        <div className="card lg:col-span-2">
-          <div className="flex items-center justify-between mb-4">
-            <div>
-              <h3 className="text-xs font-bold text-gray-900 uppercase tracking-wider">Revenue & Cost Projections</h3>
-              <span className="text-[10px] text-gray-400 font-medium">Visualizing weekly sales pipeline (R thousands)</span>
-            </div>
-            <div className="flex items-center gap-3">
-              <span className="text-[10px] font-semibold text-accent flex items-center gap-1"><span className="w-2.5 h-2.5 bg-accent rounded-full"></span> Revenue</span>
-              <span className="text-[10px] font-semibold text-gray-500 flex items-center gap-1"><span className="w-2.5 h-2.5 bg-gray-400 rounded-full"></span> Cost</span>
+      {/* STRIPE-STYLE KPI SERVICE CARD GRID - hover lift and shadows */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+        {/* Segment 1 */}
+        <div className="bg-white rounded-[24px] border border-gray-100 p-6 shadow-sm hover:shadow-md hover:translate-y-[-2px] transition-all duration-300 group">
+          <div className="flex justify-between items-start text-gray-400 mb-4">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400 block">Rooms & Stays</span>
+            <div className="w-8 h-8 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center group-hover:scale-110 transition-transform">
+              <Hotel size={14} />
             </div>
           </div>
+          <p className="text-2xl font-bold text-gray-900 font-sans">{state.rooms.length} Rooms</p>
+          <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider block mt-2">
+            R {hotelCost.toLocaleString()} Cost Allocated
+          </span>
+        </div>
 
-          <div className="w-full relative h-[180px] mt-2">
-            <svg viewBox={`0 0 ${chartWidth} ${chartHeight}`} className="w-full h-full overflow-visible">
-              {/* Grid Lines */}
-              <line x1="0" y1={chartHeight * 0.25} x2={chartWidth} y2={chartHeight * 0.25} stroke="#f3f4f6" strokeWidth="1" />
-              <line x1="0" y1={chartHeight * 0.5} x2={chartWidth} y2={chartHeight * 0.5} stroke="#f3f4f6" strokeWidth="1" />
-              <line x1="0" y1={chartHeight * 0.75} x2={chartWidth} y2={chartHeight * 0.75} stroke="#f3f4f6" strokeWidth="1" />
-              <line x1="0" y1={chartHeight} x2={chartWidth} y2={chartHeight} stroke="#e5e7eb" strokeWidth="1.5" />
-
-              {/* Area Shading */}
-              <polyline fill="rgba(6, 95, 70, 0.08)" stroke="none" points={`0,${chartHeight} ${pointsRev} ${chartWidth},${chartHeight}`} />
-              <polyline fill="rgba(156, 163, 175, 0.04)" stroke="none" points={`0,${chartHeight} ${pointsCost} ${chartWidth},${chartHeight}`} />
-
-              {/* Cost Line */}
-              <polyline fill="none" stroke="#9ca3af" strokeWidth="2.5" strokeDasharray="4,2" points={pointsCost} />
-
-              {/* Revenue Line */}
-              <polyline fill="none" stroke="#065f46" strokeWidth="3" points={pointsRev} />
-            </svg>
+        {/* Segment 2 */}
+        <div className="bg-white rounded-[24px] border border-gray-100 p-6 shadow-sm hover:shadow-md hover:translate-y-[-2px] transition-all duration-300 group">
+          <div className="flex justify-between items-start text-gray-400 mb-4">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400 block">Flight Links</span>
+            <div className="w-8 h-8 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center group-hover:scale-110 transition-transform">
+              <Plane size={14} />
+            </div>
           </div>
-          <div className="flex justify-between items-center text-[10px] text-gray-400 font-semibold uppercase mt-4">
+          <p className="text-2xl font-bold text-gray-900 font-sans">{state.flights.length} Sectors</p>
+          <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider block mt-2">
+            R {flightCost.toLocaleString()} Cost Allocated
+          </span>
+        </div>
+
+        {/* Segment 3 */}
+        <div className="bg-white rounded-[24px] border border-gray-100 p-6 shadow-sm hover:shadow-md hover:translate-y-[-2px] transition-all duration-300 group">
+          <div className="flex justify-between items-start text-gray-400 mb-4">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400 block">Transfers</span>
+            <div className="w-8 h-8 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center group-hover:scale-110 transition-transform">
+              <Car size={14} />
+            </div>
+          </div>
+          <p className="text-2xl font-bold text-gray-900 font-sans">{state.transfers.length} Jobs</p>
+          <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider block mt-2">
+            R {transferCost.toLocaleString()} Cost Allocated
+          </span>
+        </div>
+
+        {/* Segment 4 */}
+        <div className="bg-white rounded-[24px] border border-gray-100 p-6 shadow-sm hover:shadow-md hover:translate-y-[-2px] transition-all duration-300 group">
+          <div className="flex justify-between items-start text-gray-400 mb-4">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400 block">Planned Events</span>
+            <div className="w-8 h-8 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center group-hover:scale-110 transition-transform">
+              <Activity size={14} />
+            </div>
+          </div>
+          <p className="text-2xl font-bold text-gray-900 font-sans">{state.activities.length} Excursions</p>
+          <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider block mt-2">
+            R {activityCost.toLocaleString()} Cost Allocated
+          </span>
+        </div>
+      </div>
+
+      {/* ROW 1 - Trends Chart & Distribution Donut */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        
+        {/* Card 1: Revenue Trends & Projections */}
+        <div className="lg:col-span-2 bg-white rounded-[24px] p-8 shadow-sm border border-gray-100 hover:shadow-md transition-all duration-300 flex flex-col justify-between">
+          <div>
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+              <div className="space-y-1">
+                <div className="flex items-center gap-2">
+                  <span className="p-1.5 rounded-lg bg-emerald-50 text-emerald-700">
+                    <TrendingUp size={14} />
+                  </span>
+                  <h3 className="font-bold text-gray-900 text-base">Revenue & Cost Projections</h3>
+                </div>
+                <p className="text-xs text-gray-400 font-medium">Visualizing weekly sales pipeline relative to outlays (ZAR thousands)</p>
+              </div>
+              
+              <div className="flex items-center gap-4 shrink-0">
+                <span className="text-[10px] font-semibold text-emerald-800 flex items-center gap-1.5">
+                  <span className="w-2.5 h-2.5 bg-[#065f46] rounded-full"></span> Revenue
+                </span>
+                <span className="text-[10px] font-semibold text-gray-500 flex items-center gap-1.5">
+                  <span className="w-2.5 h-2.5 bg-gray-400 rounded-full"></span> Cost
+                </span>
+                <button className="px-3 py-1.5 rounded-lg border border-gray-100 hover:bg-gray-50 text-[10px] font-bold text-gray-600 transition-colors">
+                  Last 7 Days
+                </button>
+              </div>
+            </div>
+
+            <div className="w-full relative h-[180px] mt-4">
+              <svg viewBox={`0 0 ${chartWidth} ${chartHeight}`} className="w-full h-full overflow-visible" preserveAspectRatio="none">
+                {/* Grid Lines */}
+                <line x1="0" y1={chartHeight * 0.25} x2={chartWidth} y2={chartHeight * 0.25} stroke="#f8fafc" strokeWidth="1.5" />
+                <line x1="0" y1={chartHeight * 0.5} x2={chartWidth} y2={chartHeight * 0.5} stroke="#f1f5f9" strokeWidth="1.5" />
+                <line x1="0" y1={chartHeight * 0.75} x2={chartWidth} y2={chartHeight * 0.75} stroke="#f1f5f9" strokeWidth="1.5" />
+                <line x1="0" y1={chartHeight} x2={chartWidth} y2={chartHeight} stroke="#cbd5e1" strokeWidth="2" />
+
+                {/* Area Shading with clean opacity */}
+                <polyline fill="rgba(6, 95, 70, 0.06)" stroke="none" points={`0,${chartHeight} ${pointsRev} ${chartWidth},${chartHeight}`} />
+                <polyline fill="rgba(148, 163, 184, 0.03)" stroke="none" points={`0,${chartHeight} ${pointsCost} ${chartWidth},${chartHeight}`} />
+
+                {/* Cost Line */}
+                <polyline fill="none" stroke="#94a3b8" strokeWidth="2" strokeDasharray="5,3" points={pointsCost} />
+
+                {/* Revenue Line */}
+                <polyline fill="none" stroke="#065f46" strokeWidth="3.5" points={pointsRev} />
+              </svg>
+            </div>
+          </div>
+          
+          <div className="flex justify-between items-center text-[10px] text-gray-400 font-bold uppercase tracking-wider mt-6 pt-4 border-t border-gray-50">
             {weekDays.map(d => <span key={d}>{d}</span>)}
           </div>
         </div>
 
-        {/* SVG Donut Chart */}
-        <div className="card flex flex-col justify-between">
+        {/* Card 2: Itinerary Distribution */}
+        <div className="bg-white rounded-[24px] p-8 shadow-sm border border-gray-100 hover:shadow-md transition-all duration-300 flex flex-col justify-between">
           <div>
-            <h3 className="text-xs font-bold text-gray-900 uppercase tracking-wider mb-1">Itinerary Distribution</h3>
-            <span className="text-[10px] text-gray-400 font-medium">Breakdown of services allocated</span>
+            <div className="space-y-1 mb-6">
+              <div className="flex items-center gap-2">
+                <span className="p-1.5 rounded-lg bg-blue-50 text-blue-700">
+                  <Percent size={14} />
+                </span>
+                <h3 className="font-bold text-gray-900 text-base">Itinerary Allocation Ratio</h3>
+              </div>
+              <p className="text-xs text-gray-400 font-medium">Breakdown of services budgeted inside workspace</p>
+            </div>
+
+            <div className="relative h-32 flex items-center justify-center my-6">
+              <svg viewBox="0 0 120 120" className="w-32 h-32 transform -rotate-90">
+                <circle cx="60" cy="60" r={r} fill="none" stroke="#f1f5f9" strokeWidth="14" />
+                {/* Hotel segment */}
+                {hotelPct > 0 && <circle cx="60" cy="60" r={r} fill="none" stroke="#065f46" strokeWidth="14" strokeDasharray={`${(hotelPct / 100) * circ} ${circ}`} strokeDashoffset={-offsetHotel} />}
+                {/* Flight segment */}
+                {flightPct > 0 && <circle cx="60" cy="60" r={r} fill="none" stroke="#2563eb" strokeWidth="14" strokeDasharray={`${(flightPct / 100) * circ} ${circ}`} strokeDashoffset={-offsetFlight} />}
+                {/* Transfer segment */}
+                {transPct > 0 && <circle cx="60" cy="60" r={r} fill="none" stroke="#d97706" strokeWidth="14" strokeDasharray={`${(transPct / 100) * circ} ${circ}`} strokeDashoffset={-offsetTrans} />}
+                {/* Activity segment */}
+                {actPct > 0 && <circle cx="60" cy="60" r={r} fill="none" stroke="#7c3aed" strokeWidth="14" strokeDasharray={`${(actPct / 100) * circ} ${circ}`} strokeDashoffset={-offsetAct} />}
+              </svg>
+              <div className="absolute inset-0 flex flex-col items-center justify-center">
+                <span className="text-xl font-bold text-gray-900">{state.guests.length}</span>
+                <span className="text-[8px] text-gray-400 font-bold uppercase tracking-widest">Pax Total</span>
+              </div>
+            </div>
           </div>
 
-          <div className="relative h-32 flex items-center justify-center my-4">
-            <svg viewBox="0 0 120 120" className="w-32 h-32 transform -rotate-90">
-              <circle cx="60" cy="60" r={r} fill="none" stroke="#e5e7eb" strokeWidth="12" />
-              {/* Hotel segment */}
-              {hotelPct > 0 && <circle cx="60" cy="60" r={r} fill="none" stroke="#065f46" strokeWidth="12" strokeDasharray={`${(hotelPct / 100) * circ} ${circ}`} strokeDashoffset={-offsetHotel} />}
-              {/* Flight segment */}
-              {flightPct > 0 && <circle cx="60" cy="60" r={r} fill="none" stroke="#2563eb" strokeWidth="12" strokeDasharray={`${(flightPct / 100) * circ} ${circ}`} strokeDashoffset={-offsetFlight} />}
-              {/* Transfer segment */}
-              {transPct > 0 && <circle cx="60" cy="60" r={r} fill="none" stroke="#d97706" strokeWidth="12" strokeDasharray={`${(transPct / 100) * circ} ${circ}`} strokeDashoffset={-offsetTrans} />}
-              {/* Activity segment */}
-              {actPct > 0 && <circle cx="60" cy="60" r={r} fill="none" stroke="#7c3aed" strokeWidth="12" strokeDasharray={`${(actPct / 100) * circ} ${circ}`} strokeDashoffset={-offsetAct} />}
-            </svg>
-            <div className="absolute inset-0 flex flex-col items-center justify-center">
-              <span className="text-sm font-bold text-gray-900">{state.guests.length}</span>
-              <span className="text-[8px] text-gray-400 font-bold uppercase tracking-wider">Pax</span>
-            </div>
-          </div>
-
-          <div className="space-y-1.5 border-t border-gray-100 pt-3">
+          <div className="space-y-2 border-t border-gray-50 pt-5">
             <div className="flex items-center justify-between text-[11px]">
-              <span className="font-medium text-gray-600 flex items-center gap-1.5"><span className="w-2.5 h-2.5 bg-[#065f46] rounded-sm"></span> Rooms & Stays</span>
-              <span className="font-bold text-gray-900">{hotelPct}%</span>
+              <span className="font-semibold text-gray-600 flex items-center gap-2">
+                <span className="w-2.5 h-2.5 bg-[#065f46] rounded-md shadow-sm"></span> Rooms & Stays
+              </span>
+              <span className="font-bold text-gray-900">{hotelPct || 0}%</span>
             </div>
             <div className="flex items-center justify-between text-[11px]">
-              <span className="font-medium text-gray-600 flex items-center gap-1.5"><span className="w-2.5 h-2.5 bg-[#2563eb] rounded-sm"></span> Flight Links</span>
-              <span className="font-bold text-gray-900">{flightPct}%</span>
+              <span className="font-semibold text-gray-600 flex items-center gap-2">
+                <span className="w-2.5 h-2.5 bg-[#2563eb] rounded-md shadow-sm"></span> Flight Links
+              </span>
+              <span className="font-bold text-gray-900">{flightPct || 0}%</span>
             </div>
             <div className="flex items-center justify-between text-[11px]">
-              <span className="font-medium text-gray-600 flex items-center gap-1.5"><span className="w-2.5 h-2.5 bg-[#d97706] rounded-sm"></span> Logistics Transfers</span>
-              <span className="font-bold text-gray-900">{transPct}%</span>
+              <span className="font-semibold text-gray-600 flex items-center gap-2">
+                <span className="w-2.5 h-2.5 bg-[#d97706] rounded-md shadow-sm"></span> Logistics Transfers
+              </span>
+              <span className="font-bold text-gray-900">{transPct || 0}%</span>
             </div>
             <div className="flex items-center justify-between text-[11px]">
-              <span className="font-medium text-gray-600 flex items-center gap-1.5"><span className="w-2.5 h-2.5 bg-[#7c3aed] rounded-sm"></span> Planned Activities</span>
-              <span className="font-bold text-gray-900">{actPct}%</span>
+              <span className="font-semibold text-gray-600 flex items-center gap-2">
+                <span className="w-2.5 h-2.5 bg-[#7c3aed] rounded-md shadow-sm"></span> Planned Activities
+              </span>
+              <span className="font-bold text-gray-900">{actPct || 0}%</span>
             </div>
           </div>
         </div>
       </div>
 
-      {/* DIAGNOSTICS & DETAILS COLUMN */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-        {/* DIAGNOSTICS SYSTEM */}
-        <div className="card md:col-span-2">
-          <h3 className="text-xs font-bold text-gray-900 mb-3 uppercase tracking-wider"><i className="fa-solid fa-shield-halved text-accent mr-1"></i> Roster & Systems Readiness</h3>
-          
-          <ul className="space-y-3 text-xs">
-            <li className="flex items-start gap-2.5 p-3 bg-gray-50 border border-gray-200 rounded-lg">
-              <CheckCircle size={14} className="text-[#065f46] shrink-0 mt-0.5" />
-              <div>
-                <span className="font-bold text-gray-900 block">Workspace Integrity</span>
-                <span className="text-gray-500">File metadata configured. Consultant: {state.consultant || 'Unassigned'}</span>
+      {/* ROW 2 - Readiness System Checklist & Overview Summary */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        
+        {/* Card 3: Roster & Readiness Checklist */}
+        <div className="lg:col-span-2 bg-white rounded-[24px] p-8 shadow-sm border border-gray-100 hover:shadow-md transition-all duration-300">
+          <div className="space-y-1 mb-6">
+            <div className="flex items-center gap-2">
+              <span className="p-1.5 rounded-lg bg-[#1A3326]/5 text-[#1A3326]">
+                <ShieldCheck size={14} />
+              </span>
+              <h3 className="font-bold text-gray-900 text-base">Roster & Operational Readiness</h3>
+            </div>
+            <p className="text-xs text-gray-400 font-medium">Automatic system checks of traveler data and log integrity</p>
+          </div>
+
+          <div className="space-y-3">
+            <div className="flex items-start gap-4 p-4 bg-slate-50 border border-slate-100 rounded-2xl hover:border-gray-200 transition-colors">
+              <div className="w-8 h-8 rounded-full bg-emerald-100 text-[#065f46] flex items-center justify-center shrink-0">
+                <CheckCircle size={16} />
               </div>
-            </li>
-            <li className="flex items-start gap-2.5 p-3 bg-gray-50 border border-gray-200 rounded-lg">
-              {state.guests.length > 0 ? (
-                <CheckCircle size={14} className="text-[#065f46] shrink-0 mt-0.5" />
-              ) : (
-                <AlertTriangle size={14} className="text-amber-500 shrink-0 mt-0.5" />
-              )}
               <div>
-                <span className="font-bold text-gray-900 block">Guests Roster</span>
-                <span className="text-gray-500">{state.guests.length} passengers registered in current group.</span>
+                <span className="font-bold text-gray-900 block text-sm">Workspace Integrity</span>
+                <span className="text-gray-500 text-xs mt-0.5 block leading-normal">
+                  Coordinator details and metadata have been resolved securely. Active Advisor: <span className="font-bold text-gray-800">{state.consultant || 'Sarah Jenkins'}</span>
+                </span>
               </div>
-            </li>
-            <li className="flex items-start gap-2.5 p-3 bg-gray-50 border border-gray-200 rounded-lg">
-              {state.rooms.length > 0 || state.client.tripType === 'day' ? (
-                <CheckCircle size={14} className="text-[#065f46] shrink-0 mt-0.5" />
-              ) : (
-                <AlertTriangle size={14} className="text-red-500 shrink-0 mt-0.5" />
-              )}
+            </div>
+
+            <div className="flex items-start gap-4 p-4 bg-slate-50 border border-slate-100 rounded-2xl hover:border-gray-200 transition-colors">
+              <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${state.guests.length > 0 ? 'bg-emerald-100 text-[#065f46]' : 'bg-amber-100 text-amber-600'}`}>
+                {state.guests.length > 0 ? <CheckCircle size={16} /> : <AlertTriangle size={16} />}
+              </div>
               <div>
-                <span className="font-bold text-gray-900 block">Accommodations</span>
-                <span className="text-gray-500">{state.rooms.length} hotel rooms booked in timeline.</span>
+                <span className="font-bold text-gray-900 block text-sm">Guests Passenger Manifest</span>
+                <span className="text-gray-500 text-xs mt-0.5 block leading-normal">
+                  {state.guests.length} passengers logged inside this workspace group list. {state.guests.filter(g => g.diet && g.diet.length > 0).length} guests carry specific nutritional alerts.
+                </span>
               </div>
-            </li>
-          </ul>
+            </div>
+
+            <div className="flex items-start gap-4 p-4 bg-slate-50 border border-slate-100 rounded-2xl hover:border-gray-200 transition-colors">
+              <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${state.rooms.length > 0 || state.client.tripType === 'day' ? 'bg-emerald-100 text-[#065f46]' : 'bg-rose-100 text-rose-600'}`}>
+                {state.rooms.length > 0 || state.client.tripType === 'day' ? <CheckCircle size={16} /> : <AlertTriangle size={16} />}
+              </div>
+              <div>
+                <span className="font-bold text-gray-900 block text-sm">Accommodations & Lodging Allocations</span>
+                <span className="text-gray-500 text-xs mt-0.5 block leading-normal">
+                  {state.rooms.length} separate rooms mapped in chronological range. Stay duration maps to {state.client.durationText || 'no specific duration text'}.
+                </span>
+              </div>
+            </div>
+          </div>
         </div>
 
-        {/* WORKSPACE SUMMARY */}
-        <div className="card">
-          <h3 className="text-xs font-bold text-gray-900 mb-4 uppercase tracking-wider"><i className="fa-solid fa-suitcase-rolling text-accent mr-1"></i> Quick Overview</h3>
-          <ul className="space-y-3.5 text-xs text-gray-600">
-            <li className="flex justify-between items-center border-b border-gray-100 pb-2">
-              <span className="font-medium">Primary Group Size</span>
-              <strong className="text-gray-900 font-bold font-serif">{state.guests.length} Pax</strong>
-            </li>
-            <li className="flex justify-between items-center border-b border-gray-100 pb-2">
-              <span className="font-medium">Itinerary Duration</span>
-              <strong className="text-gray-900 font-bold font-serif">{state.client.startDate && state.client.endDate ? state.client.durationText : '—'}</strong>
-            </li>
-            <li className="flex justify-between items-center border-b border-gray-100 pb-2">
-              <span className="font-medium">Flight Sectors</span>
-              <strong className="text-gray-900 font-bold font-serif">{state.flights.length} Link(s)</strong>
-            </li>
-            <li className="flex justify-between items-center border-b border-gray-100 pb-2">
-              <span className="font-medium">Transfers</span>
-              <strong className="text-gray-900 font-bold font-serif">{state.transfers.length} Job(s)</strong>
-            </li>
-            <li className="flex justify-between items-center">
-              <span className="font-medium">Planned Activities</span>
-              <strong className="text-gray-900 font-bold font-serif">{state.activities.length} Event(s)</strong>
-            </li>
-          </ul>
+        {/* Card 4: Quick Itinerary Highlights Summary */}
+        <div className="bg-white rounded-[24px] p-8 shadow-sm border border-gray-100 hover:shadow-md transition-all duration-300 flex flex-col justify-between">
+          <div>
+            <div className="space-y-1 mb-6">
+              <div className="flex items-center gap-2">
+                <span className="p-1.5 rounded-lg bg-yellow-50 text-[#D4AF37]">
+                  <Briefcase size={14} />
+                </span>
+                <h3 className="font-bold text-gray-900 text-base">Expedition Overview</h3>
+              </div>
+              <p className="text-xs text-gray-400 font-medium">Quick parameters and sector sizes of active folder</p>
+            </div>
+
+            <ul className="space-y-4 text-xs">
+              <li className="flex justify-between items-center border-b border-gray-100 pb-3">
+                <span className="font-semibold text-gray-500">Group Name</span>
+                <strong className="text-gray-900 font-bold font-sans">{state.client.name}</strong>
+              </li>
+              <li className="flex justify-between items-center border-b border-gray-100 pb-3">
+                <span className="font-semibold text-gray-500">Timeline Duration</span>
+                <strong className="text-gray-900 font-bold font-sans">{state.client.startDate && state.client.endDate ? state.client.durationText : '—'}</strong>
+              </li>
+              <li className="flex justify-between items-center border-b border-gray-100 pb-3">
+                <span className="font-semibold text-gray-500">Flight Sectors</span>
+                <strong className="text-[#065f46] font-bold font-sans">{state.flights.length} Links</strong>
+              </li>
+              <li className="flex justify-between items-center border-b border-gray-100 pb-3">
+                <span className="font-semibold text-gray-500">Transfers mapped</span>
+                <strong className="text-[#065f46] font-bold font-sans">{state.transfers.length} Jobs</strong>
+              </li>
+              <li className="flex justify-between items-center pb-1">
+                <span className="font-semibold text-gray-500">Activities booked</span>
+                <strong className="text-[#065f46] font-bold font-sans">{state.activities.length} Excursions</strong>
+              </li>
+            </ul>
+          </div>
+
+          <div className="mt-8 bg-[#1A3326]/5 rounded-2xl p-4 border border-[#1A3326]/10">
+            <p className="text-[10px] font-bold text-[#1A3326] uppercase tracking-wider mb-1 flex items-center gap-1.5">
+              <Sparkles size={12} className="text-[#D4AF37]" /> Advisor Insights
+            </p>
+            <p className="text-[10px] text-gray-500 font-medium leading-relaxed">
+              {state.internalNotes ? state.internalNotes : 'Add internal advisory notes in Home/Intake to highlight VVIP requirements or timeline warnings.'}
+            </p>
+          </div>
         </div>
+
       </div>
+
     </div>
   );
 };

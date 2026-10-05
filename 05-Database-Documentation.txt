@@ -1,0 +1,92 @@
+Viemma Tours - Workspace OS
+================================================================================
+05 - DATABASE DOCUMENTATION & STATE SCHEMA
+================================================================================
+Context: Client-side persisted state management (LocalStorage)
+Version: 1.0.0
+Author: Senior Enterprise Solution Architect
+
+================================================================================
+1. PERSISTENCE ARCHITECTURE
+================================================================================
+The current architecture of Viemma Tours Workspace OS is a local-first,
+client-side application. It does not utilize traditional server-side relational 
+databases (SQL/D1), object storage (R2), or distributed key-value stores (KV).
+
+Primary Storage Mechanism:
+* Web Storage API: LocalStorage
+* Persistence Key: `viemma_active_sheet`
+* Serialization: JSON + lz-string (compression)
+
+Temporary/Volatile State:
+* Managed via React `useState`, `useMemo`, and `useEffect` hooks within component scopes.
+
+================================================================================
+2. PERSISTENCE SCHEMA (AppState Root)
+================================================================================
+
+Object: viemma_active_sheet (LocalStorage JSON Blob)
+
+Fields:
+- ref: string (Primary Identifier for Itinerary)
+- consultant: string
+- priority: 'hot' | 'confirmed' | 'exploratory' | 'pending'
+- source: 'direct' | 'agent' | 'referral' | 'website' | 'social'
+- agent: { id: string, contact: string, email: string, comm: string }
+- client: Client object
+- groupConditions: GroupConditions object
+- guests: Guest[] (Relational array)
+- flights: Flight[] (Relational array)
+- transfers: Transfer[] (Relational array)
+- rooms: Room[] (Relational array)
+- activities: Activity[] (Relational array)
+- experienceLibrary: ExperienceLibraryItem[] (Master Catalog)
+- destinationLibrary: DestinationLibraryItem[] (Master Catalog)
+- finance: Finance object
+- internalNotes: string
+- publishing: PublishingSettings object (Optional)
+
+--------------------------------------------------------------------------------
+A. Relational Sub-Objects
+--------------------------------------------------------------------------------
+
+Guest (guests)
+- Primary Key: id (number)
+- Fields: first, last, age, country, diet[], mob[], med[], pref[], notes, isLead
+
+Flight (flights)
+- Primary Key: id (number)
+- Fields: direction, airline, flightNo, pnr, from, to, date, depTime, arrTime, 
+  duration, cabin, status, paxIds (Foreign Key array to Guest.id), bagHand, 
+  bagCheck, bagOver, cost, markup, qty, notes, stops (Stop[])
+
+Transfer (transfers)
+- Primary Key: id (number)
+- Fields: type, date, time, status, from, to, meet, sign, flight, dist, dur, 
+  vehicle, driver, driverPhone, paxCount, paxIds (FK to Guest.id), bagHand, 
+  bagCheck, bagOver, seats, special, cost, tolls, parking, notes, waypoints
+
+Room (rooms)
+- Primary Key: id (number)
+- Fields: hotel, conf, pay, roomType, bed, meal, cin, cout, nights, 
+  guestIds (FK to Guest.id), rate, supp, reqs, notes
+
+Activity (activities)
+- Primary Key: id (number)
+- Fields: day, slot, name, desc, pickup, start, dur, pickupLoc, status, conf, 
+  supplier, supPhone, paxIds (FK to Guest.id), pAdult, pChild, nAdult, nChild, 
+  flat, total, inc, backup, notes, isFree
+
+================================================================================
+3. TEMPORARY & VOLATILE STATE
+================================================================================
+Temporary state exists only within the browser's JavaScript runtime and is
+lost upon browser refresh unless synced to LocalStorage.
+
+Examples include:
+* activeTab: Current UI view (e.g., 'home', 'guests', 'flights').
+* isClientView: Boolean toggle for administrative shell vs. client portal view.
+* isSettingsOpen: Modal visibility boolean.
+* selectedActivity: Current activity object being viewed in the modal.
+* activeDay: Current day selected in ClientView.
+* saveMessage: UI alert transient text.

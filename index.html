@@ -3,11 +3,62 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Viemma OS</title>
+    <title>Viemma Tours Workspace OS</title>
     <!-- FontAwesome for Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
     <style>
-      /* Ensure the map or icons load quickly */
+        @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap');
+        
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif !important;
+            -webkit-font-smoothing: antialiased;
+            color: #1A3326; /* Brand Dark Green */
+            overflow-x: hidden;
+            background-color: #F8FAFC; 
+        }
+        
+        .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        .hide-scrollbar::-webkit-scrollbar { display: none; }
+
+        .modal-active { opacity: 1; visibility: visible; transform: scale(1); transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1); }
+        .modal-inactive { opacity: 0; visibility: hidden; transform: scale(0.95); transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1); }
+
+        .dashboard-section { display: none; animation: fadeIn 0.4s ease-in-out; }
+        .dashboard-section.active { display: block; }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Roadmap Timeline Styles (CRITICAL FOR CLIENT VIEW) */
+        .timeline-step { position: relative; padding-left: 2rem; margin-bottom: 1.5rem; }
+        .timeline-step::before {
+            content: ''; position: absolute; left: 0; top: 0.25rem; width: 12px; height: 12px;
+            background-color: #D4AF37; border-radius: 50%; z-index: 10;
+        }
+        .timeline-step::after {
+            content: ''; position: absolute; left: 5px; top: 0.75rem; bottom: -1.5rem; width: 2px;
+            background-color: #e5e7eb; z-index: 0;
+        }
+        .timeline-step:last-child::after { display: none; }
+
+        /* Progress Circle */
+        .progress-ring {
+            background: conic-gradient(#D4AF37 35%, #e5e7eb 0);
+            border-radius: 50%; width: 64px; height: 64px;
+            display: flex; align-items: center; justify-content: center;
+        }
+        .progress-ring-inner {
+            background-color: white; border-radius: 50%; width: 54px; height: 54px;
+            display: flex; align-items: center; justify-content: center; font-weight: bold;
+        }
+
+        .simulation-option:hover { border-color: #D4AF37; background-color: #fefce8; transform: translateX(4px); transition: all 0.2s; }
+
+        /* Login Input Focus */
+        .auth-input:focus, .custom-focus:focus { border-color: #D4AF37 !important; box-shadow: 0 0 0 3px rgba(212, 175, 55, 0.2) !important; outline: none !important; }
     </style>
     <!-- NATIVE JSPDF ENGINE -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>

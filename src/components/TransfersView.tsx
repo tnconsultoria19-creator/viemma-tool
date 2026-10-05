@@ -1,7 +1,22 @@
 import React, { useState } from 'react';
-import { AppState, Transfer, Waypoint, Guest } from '../types';
+import { AppState, Transfer, Waypoint } from '../types';
 import { DB_DEFAULT } from '../dbDefaults';
-import { Car, Plus, Trash2, Edit3, Check, Users, MapPin, AlertTriangle, MessageSquare } from 'lucide-react';
+import { 
+  Car, 
+  Plus, 
+  Trash2, 
+  Edit3, 
+  Check, 
+  Users, 
+  MapPin, 
+  AlertTriangle, 
+  Tag, 
+  Compass, 
+  Clock, 
+  Phone,
+  ArrowRight,
+  AlertCircle
+} from 'lucide-react';
 
 interface TransfersViewProps {
   state: AppState;
@@ -162,376 +177,659 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <span className="text-[10px] uppercase tracking-[0.15em] font-bold text-accent">Ground Logistics</span>
-          <h1 className="text-xl font-bold text-gray-900 mt-1">Transfers & Fleet Tracker</h1>
+    <div className="space-y-8 max-w-[1500px] mx-auto animate-in fade-in duration-500">
+      
+      {/* Title Header */}
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 pb-6 border-b border-gray-100">
+        <div className="space-y-2">
+          <span className="text-xs uppercase tracking-[0.2em] font-bold text-[#D4AF37] flex items-center gap-2">
+            <Car size={14} /> Ground Operations
+          </span>
+          <h1 className="text-3xl font-bold tracking-tight text-gray-900 font-sans">Ground Logistics & Fleet Tracker</h1>
+          <p className="text-gray-500 max-w-2xl text-sm leading-relaxed">
+            Schedule private chauffeured transfers, airport shuttle pickups, fleet vehicle capacities, driver dispatch and routing checkpoints.
+          </p>
         </div>
         {editingTransferId === null && (
-          <button onClick={handleOpenAddForm} className="btn1">
-            <Plus size={14} /> Schedule Transfer
+          <button 
+            onClick={handleOpenAddForm} 
+            className="flex items-center gap-2 px-5 py-3 rounded-xl bg-[#1A3326] text-white hover:bg-[#12241b] text-xs font-bold shadow-md hover:translate-y-[-1px] transition-all duration-150 shrink-0"
+          >
+            <Plus size={14} /> Schedule Ground Transfer
           </button>
         )}
       </div>
 
-      {/* TRANSFER CONFIGURATION FORM PANEL */}
+      {/* FORM CONFIGURATION PANEL */}
       {editingTransferId !== null && (
-        <div className="card border-accent bg-[#fafafa]">
-          <div className="stitle border-b border-gray-200 pb-3 mb-4 flex items-center justify-between">
-            <span className="flex items-center gap-1.5 font-serif font-bold text-gray-900">
-              <Car size={16} className="text-accent" />
-              {editingTransferId === -1 ? 'Configure Transfer Routing' : 'Update Transfer Routing'}
-            </span>
-            <div className="flex gap-2">
-              <button onClick={() => setEditingTransferId(null)} className="btn2 py-1 px-3 text-[11px]">Cancel</button>
-              <button onClick={handleSaveTransfer} className="btn1 py-1 px-3 text-[11px]"><Check size={12} /> Save</button>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-4">
+        <div className="bg-white rounded-[24px] border border-gray-100 shadow-xl overflow-hidden animate-in slide-in-from-bottom duration-300">
+          
+          {/* Header */}
+          <div className="bg-gradient-to-r from-[#1A3326] to-[#224433] text-white p-6 md:p-8 flex items-center justify-between">
             <div>
-              <label className="lbl">Transfer Type</label>
-              <select 
-                value={tForm.type || 'Airport Arrival'}
-                onChange={e => setTForm({ ...tForm, type: e.target.value as any })}
-                className="field-input"
-              >
-                <option value="Airport Arrival">Airport Arrival Meet & Greet</option>
-                <option value="Airport Departure">Airport Departure Shuttle</option>
-                <option value="Inter-Hotel">Inter-Hotel Transfer Corridor</option>
-                <option value="Activity Transfer">Activity Excursion Roundtrip</option>
-                <option value="Full-Day Vehicle">Full-Day Private Driver Hire</option>
-                <option value="Point-to-Point">Point-to-Point City Link</option>
-              </select>
+              <span className="text-[10px] uppercase tracking-[0.2em] font-bold text-[#D4AF37] block mb-1">Interactive Logistical Desk</span>
+              <h2 className="text-xl md:text-2xl font-bold font-sans flex items-center gap-2">
+                <Car size={20} className="text-[#D4AF37]" />
+                {editingTransferId === -1 ? 'Configure Fleet Transfer' : 'Update Fleet Transfer'}
+              </h2>
             </div>
-
-            <div>
-              <label className="lbl">Transfer Date</label>
-              <input type="date" value={tForm.date || ''} onChange={e => setTForm({ ...tForm, date: e.target.value })} className="field-input" />
-            </div>
-
-            <div>
-              <label className="lbl">Pick-up Time</label>
-              <input type="time" value={tForm.time || ''} onChange={e => setTForm({ ...tForm, time: e.target.value })} className="field-input" />
-            </div>
-
-            <div>
-              <label className="lbl">Service Status</label>
-              <select value={tForm.status || 'Pending'} onChange={e => setTForm({ ...tForm, status: e.target.value as any })} className="field-input">
-                <option value="Pending">Pending</option>
-                <option value="Confirmed">Confirmed</option>
-                <option value="Completed">Completed</option>
-                <option value="Cancelled">Cancelled</option>
-              </select>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-4">
-            <div>
-              <label className="lbl">Pick-up Location</label>
-              <input type="text" value={tForm.from || ''} onChange={e => setTForm({ ...tForm, from: e.target.value })} className="field-input font-medium text-gray-900" placeholder="e.g. Cape Town Airport (CPT)" />
-            </div>
-
-            <div>
-              <label className="lbl">Drop-off Location</label>
-              <input type="text" value={tForm.to || ''} onChange={e => setTForm({ ...tForm, to: e.target.value })} className="field-input font-medium text-gray-900" placeholder="e.g. The Silo Hotel" />
-            </div>
-
-            <div>
-              <label className="lbl">Meeting Point (Arrivals)</label>
-              <input type="text" value={tForm.meet || ''} onChange={e => setTForm({ ...tForm, meet: e.target.value })} className="field-input" placeholder="e.g. Door 4, Arrivals Hall" />
-            </div>
-
-            <div>
-              <label className="lbl">Paging Welcome Sign</label>
-              <input type="text" value={tForm.sign || ''} onChange={e => setTForm({ ...tForm, sign: e.target.value })} className="field-input uppercase font-bold text-accent" placeholder="e.g. HARRISON GROUP" />
-            </div>
-          </div>
-
-          {/* WAYPOINTS STOP BUILDER */}
-          <div className="border border-gray-200 bg-white p-4 rounded-md mb-4">
-            <p className="text-[11px] font-bold text-[#065f46] mb-3 flex items-center gap-1">
-              <MapPin size={12} /> Multi-Stop Waypoints (Intermediate Pitstops)
-            </p>
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mb-3">
-              <input type="text" value={waypointLoc} onChange={e => setWaypointLoc(e.target.value)} className="field-input py-1 px-2.5 text-xs col-span-2" placeholder="Intermediate Waypoint (e.g. Curio Market, Winery stop)" />
-              <input type="text" value={waypointWait} onChange={e => setWaypointWait(e.target.value)} className="field-input py-1 px-2.5 text-xs" placeholder="Wait/Layover (e.g. 45 min)" />
-            </div>
-            <button onClick={handleAddWaypoint} className="btn2 text-[10px] py-1 px-3">
-              <Plus size={10} /> Add Intermediate Stop
-            </button>
-
-            {waypointsList.length > 0 && (
-              <div className="mt-3 space-y-1.5 border-t border-gray-100 pt-3">
-                {waypointsList.map((wp, idx) => (
-                  <div key={wp.id} className="flex justify-between items-center text-[11px] bg-gray-50 border border-gray-200 p-2 rounded">
-                    <span>
-                      <strong className="text-gray-800">Stop #{idx + 1}: {wp.location}</strong> {wp.waitTime && `(Wait/Break: ${wp.waitTime})`}
-                    </span>
-                    <button onClick={() => handleRemoveWaypoint(wp.id)} className="text-rose hover:underline font-bold">Remove</button>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-
-          <div className="grid grid-cols-2 sm:grid-cols-5 gap-4 mb-4">
-            <div>
-              <label className="lbl">Vehicle Type</label>
-              <select value={tForm.vehicle || ''} onChange={e => setTForm({ ...tForm, vehicle: e.target.value })} className="field-input">
-                {DB_DEFAULT.vehicles.map(v => <option key={v.id} value={v.name}>{v.name}</option>)}
-              </select>
-            </div>
-
-            <div>
-              <label className="lbl">Assigned Driver</label>
-              <select value={tForm.driver || ''} onChange={handleDriverChange} className="field-input">
-                <option value="">Select driver...</option>
-                {DB_DEFAULT.drivers.map(d => <option key={d.id} value={d.name}>{d.name}</option>)}
-              </select>
-            </div>
-
-            <div>
-              <label className="lbl">Driver Contact Phone</label>
-              <input type="text" value={tForm.driverPhone || ''} onChange={e => setTForm({ ...tForm, driverPhone: e.target.value })} className="field-input bg-gray-50 font-semibold" readOnly />
-            </div>
-
-            <div>
-              <label className="lbl">Linked Flight Code</label>
-              <input type="text" value={tForm.flight || ''} onChange={e => setTForm({ ...tForm, flight: e.target.value })} className="field-input uppercase font-bold" placeholder="e.g. EK773" />
-            </div>
-
-            <div className="grid grid-cols-2 gap-2">
-              <div>
-                <label className="lbl">Distance</label>
-                <input type="text" value={tForm.dist || ''} onChange={e => setTForm({ ...tForm, dist: e.target.value })} className="field-input" placeholder="22 km" />
-              </div>
-              <div>
-                <label className="lbl">Est. Dur.</label>
-                <input type="text" value={tForm.dur || ''} onChange={e => setTForm({ ...tForm, dur: e.target.value })} className="field-input" placeholder="35 min" />
-              </div>
-            </div>
-          </div>
-
-          {/* LUGGAGE PROTOCOLS */}
-          <div className="grid grid-cols-3 gap-3 mb-4">
-            <div>
-              <label className="lbl">Hand Bags (Cargo)</label>
-              <input type="number" value={tForm.bagHand || 0} onChange={e => setTForm({ ...tForm, bagHand: Number(e.target.value) })} className="field-input" />
-            </div>
-            <div>
-              <label className="lbl">Checked Baggage</label>
-              <input type="number" value={tForm.bagCheck || 0} onChange={e => setTForm({ ...tForm, bagCheck: Number(e.target.value) })} className="field-input" />
-            </div>
-            <div>
-              <label className="lbl">Oversized Items</label>
-              <input type="number" value={tForm.bagOver || 0} onChange={e => setTForm({ ...tForm, bagOver: Number(e.target.value) })} className="field-input" />
-            </div>
-          </div>
-
-          {/* CHILD SEATS & ONBOARD PROTOCOLS */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
-            <div>
-              <label className="lbl">Child Safety Restraints</label>
-              <div className="flex flex-wrap gap-1.5">
-                {["None Required", "Rear Facing Infant Seat", "Forward Facing Child Seat", "Booster Seat (4-8yr)"].map(seat => {
-                  const active = tForm.seats?.includes(seat) || false;
-                  return (
-                    <span key={seat} onClick={() => toggleTFormTag('seats', seat)} className={`tag ${active ? 'active' : ''}`}>{seat}</span>
-                  );
-                })}
-              </div>
-            </div>
-
-            <div>
-              <label className="lbl">Onboard Special Requests</label>
-              <div className="flex flex-wrap gap-1.5">
-                {["Bottled Water & Snacks", "Air Conditioning Active", "Cold Refreshment Towels", "Local Tourism Leaflets"].map(req => {
-                  const active = tForm.special?.includes(req) || false;
-                  return (
-                    <span key={req} onClick={() => toggleTFormTag('special', req)} className={`tag ${active ? 'active' : ''}`}>{req}</span>
-                  );
-                })}
-              </div>
-            </div>
-          </div>
-
-          {/* PASSENGER SELECTION */}
-          <div className="mb-4">
-            <label className="lbl flex items-center gap-1.5"><Users size={12} /> Assign Passengers (Supports Split Arrivals/Departures)</label>
-            <div className="flex flex-wrap gap-1.5 pt-1">
+            <div className="flex gap-3">
               <button 
-                onClick={() => setTForm({ ...tForm, paxIds: state.guests.map(g => g.id), paxCount: state.guests.length })} 
-                className="btn2 py-1 px-3 text-[10px] mr-2"
+                onClick={() => setEditingTransferId(null)} 
+                className="px-4 py-2 rounded-xl bg-white/10 text-white hover:bg-white/20 text-xs font-semibold transition"
               >
-                Select All
+                Cancel
               </button>
-              {state.guests.map(g => {
-                const isSelected = tForm.paxIds?.includes(g.id);
-                return (
-                  <span key={g.id} onClick={() => togglePassengerSelection(g.id)} className={`tag cursor-pointer select-none ${isSelected ? 'active' : ''}`}>
-                    {g.first} {g.last} ({g.age})
-                  </span>
-                );
-              })}
+              <button 
+                onClick={handleSaveTransfer} 
+                className="px-4 py-2 rounded-xl bg-[#D4AF37] text-[#1A3326] hover:bg-[#b89528] text-xs font-bold shadow-sm hover:translate-y-[-1px] transition-all"
+              >
+                Save Dispatch Rules
+              </button>
             </div>
           </div>
 
-          {/* FINANCIAL COSTS */}
-          <div className="grid grid-cols-3 gap-3 mb-4">
-            <div>
-              <label className="lbl">Net Hire Cost (R)</label>
-              <input type="number" value={tForm.cost || 0} onChange={e => setTForm({ ...tForm, cost: Number(e.target.value) })} className="field-input font-bold" />
+          <div className="p-6 md:p-8 space-y-8 bg-gray-50/50">
+            
+            {/* GROUP 1: Basic Information */}
+            <div className="bg-white rounded-[20px] p-6 border border-gray-100 shadow-sm space-y-6">
+              <h3 className="text-xs uppercase font-bold text-[#1A3326] tracking-wider border-b border-gray-100 pb-2 flex items-center gap-2">
+                <Compass size={14} className="text-[#D4AF37]" /> Basic Information
+              </h3>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                
+                <div className="space-y-1.5">
+                  <label className="text-[11px] text-gray-500 font-bold uppercase tracking-wider block">Transfer Type</label>
+                  <select 
+                    value={tForm.type || 'Airport Arrival'}
+                    onChange={e => setTForm({ ...tForm, type: e.target.value as any })}
+                    className="w-full h-11 px-4 rounded-xl border border-gray-200 text-xs font-semibold text-gray-700 bg-white hover:border-[#D4AF37] focus:border-[#D4AF37] transition duration-200"
+                  >
+                    <option value="Airport Arrival">Airport Arrival Meet & Greet</option>
+                    <option value="Airport Departure">Airport Departure Drop-off</option>
+                    <option value="Inter-Hotel">Inter-Hotel Transfer</option>
+                    <option value="Excursion Shuttle">Excursion Shuttle Run</option>
+                    <option value="Bespoke Tour">Bespoke Full-Day Chauffeur</option>
+                  </select>
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-[11px] text-gray-500 font-bold uppercase tracking-wider block">Transfer Date</label>
+                  <input 
+                    type="date" 
+                    value={tForm.date || ''} 
+                    onChange={e => setTForm({ ...tForm, date: e.target.value })}
+                    className="w-full h-11 px-4 rounded-xl border border-gray-200 text-xs font-semibold text-gray-800 focus:border-[#D4AF37] transition duration-200" 
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-[11px] text-gray-500 font-bold uppercase tracking-wider block">Pick-up Time (LT)</label>
+                  <input 
+                    type="time" 
+                    value={tForm.time || ''} 
+                    onChange={e => setTForm({ ...tForm, time: e.target.value })}
+                    className="w-full h-11 px-4 rounded-xl border border-gray-200 text-xs font-semibold text-gray-800 focus:border-[#D4AF37] transition duration-200" 
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-[11px] text-gray-500 font-bold uppercase tracking-wider block">Dispatch Status</label>
+                  <select 
+                    value={tForm.status || 'Pending'}
+                    onChange={e => setTForm({ ...tForm, status: e.target.value as any })}
+                    className="w-full h-11 px-4 rounded-xl border border-gray-200 text-xs font-semibold text-gray-700 bg-white hover:border-[#D4AF37] focus:border-[#D4AF37] transition duration-200"
+                  >
+                    <option value="Pending">Pending Assignment</option>
+                    <option value="Confirmed">Chauffeur Dispatched</option>
+                    <option value="Completed">Completed Run</option>
+                    <option value="Cancelled">Cancelled Run</option>
+                  </select>
+                </div>
+
+              </div>
             </div>
-            <div>
-              <label className="lbl">Toll Road Fees (R)</label>
-              <input type="number" value={tForm.tolls || 0} onChange={e => setTForm({ ...tForm, tolls: Number(e.target.value) })} className="field-input font-bold" />
+
+            {/* GROUP 2: Travel Schedule / Routing & Airport meet rules */}
+            <div className="bg-white rounded-[20px] p-6 border border-gray-100 shadow-sm space-y-6">
+              <h3 className="text-xs uppercase font-bold text-[#1A3326] tracking-wider border-b border-gray-100 pb-2 flex items-center gap-2">
+                <MapPin size={14} className="text-[#D4AF37]" /> Transfer Routing & Pickups
+              </h3>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                
+                <div className="space-y-1.5">
+                  <label className="text-[11px] text-gray-500 font-bold uppercase tracking-wider block">Pick-up Location (From)</label>
+                  <input 
+                    type="text" 
+                    value={tForm.from || ''} 
+                    onChange={e => setTForm({ ...tForm, from: e.target.value })}
+                    className="w-full h-11 px-4 rounded-xl border border-gray-200 text-xs font-semibold text-gray-800 focus:border-[#D4AF37] transition duration-200" 
+                    placeholder="e.g. Cape Town International Airport (CPT)" 
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-[11px] text-gray-500 font-bold uppercase tracking-wider block">Drop-off Location (To)</label>
+                  <input 
+                    type="text" 
+                    value={tForm.to || ''} 
+                    onChange={e => setTForm({ ...tForm, to: e.target.value })}
+                    className="w-full h-11 px-4 rounded-xl border border-gray-200 text-xs font-semibold text-gray-800 focus:border-[#D4AF37] transition duration-200" 
+                    placeholder="e.g. The Silo Hotel" 
+                  />
+                </div>
+
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-2">
+                
+                <div className="space-y-1.5">
+                  <label className="text-[11px] text-gray-500 font-bold uppercase tracking-wider block">Greeting Placard Text (Placard sign)</label>
+                  <input 
+                    type="text" 
+                    value={tForm.sign || ''} 
+                    onChange={e => setTForm({ ...tForm, sign: e.target.value })}
+                    className="w-full h-11 px-4 rounded-xl border border-gray-200 text-xs font-semibold text-gray-800 focus:border-[#D4AF37] transition duration-200" 
+                    placeholder="e.g. WELCOME THE HARRISON GROUP" 
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-[11px] text-gray-500 font-bold uppercase tracking-wider block">Arrival Flight Number (if applicable)</label>
+                  <input 
+                    type="text" 
+                    value={tForm.flight || ''} 
+                    onChange={e => setTForm({ ...tForm, flight: e.target.value })}
+                    className="w-full h-11 px-4 rounded-xl border border-gray-200 text-xs font-bold text-gray-900 uppercase focus:border-[#D4AF37] transition duration-200" 
+                    placeholder="e.g. EK770" 
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-[11px] text-gray-500 font-bold uppercase tracking-wider block">Meet & Greet Specific Protocol</label>
+                  <input 
+                    type="text" 
+                    value={tForm.meet || ''} 
+                    onChange={e => setTForm({ ...tForm, meet: e.target.value })}
+                    className="w-full h-11 px-4 rounded-xl border border-gray-200 text-xs font-semibold text-gray-800 focus:border-[#D4AF37] transition duration-200" 
+                    placeholder="e.g. Meet outside gate 4 with bottled water" 
+                  />
+                </div>
+
+              </div>
             </div>
-            <div>
-              <label className="lbl">Airport Parking Fees (R)</label>
-              <input type="number" value={tForm.parking || 0} onChange={e => setTForm({ ...tForm, parking: Number(e.target.value) })} className="field-input font-bold" />
+
+            {/* GROUP 3: Intermediate Waypoint Builder */}
+            <div className="bg-white rounded-[20px] p-6 border border-gray-100 shadow-sm space-y-6">
+              <h3 className="text-xs uppercase font-bold text-[#1A3326] tracking-wider border-b border-gray-100 pb-2 flex items-center gap-2">
+                <MapPin size={14} className="text-[#D4AF37]" /> Intermediate Routing Checkpoints (Stopovers)
+              </h3>
+
+              {waypointsList.length > 0 && (
+                <div className="flex items-center gap-2 p-4 bg-emerald-50/50 border border-emerald-100 rounded-xl text-xs flex-wrap">
+                  <span className="font-bold text-gray-800">{tForm.from || 'Pick-up'}</span>
+                  {waypointsList.map((w, idx) => (
+                    <React.Fragment key={w.id}>
+                      <ArrowRight size={12} className="text-gray-400" />
+                      <div className="bg-white border border-[#D4AF37]/30 px-3 py-1.5 rounded-lg flex items-center gap-2 shadow-sm">
+                        <span className="font-bold text-[#1A3326]">{w.location}</span>
+                        {w.waitTime && <span className="text-[9px] text-gray-400">({w.waitTime} Wait)</span>}
+                      </div>
+                    </React.Fragment>
+                  ))}
+                  <ArrowRight size={12} className="text-gray-400" />
+                  <span className="font-bold text-gray-800">{tForm.to || 'Destination'}</span>
+                </div>
+              )}
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <input 
+                  type="text" 
+                  value={waypointLoc} 
+                  onChange={e => setWaypointLoc(e.target.value)}
+                  className="w-full h-11 px-4 rounded-xl border border-gray-200 text-xs focus:border-[#D4AF37]" 
+                  placeholder="e.g. Kirstenbosch Botanical Gardens (Stopover)" 
+                />
+                <input 
+                  type="text" 
+                  value={waypointWait} 
+                  onChange={e => setWaypointWait(e.target.value)}
+                  className="w-full h-11 px-4 rounded-xl border border-gray-200 text-xs focus:border-[#D4AF37]" 
+                  placeholder="Optional Wait Duration (e.g. 1 hour)" 
+                />
+              </div>
+
+              <div className="flex justify-start">
+                <button 
+                  onClick={handleAddWaypoint} 
+                  className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl border border-gray-200 bg-white hover:bg-gray-50 text-[11px] font-bold text-gray-700 shadow-sm transition"
+                >
+                  <Plus size={12} /> Append Logistics Milestone
+                </button>
+              </div>
+
+              {waypointsList.length > 0 && (
+                <div className="space-y-2 border-t border-gray-50 pt-4">
+                  {waypointsList.map((w, idx) => (
+                    <div key={w.id} className="flex justify-between items-center text-xs bg-slate-50 border border-slate-100 p-3 rounded-xl">
+                      <span>
+                        <strong className="text-gray-800">Check-point #{idx + 1}: {w.location}</strong> 
+                        {w.waitTime && ` (Wait / Stay duration: ${w.waitTime})`}
+                      </span>
+                      <button 
+                        onClick={() => handleRemoveWaypoint(w.id)} 
+                        className="text-rose-600 hover:text-rose-700 font-bold transition text-[11px]"
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
+
+            {/* GROUP 4: Dispatch details */}
+            <div className="bg-white rounded-[20px] p-6 border border-gray-100 shadow-sm space-y-6">
+              <h3 className="text-xs uppercase font-bold text-[#1A3326] tracking-wider border-b border-gray-100 pb-2 flex items-center gap-2">
+                <Users size={14} className="text-[#D4AF37]" /> Chauffeur, Driver & Fleet Vehicles
+              </h3>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                
+                <div className="space-y-1.5">
+                  <label className="text-[11px] text-gray-500 font-bold uppercase tracking-wider block">Chauffeur Driver</label>
+                  <select 
+                    value={tForm.driver || ''} 
+                    onChange={handleDriverChange}
+                    className="w-full h-11 px-4 rounded-xl border border-gray-200 text-xs font-semibold text-gray-700 bg-white hover:border-[#D4AF37] focus:border-[#D4AF37] transition duration-200"
+                  >
+                    <option value="">Choose Driver...</option>
+                    {DB_DEFAULT.drivers.map(d => (
+                      <option key={d.name} value={d.name}>{d.name} — {d.phone}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-[11px] text-gray-500 font-bold uppercase tracking-wider block">Driver Contact Line</label>
+                  <input 
+                    type="text" 
+                    value={tForm.driverPhone || ''} 
+                    onChange={e => setTForm({ ...tForm, driverPhone: e.target.value })}
+                    className="w-full h-11 px-4 rounded-xl border border-gray-200 text-xs font-semibold text-gray-800 focus:border-[#D4AF37] transition duration-200" 
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-[11px] text-gray-500 font-bold uppercase tracking-wider block">Fleet Vehicle Model</label>
+                  <input 
+                    type="text" 
+                    value={tForm.vehicle || ''} 
+                    onChange={e => setTForm({ ...tForm, vehicle: e.target.value })}
+                    className="w-full h-11 px-4 rounded-xl border border-gray-200 text-xs font-semibold text-gray-800 focus:border-[#D4AF37] transition duration-200" 
+                    placeholder="e.g. Mercedes V-Class SUV"
+                  />
+                </div>
+
+              </div>
+            </div>
+
+            {/* GROUP 5: Luggage & Passenger quantities */}
+            <div className="bg-white rounded-[20px] p-6 border border-gray-100 shadow-sm space-y-6">
+              <h3 className="text-xs uppercase font-bold text-[#1A3326] tracking-wider border-b border-gray-100 pb-2 flex items-center gap-2">
+                <Users size={14} className="text-[#D4AF37]" /> Travelers & Baggage Counts
+              </h3>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+                <div className="space-y-1.5">
+                  <label className="text-[11px] text-gray-500 font-bold uppercase tracking-wider block">Hand Baggage (Count)</label>
+                  <input 
+                    type="number" 
+                    value={tForm.bagHand || 0} 
+                    onChange={e => setTForm({ ...tForm, bagHand: Number(e.target.value) })} 
+                    className="w-full h-11 px-4 rounded-xl border border-gray-200 text-xs font-semibold text-gray-800 focus:border-[#D4AF37] transition duration-200" 
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-[11px] text-gray-500 font-bold uppercase tracking-wider block">Checked Bags (Count)</label>
+                  <input 
+                    type="number" 
+                    value={tForm.bagCheck || 0} 
+                    onChange={e => setTForm({ ...tForm, bagCheck: Number(e.target.value) })} 
+                    className="w-full h-11 px-4 rounded-xl border border-gray-200 text-xs font-semibold text-gray-800 focus:border-[#D4AF37] transition duration-200" 
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-[11px] text-gray-500 font-bold uppercase tracking-wider block">Oversized Cargo</label>
+                  <input 
+                    type="number" 
+                    value={tForm.bagOver || 0} 
+                    onChange={e => setTForm({ ...tForm, bagOver: Number(e.target.value) })} 
+                    className="w-full h-11 px-4 rounded-xl border border-gray-200 text-xs font-semibold text-gray-800 focus:border-[#D4AF37] transition duration-200" 
+                  />
+                </div>
+              </div>
+
+              {/* Passenger selection */}
+              <div className="space-y-2 pt-2">
+                <label className="text-[11px] text-gray-500 font-bold uppercase block">Roster Travelers Scheduled for Transfer</label>
+                <div className="flex flex-wrap gap-2.5">
+                  {state.guests.length === 0 ? (
+                    <span className="text-xs text-gray-400 italic">No travelers available on group roster.</span>
+                  ) : (
+                    state.guests.map(g => {
+                      const isSelected = tForm.paxIds?.includes(g.id);
+                      return (
+                        <span 
+                          key={g.id} 
+                          onClick={() => togglePassengerSelection(g.id)}
+                          className={`px-4 py-2 rounded-xl text-xs font-semibold cursor-pointer border select-none transition duration-150 flex items-center gap-1.5 hover:translate-y-[-1px] ${
+                            isSelected 
+                              ? 'bg-emerald-50 border-[#D4AF37] text-[#1A3326]' 
+                              : 'bg-white border-gray-200 text-gray-500 hover:border-gray-300'
+                          }`}
+                        >
+                          {isSelected && <Check size={12} className="text-[#D4AF37]" />}
+                          {g.first} {g.last} ({g.age})
+                        </span>
+                      );
+                    })
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* GROUP 6: Financial costings */}
+            <div className="bg-white rounded-[20px] p-6 border border-gray-100 shadow-sm space-y-6">
+              <h3 className="text-xs uppercase font-bold text-[#1A3326] tracking-wider border-b border-gray-100 pb-2 flex items-center gap-2">
+                <Clock size={14} className="text-[#D4AF37]" /> Ground Logistics Costs (ZAR)
+              </h3>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div className="space-y-1.5">
+                  <label className="text-[11px] text-gray-500 font-bold uppercase tracking-wider block">Net Base Cost (R)</label>
+                  <input 
+                    type="number" 
+                    value={tForm.cost || 0} 
+                    onChange={e => setTForm({ ...tForm, cost: Number(e.target.value) })} 
+                    className="w-full h-11 px-4 rounded-xl border border-gray-200 text-xs font-bold text-gray-900 focus:border-[#D4AF37] transition duration-200" 
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-[11px] text-gray-500 font-bold uppercase tracking-wider block">Highway Tolls (R)</label>
+                  <input 
+                    type="number" 
+                    value={tForm.tolls || 0} 
+                    onChange={e => setTForm({ ...tForm, tolls: Number(e.target.value) })} 
+                    className="w-full h-11 px-4 rounded-xl border border-gray-200 text-xs font-bold text-gray-900 focus:border-[#D4AF37] transition duration-200" 
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-[11px] text-gray-500 font-bold uppercase tracking-wider block">Airport Parking Fees (R)</label>
+                  <input 
+                    type="number" 
+                    value={tForm.parking || 0} 
+                    onChange={e => setTForm({ ...tForm, parking: Number(e.target.value) })} 
+                    className="w-full h-11 px-4 rounded-xl border border-gray-200 text-xs font-bold text-gray-900 focus:border-[#D4AF37] transition duration-200" 
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* GROUP 7: Vehicle config tags & Amenities */}
+            <div className="bg-white rounded-[20px] p-6 border border-gray-100 shadow-sm space-y-6">
+              <h3 className="text-xs uppercase font-bold text-[#1A3326] tracking-wider border-b border-gray-100 pb-2 flex items-center gap-2">
+                <Tag size={14} className="text-[#D4AF37]" /> Fleet Configurations & Amenities
+              </h3>
+
+              <div className="space-y-4">
+                <div>
+                  <label className="text-[11px] text-gray-400 font-bold uppercase block tracking-wider mb-2.5">Chauffeur Seating Config (Select multiple)</label>
+                  <div className="flex flex-wrap gap-2">
+                    {['Child Booster Seat', 'Rear-Facing Infant seat', 'Extra legroom row', 'Front-Passenger preferred', 'Wheelchair tie-down ready'].map(s => {
+                      const isSelected = tForm.seats?.includes(s);
+                      return (
+                        <span 
+                          key={s} 
+                          onClick={() => toggleTFormTag('seats', s)}
+                          className={`px-3.5 py-2 rounded-xl text-[11px] font-semibold cursor-pointer border select-none transition-all ${
+                            isSelected 
+                              ? 'bg-emerald-50 border-[#D4AF37] text-[#1A3326]' 
+                              : 'bg-white border-gray-100 text-gray-500 hover:border-gray-200'
+                          }`}
+                        >
+                          {s}
+                        </span>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                <div>
+                  <label className="text-[11px] text-gray-400 font-bold uppercase block tracking-wider mb-2.5">Bespoke In-Vehicle Amenities</label>
+                  <div className="flex flex-wrap gap-2">
+                    {['Bottled Spring Water', 'Sparkling Juices', 'WiFi Hotspot Access', 'Local SIM Card pack', 'Dry cooling towels', 'Universal USB Chargers'].map(sp => {
+                      const isSelected = tForm.special?.includes(sp);
+                      return (
+                        <span 
+                          key={sp} 
+                          onClick={() => toggleTFormTag('special', sp)}
+                          className={`px-3.5 py-2 rounded-xl text-[11px] font-semibold cursor-pointer border select-none transition-all ${
+                            isSelected 
+                              ? 'bg-emerald-50 border-[#D4AF37] text-[#1A3326]' 
+                              : 'bg-white border-gray-100 text-gray-500 hover:border-gray-200'
+                          }`}
+                        >
+                          {sp}
+                        </span>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* GROUP 8: Logistics Notes */}
+            <div className="bg-white rounded-[20px] p-6 border border-gray-100 shadow-sm space-y-3">
+              <h3 className="text-xs uppercase font-bold text-[#1A3326] tracking-wider border-b border-gray-100 pb-2 flex items-center gap-2">
+                <Tag size={14} className="text-[#D4AF37]" /> Internal Logistics Coordination Notes
+              </h3>
+              <textarea 
+                value={tForm.notes || ''} 
+                onChange={e => setTForm({ ...tForm, notes: e.target.value })}
+                className="w-full p-4 rounded-xl border border-gray-200 text-xs font-medium focus:border-[#D4AF37] transition"
+                placeholder="e.g. Flight booked via Skywards miles, business class lounge passes issued, infant bassinet requested in bulkhead row..."
+                style={{ resize: 'vertical', minHeight: '100px' }}
+              />
+            </div>
+
           </div>
 
-          <div className="mb-4">
-            <label className="lbl">Logistics Driver Instructions</label>
-            <textarea 
-              value={tForm.notes || ''} 
-              onChange={e => setTForm({ ...tForm, notes: e.target.value })}
-              className="field-input font-medium"
-              placeholder="e.g. Pick up group in arrivals hall with paging board, assist grandma with walking difficulties, fit booster seats in row 3..."
-              style={{ resize: 'vertical', minHeight: '85px' }}
-            />
+          {/* Sticky footer for action buttons */}
+          <div className="p-6 bg-gray-50 border-t border-gray-100 flex justify-end gap-3.5">
+            <button 
+              onClick={() => setEditingTransferId(null)} 
+              className="px-6 py-3 rounded-xl border border-gray-200 bg-white hover:bg-gray-50 text-xs font-bold text-gray-700 shadow-sm transition"
+            >
+              Cancel
+            </button>
+            <button 
+              onClick={handleSaveTransfer} 
+              className="px-6 py-3 rounded-xl bg-[#1A3326] text-white hover:bg-[#12241b] text-xs font-extrabold shadow-md hover:translate-y-[-1px] transition duration-150"
+            >
+              Save Dispatch Rules
+            </button>
           </div>
 
-          <div className="flex justify-end gap-2 border-t border-gray-200 pt-3">
-            <button onClick={() => setEditingTransferId(null)} className="btn2">Cancel</button>
-            <button onClick={handleSaveTransfer} className="btn1"><Check size={14} /> Schedule Job</button>
-          </div>
         </div>
       )}
 
-      {/* ROSTER COVERAGE WARNING CHECKS */}
-      {state.transfers.length > 0 && (
-        <div className="bg-[#fef3c7] border border-[#fde68a] rounded-md p-4 text-[11px] text-[#92400e] space-y-1">
-          <p className="font-bold flex items-center gap-1.5"><AlertTriangle size={14} /> Operational Ground Integrity Check</p>
-          <ul className="list-disc list-inside space-y-0.5 text-gray-600">
-            {state.transfers.some(t => t.paxCount === 0) && (
-              <li>Warning: One or more transfers has ZERO passengers assigned! Please verify split travel routing.</li>
-            )}
-            {state.guests.some(g => !state.transfers.some(t => t.paxIds.includes(g.id))) ? (
-              <li>
-                Notice: Some roster members have no transfer scheduled: {state.guests.filter(g => !state.transfers.some(t => t.paxIds.includes(g.id))).map(g => `${g.first} ${g.last}`).join(', ')}
-              </li>
-            ) : (
-              <li>All registered guests are covered by at least one ground logistics transfer job!</li>
-            )}
-          </ul>
-        </div>
-      )}
-
-      {/* TRANSFERS LIST */}
-      <div className="space-y-4">
+      {/* REGISTERED TRANSFERS LIST */}
+      <div className="space-y-6">
         {state.transfers.length === 0 ? (
-          <div className="text-center py-10 bg-white border border-gray-200 rounded-lg text-gray-400 text-sm italic">
-            No transfers scheduled. Click "Schedule Transfer" to allocate driver routes.
+          <div className="text-center py-16 bg-white border border-gray-100 rounded-[24px] shadow-sm max-w-lg mx-auto space-y-4 animate-in zoom-in-95">
+            <div className="w-16 h-16 bg-emerald-50 text-[#065f46] rounded-full flex items-center justify-center mx-auto shadow-inner">
+              <Car size={24} />
+            </div>
+            <div className="space-y-1">
+              <h4 className="font-bold text-gray-900 text-sm">No Fleet Transfers Scheduled</h4>
+              <p className="text-xs text-gray-400 max-w-xs mx-auto leading-relaxed">
+                Organize private meet and greet pickups, inter-lodge transfers, and airport shuttle routes.
+              </p>
+            </div>
+            <button 
+              onClick={handleOpenAddForm} 
+              className="px-4 py-2.5 bg-[#1A3326] text-white rounded-xl text-xs font-bold shadow hover:bg-[#12241b] transition"
+            >
+              Schedule First Transfer
+            </button>
           </div>
         ) : (
           state.transfers.map(t => {
+            const grandTotal = t.cost + t.tolls + t.parking;
             const assignedPax = state.guests.filter(g => t.paxIds.includes(g.id));
-            const subtotalCost = t.cost + t.tolls + t.parking;
 
             return (
-              <div key={t.id} className="card hover:shadow-md transition">
-                <div className="flex items-center justify-between border-b border-gray-200 pb-2.5 mb-3">
-                  <div className="flex items-center gap-2">
-                    <span className="w-8 h-8 rounded bg-amber-50 text-amber-600 flex items-center justify-center border border-amber-200">
-                      <Car size={14} />
-                    </span>
+              <div 
+                key={t.id} 
+                className="bg-white rounded-[24px] border border-gray-100 p-6 md:p-8 shadow-sm hover:shadow-md transition-all duration-300 group relative overflow-hidden"
+              >
+                {/* Visual side badge */}
+                <div className="absolute top-0 left-0 w-1.5 h-full bg-[#D4AF37]" />
+
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-gray-50 pb-5 mb-5">
+                  <div className="flex items-center gap-3.5">
+                    <div className="w-12 h-12 rounded-2xl bg-emerald-50 text-[#065f46] flex items-center justify-center border border-emerald-100 shadow-sm group-hover:scale-105 transition-transform duration-200">
+                      <Car size={18} />
+                    </div>
                     <div>
-                      <span className="text-xs font-bold text-gray-500 uppercase tracking-wider">{t.type}</span>
-                      <h4 className="text-xs font-bold text-gray-900 mt-0.5">Job Ref: VT-TR-{t.id.toString().slice(-4)} • Status: <span className="text-accent font-semibold">{t.status}</span></h4>
+                      <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest block">{t.type} Logistics</span>
+                      <h3 className="font-bold text-gray-900 text-sm mt-0.5">
+                        {t.vehicle} • <span className="font-sans text-xs text-gray-500">Chauffeur: <strong className="text-gray-900 font-semibold">{t.driver || 'Unassigned'}</strong></span>
+                      </h3>
                     </div>
                   </div>
-                  <div className="flex items-center gap-1.5">
-                    <button onClick={() => handleEditTransfer(t)} className="w-7 h-7 rounded flex items-center justify-center text-gray-400 hover:text-accent hover:bg-accentLight transition">
-                      <Edit3 size={12} />
+
+                  <div className="flex items-center gap-2">
+                    <button 
+                      onClick={() => handleEditTransfer(t)} 
+                      className="w-9 h-9 rounded-xl border border-gray-200 bg-white text-gray-400 hover:text-gray-900 hover:border-gray-300 flex items-center justify-center transition shadow-sm"
+                    >
+                      <Edit3 size={14} />
                     </button>
-                    <button onClick={() => onRemoveTransfer(t.id)} className="w-7 h-7 rounded flex items-center justify-center text-gray-400 hover:text-rose hover:bg-roseLight transition">
-                      <Trash2 size={12} />
+                    <button 
+                      onClick={() => onRemoveTransfer(t.id)} 
+                      className="w-9 h-9 rounded-xl border border-rose-100 bg-rose-50/20 text-rose-500 hover:text-white hover:bg-rose-500 flex items-center justify-center transition shadow-sm"
+                    >
+                      <Trash2 size={14} />
                     </button>
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 sm:grid-cols-5 gap-3.5 text-xs text-gray-600 mb-4">
-                  <div>
-                    <span className="block font-medium text-gray-400">Route Pick-up</span>
-                    <strong className="text-gray-900 font-bold">{t.from}</strong>
+                {/* Logistics grid */}
+                <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-6 text-xs text-gray-600 mb-5">
+                  <div className="col-span-2 sm:col-span-1">
+                    <span className="block font-bold text-[9px] text-gray-400 uppercase tracking-widest mb-1">Pick-up Location</span>
+                    <strong className="text-[#1A3326] font-bold">{t.from}</strong>
+                  </div>
+                  <div className="col-span-2 sm:col-span-1">
+                    <span className="block font-bold text-[9px] text-gray-400 uppercase tracking-widest mb-1">Drop-off Location</span>
+                    <strong className="text-gray-900 font-semibold">{t.to}</strong>
                   </div>
                   <div>
-                    <span className="block font-medium text-gray-400">Route Drop-off</span>
-                    <strong className="text-gray-900 font-bold">{t.to}</strong>
+                    <span className="block font-bold text-[9px] text-gray-400 uppercase tracking-widest mb-1">Date & Departure</span>
+                    <strong className="text-gray-900 font-semibold">{t.date} • {t.time || '—'}</strong>
                   </div>
                   <div>
-                    <span className="block font-medium text-gray-400">Schedule Time</span>
-                    <strong className="text-gray-900 font-medium">{t.date} • {t.time || 'TBD'}</strong>
+                    <span className="block font-bold text-[9px] text-gray-400 uppercase tracking-widest mb-1">Greet Placard Text</span>
+                    <strong className="text-gray-900 font-medium italic truncate block">{t.sign || 'No Sign board'}</strong>
                   </div>
-                  <div>
-                    <span className="block font-medium text-gray-400">Driver & Fleet</span>
-                    <strong className="text-gray-900 font-medium">{t.driver || 'Unassigned'} • <span className="text-gray-400">{t.vehicle}</span></strong>
-                  </div>
-                  <div className="text-right sm:border-l sm:border-gray-100 sm:pl-3">
-                    <span className="block font-semibold text-accent">Retail Cost</span>
-                    <strong className="text-sm font-bold text-gray-900 font-serif">R {subtotalCost.toLocaleString()}</strong>
+                  <div className="text-left md:text-right border-l border-gray-100 pl-4">
+                    <span className="block font-bold text-[9px] text-[#D4AF37] uppercase tracking-widest mb-1">Transfer Logistics Sum</span>
+                    <strong className="text-base font-bold text-[#1A3326]">R {grandTotal.toLocaleString()}</strong>
                   </div>
                 </div>
 
-                {/* WAYPOINTS DISPLAY */}
+                {/* Waypoints line */}
                 {t.waypoints && t.waypoints.length > 0 && (
-                  <div className="bg-gray-50 border border-gray-200 rounded-md p-2.5 mb-3 text-[11px]">
-                    <span className="font-bold text-gray-700 block mb-1">Route Stops & Pitstops:</span>
-                    <div className="flex items-center gap-1.5 flex-wrap">
-                      <span className="bg-white border border-gray-200 px-2 py-0.5 rounded shadow-sm text-gray-600">{t.from}</span>
-                      {t.waypoints.map((wp, wIdx) => (
-                        <React.Fragment key={wp.id}>
-                          <span className="text-gray-400">→</span>
-                          <span className="bg-[#eff6ff] border border-blue-200 px-2.5 py-0.5 rounded text-[10px] text-blue-800 font-medium">
-                            {wp.location} {wp.waitTime && `(${wp.waitTime})`}
-                          </span>
+                  <div className="bg-slate-50 border border-slate-100 rounded-2xl p-4 mb-5 text-[11px] text-gray-500 space-y-2">
+                    <span className="font-bold text-[#065f46] block flex items-center gap-1.5">
+                      <MapPin size={12} className="text-[#D4AF37]" /> Logistical Checkpoint Waypoints
+                    </span>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="font-bold text-gray-800 bg-white border border-gray-200 px-2.5 py-1 rounded-lg shadow-xs">{t.from}</span>
+                      {t.waypoints.map((w) => (
+                        <React.Fragment key={w.id}>
+                          <ArrowRight size={10} className="text-gray-400" />
+                          <div className="bg-[#1A3326]/5 border border-[#1A3326]/10 px-2.5 py-1 rounded-lg text-gray-700 flex items-center gap-1.5 font-medium">
+                            <span>{w.location}</span>
+                            {w.waitTime && <span className="text-[9px] text-[#D4AF37] font-bold">({w.waitTime})</span>}
+                          </div>
                         </React.Fragment>
                       ))}
-                      <span className="text-gray-400">→</span>
-                      <span className="bg-white border border-gray-200 px-2 py-0.5 rounded shadow-sm text-gray-600">{t.to}</span>
+                      <ArrowRight size={10} className="text-gray-400" />
+                      <span className="font-bold text-gray-800 bg-white border border-gray-200 px-2.5 py-1 rounded-lg shadow-xs">{t.to}</span>
                     </div>
                   </div>
                 )}
 
-                {/* Assigned passengers */}
-                <div className="border-t border-gray-100 pt-3 flex flex-wrap items-center justify-between gap-2.5 text-[11px]">
-                  <div className="flex flex-wrap items-center gap-1.5">
-                    <span className="font-bold text-gray-400 uppercase tracking-wider mr-1">Assigned Pax:</span>
+                {/* Additional tags / configurations */}
+                <div className="flex flex-wrap gap-2.5 mb-5">
+                  {t.seats && t.seats.map(st => (
+                    <span key={st} className="text-[10px] bg-emerald-50/50 text-[#1A3326] border border-emerald-100 px-2.5 py-1 rounded-lg font-semibold">{st}</span>
+                  ))}
+                  {t.special && t.special.map(sp => (
+                    <span key={sp} className="text-[10px] bg-yellow-50/50 text-[#1A3326] border border-[#D4AF37]/20 px-2.5 py-1 rounded-lg font-semibold">{sp}</span>
+                  ))}
+                </div>
+
+                {/* Assigned travelers & baggage footer */}
+                <div className="border-t border-gray-50 pt-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                  <div className="flex flex-wrap items-center gap-2 text-xs">
+                    <span className="font-bold text-gray-400 uppercase tracking-wider">Assigned Travelers:</span>
                     {assignedPax.length === 0 ? (
-                      <span className="text-red-500 italic font-bold">No passengers assigned!</span>
+                      <span className="text-red-500 italic">No guests mapped to transfer!</span>
                     ) : (
                       assignedPax.map(ap => (
-                        <span key={ap.id} className="bg-gray-100 text-gray-800 border border-gray-200 px-2 py-0.5 rounded-sm font-semibold">{ap.first} {ap.last}</span>
+                        <span 
+                          key={ap.id} 
+                          className="bg-gray-50 text-gray-700 border border-gray-100 px-2.5 py-1 rounded-lg font-semibold text-[11px]"
+                        >
+                          {ap.first} {ap.last}
+                        </span>
                       ))
                     )}
                   </div>
 
-                  {t.sign && (
-                    <div className="bg-[#ecfdf5] text-accent border border-[#a7f3d0] font-bold text-[10px] px-2.5 py-1 rounded">
-                      WELCOME BOARD: "{t.sign}"
-                    </div>
-                  )}
+                  <div className="text-[10px] text-gray-400 font-bold uppercase tracking-wider flex items-center gap-4">
+                    <span>Hand: {t.bagHand || 0}</span>
+                    <span className="text-gray-200">|</span>
+                    <span>Checked: {t.bagCheck || 0}</span>
+                    {t.bagOver && t.bagOver > 0 ? (
+                      <>
+                        <span className="text-gray-200">|</span>
+                        <span className="text-yellow-600 font-bold">Oversize Cargo: {t.bagOver}</span>
+                      </>
+                    ) : null}
+                    {t.driverPhone && (
+                      <>
+                        <span className="text-gray-200">|</span>
+                        <a href={`tel:${t.driverPhone}`} className="text-[#D4AF37] flex items-center gap-1.5 hover:underline font-bold">
+                          <Phone size={10} /> Call SIPHO
+                        </a>
+                      </>
+                    )}
+                  </div>
                 </div>
 
                 {t.notes && (
-                  <div className="bg-gray-50 border border-gray-200 border-dashed p-2.5 rounded-sm text-[11px] text-gray-500 italic mt-3">
-                    <strong>Logistics Dispatcher Notes:</strong> {t.notes}
+                  <div className="bg-yellow-50/50 border border-[#D4AF37]/10 p-3 rounded-xl text-[11px] text-gray-500 mt-4">
+                    <strong>Coordination Notes:</strong> {t.notes}
                   </div>
                 )}
+
               </div>
             );
           })

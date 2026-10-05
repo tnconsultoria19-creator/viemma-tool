@@ -1,6 +1,6 @@
 {
   "name": "Viemma Tours - Bespoke Africa Workspace OS",
-  "description": "An elegant, comprehensive planning workspace for Viemma Tours, enabling intake, flights, transfers, rooming, activities, finance, and professional PDF generation.",
+  "description": "Multi-trip operations workspace and single-source-of-truth publishing platform for Viemma Tours with role-controlled Client, Agent, and Ground Sheet presentations.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

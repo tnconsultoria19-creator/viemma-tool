@@ -1,7 +1,34 @@
-import React, { useState, useEffect } from 'react';
-import { AppState, Guest } from '../types';
-import { COUNTRIES, GUEST_DIETARY_OPTIONS, GUEST_MOBILITY_OPTIONS, GUEST_MEDICAL_OPTIONS, GUEST_PREF_OPTIONS } from '../dbDefaults';
-import { Users, User, ShieldAlert, Award, ChevronDown, Check, Trash2, Edit3, Plus, Crown, Info } from 'lucide-react';
+import React, { useState } from 'react';
+import { AppState, Guest, GroupManagement } from '../types';
+import { COUNTRIES } from '../dbDefaults';
+import { 
+  Users, 
+  User, 
+  ShieldAlert, 
+  Award, 
+  ChevronDown, 
+  Check, 
+  Trash2, 
+  Edit3, 
+  Plus, 
+  Crown, 
+  Info,
+  Calendar,
+  Globe,
+  Tag,
+  Briefcase,
+  Sliders,
+  X,
+  Phone,
+  Mail,
+  Heart,
+  Compass,
+  AlertCircle,
+  Accessibility,
+  Egg,
+  Coffee,
+  Sparkles
+} from 'lucide-react';
 
 interface IntakeViewProps {
   state: AppState;
@@ -32,12 +59,33 @@ export const IntakeView: React.FC<IntakeViewProps> = ({
   const [showModalCountryDD, setShowModalCountryDD] = useState(false);
   const [expandedGuestId, setExpandedGuestId] = useState<number | null>(null);
 
+  // Active sub-tab inside the guest edit modal to keep the form clean and organized (Progressive Disclosure)
+  const [modalTab, setModalTab] = useState<'basic' | 'accessibility' | 'dietary' | 'preferences'>('basic');
+
+  // Intelligent Group Management State Fallback
+  const groupMgmt: GroupManagement = state.groupManagement || {
+    groupType: 'Families',
+    sharingPreferences: 'Standard family arrangement. Couple in master lodge; children in twin rooms.',
+    requiresPrivateRoomIds: [],
+    staffIds: [],
+    notes: 'Require close proximity between master lodge and children suites.'
+  };
+
+  const handleUpdateGroupMgmt = (updates: Partial<GroupManagement>) => {
+    onUpdateState({
+      groupManagement: {
+        ...groupMgmt,
+        ...updates
+      }
+    });
+  };
+
   const closeModal = () => {
     setModalOpen(false);
     setModalGuest({});
+    setModalTab('basic');
   };
 
-  // Filter countries locally
   const filteredCountries = countrySearch.trim()
     ? COUNTRIES.filter(c => c.substring(4).toLowerCase().includes(countrySearch.toLowerCase().trim())).slice(0, 8)
     : [];
@@ -46,7 +94,6 @@ export const IntakeView: React.FC<IntakeViewProps> = ({
     ? COUNTRIES.filter(c => c.substring(4).toLowerCase().includes(modalCountrySearch.toLowerCase().trim())).slice(0, 8)
     : [];
 
-  // Recalculate duration
   const calcDuration = (start: string, end: string) => {
     if (!start || !end) return 'Select dates';
     const d1 = new Date(start);
@@ -81,23 +128,6 @@ export const IntakeView: React.FC<IntakeViewProps> = ({
     }
   };
 
-  const handleGroupConditionToggle = (type: 'dietary' | 'mobility' | 'medical' | 'prefs', val: string) => {
-    const currentList = [...state.groupConditions[type]];
-    let updated: string[];
-    if (val === 'None') {
-      updated = [];
-    } else {
-      const listWithoutNone = currentList.filter(x => x !== 'None');
-      if (listWithoutNone.includes(val)) {
-        updated = listWithoutNone.filter(x => x !== val);
-      } else {
-        updated = [...listWithoutNone, val];
-      }
-    }
-    onUpdateGroupConditions({ [type]: updated });
-  };
-
-  // AGENT PANEL POPULATOR
   const handleAgentSelect = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const val = e.target.value;
     const agents = {
@@ -117,644 +147,373 @@ export const IntakeView: React.FC<IntakeViewProps> = ({
     });
   };
 
-  // OPEN GUEST MODAL FOR ADD/EDIT
-  const handleOpenGuestModal = (g?: Guest) => {
-    if (g) {
-      setModalGuest({ ...g });
-      setModalCountrySearch(g.country);
+  const handleOpenGuestModal = (g?: Partial<Guest>) => {
+    if (g && (g.id || g.first)) {
+      setModalGuest({ ...g } as Partial<Guest>);
+      setModalCountrySearch(g.nationality || g.country || '');
     } else {
       setModalGuest({
         first: '',
         last: '',
-        age: 'Adult',
-        country: '',
-        diet: [],
-        mob: [],
-        med: [],
-        pref: [],
-        notes: ''
+        preferredName: '',
+        nationality: state.client.country || '',
+        age: g?.age || 'Adult',
+        languagesSpoken: ['English'],
+        isLead: g?.isLead !== undefined ? g.isLead : state.guests.length === 0,
+        notes: '',
+        inheritCountry: g?.inheritCountry !== undefined ? g.inheritCountry : true,
+        inheritNationality: g?.inheritNationality !== undefined ? g.inheritNationality : true,
+        inheritEmergencyContact: g?.inheritEmergencyContact !== undefined ? g.inheritEmergencyContact : true,
+        accessibilityMobility: [],
+        accessibilityVision: [],
+        accessibilityHearing: [],
+        medicalOperationalNotes: '',
+        dietaryReligious: [],
+        dietaryLifestyle: [],
+        dietaryMedical: [],
+        dietaryPreferences: [],
+        preferencesAccommodation: [],
+        preferencesTransport: [],
+        preferencesInterests: []
       });
-      setModalCountrySearch('');
+      setModalCountrySearch(state.client.country || '');
     }
+
+    setModalTab('basic');
     setModalOpen(true);
   };
 
-  const handleSaveModalGuest = () => {
-    const f = modalGuest.first?.trim();
-    const l = modalGuest.last?.trim();
-    if (!f || !l) {
-      alert('First and Last names are required.');
-      return;
-    }
-
-    if (modalGuest.id) {
-      // Edit mode
-      onUpdateGuest(modalGuest.id, {
-        ...modalGuest,
-        country: modalCountrySearch
-      });
-    } else {
-      // Add mode
-      const newG: Guest = {
-        id: Date.now(),
-        first: f,
-        last: l,
-        age: modalGuest.age || 'Adult',
-        country: modalCountrySearch,
-        diet: modalGuest.diet || [],
-        mob: modalGuest.mob || [],
-        med: modalGuest.med || [],
-        pref: modalGuest.pref || [],
-        notes: modalGuest.notes || '',
-        isLead: state.guests.length === 0
-      };
-      onAddGuest(newG);
-    }
-    setModalOpen(false);
-    setModalGuest({});
-  };
-
-  // QUICK ADD TEMPLATES
-  const handleQuickAddTemplate = (type: 'couple' | 'family' | 'solo' | 'group8') => {
-    const lastName = state.client.name.split(' ').pop() || 'Guest';
-    const baseFields = { country: state.client.country, diet: [], mob: [], med: [], pref: [], notes: '' };
-
-    if (type === 'couple') {
-      onAddGuest({ ...baseFields, id: Date.now(), first: 'Guest 1', last: lastName, age: 'Adult', isLead: state.guests.length === 0 });
-      setTimeout(() => {
-        onAddGuest({ ...baseFields, id: Date.now() + 1, first: 'Guest 2', last: lastName, age: 'Adult', isLead: false });
-      }, 50);
-    } else if (type === 'family') {
-      onAddGuest({ ...baseFields, id: Date.now(), first: 'Adult 1', last: lastName, age: 'Adult', isLead: state.guests.length === 0 });
-      setTimeout(() => onAddGuest({ ...baseFields, id: Date.now() + 1, first: 'Adult 2', last: lastName, age: 'Adult', isLead: false }), 50);
-      setTimeout(() => onAddGuest({ ...baseFields, id: Date.now() + 2, first: 'Child 1', last: lastName, age: 'Child', isLead: false }), 100);
-      setTimeout(() => onAddGuest({ ...baseFields, id: Date.now() + 3, first: 'Child 2', last: lastName, age: 'Child', isLead: false }), 150);
-    } else if (type === 'solo') {
-      onAddGuest({ ...baseFields, id: Date.now(), first: 'Solo Guest', last: lastName, age: 'Adult', isLead: true });
-    } else if (type === 'group8') {
-      for (let i = 1; i <= 8; i++) {
-        setTimeout(() => {
-          onAddGuest({ ...baseFields, id: Date.now() + i, first: `Guest ${i}`, last: lastName, age: 'Adult', isLead: state.guests.length === 0 && i === 1 });
-        }, i * 50);
-      }
-    }
-  };
-
-  const toggleModalTag = (field: 'diet' | 'mob' | 'med' | 'pref', val: string) => {
-    const currentList = modalGuest[field] ? [...modalGuest[field]!] : [];
+  const toggleModalListTag = (field: keyof Guest, val: string) => {
+    const list = Array.isArray(modalGuest[field]) ? [...(modalGuest[field] as string[])] : [];
     let updated: string[];
-    if (currentList.includes(val)) {
-      updated = currentList.filter(x => x !== val);
+    if (list.includes(val)) {
+      updated = list.filter(x => x !== val);
     } else {
-      updated = [...currentList, val];
+      updated = [...list, val];
     }
     setModalGuest({ ...modalGuest, [field]: updated });
   };
 
+  const handleSaveModalGuest = () => {
+    if (!modalGuest.first || !modalGuest.last) {
+      alert('First and Last name are required.');
+      return;
+    }
+
+    const saved: Guest = {
+      id: modalGuest.id || Date.now(),
+      first: modalGuest.first,
+      last: modalGuest.last,
+      preferredName: modalGuest.preferredName || '',
+      nationality: modalCountrySearch || '🇺🇸 United States',
+      age: modalGuest.age || 'Adult',
+      languagesSpoken: modalGuest.languagesSpoken || ['English'],
+      isLead: modalGuest.isLead || false,
+      notes: modalGuest.notes || '',
+      accessibilityMobility: modalGuest.accessibilityMobility || [],
+      accessibilityVision: modalGuest.accessibilityVision || [],
+      accessibilityHearing: modalGuest.accessibilityHearing || [],
+      medicalOperationalNotes: modalGuest.medicalOperationalNotes || '',
+      dietaryReligious: modalGuest.dietaryReligious || [],
+      dietaryLifestyle: modalGuest.dietaryLifestyle || [],
+      dietaryMedical: modalGuest.dietaryMedical || [],
+      dietaryPreferences: modalGuest.dietaryPreferences || [],
+      preferencesAccommodation: modalGuest.preferencesAccommodation || [],
+      preferencesTransport: modalGuest.preferencesTransport || [],
+      preferencesInterests: modalGuest.preferencesInterests || [],
+      // Keep legacy lists synchronized for system compatibility
+      diet: [
+        ...(modalGuest.dietaryReligious || []),
+        ...(modalGuest.dietaryLifestyle || []),
+        ...(modalGuest.dietaryMedical || [])
+      ],
+      mob: modalGuest.accessibilityMobility || [],
+      med: modalGuest.medicalOperationalNotes ? [modalGuest.medicalOperationalNotes] : [],
+      pref: [
+        ...(modalGuest.preferencesAccommodation || []),
+        ...(modalGuest.preferencesTransport || [])
+      ],
+      country: modalCountrySearch || '🇺🇸 United States'
+    };
+
+    if (modalGuest.id) {
+      onUpdateGuest(saved.id, saved);
+    } else {
+      onAddGuest(saved);
+    }
+
+    if (saved.isLead && !state.client.name) {
+      onUpdateClient({ name: `${saved.first} ${saved.last} Group` });
+    }
+
+    closeModal();
+  };
+
+  const handleQuickAddTemplate = (type: 'couple' | 'family' | 'solo' | 'group8') => {
+    onUpdateState({ guests: [] });
+
+    const presets: Record<string, Guest[]> = {
+      couple: [
+        { 
+          id: 1, first: 'Arthur', last: 'Pendelton', preferredName: 'Arthur', age: 'Adult', nationality: '🇬🇧 United Kingdom', country: '🇬🇧 United Kingdom', isLead: true, notes: 'Lead traveler', languagesSpoken: ['English'],
+          accessibilityMobility: [], accessibilityVision: [], accessibilityHearing: [], medicalOperationalNotes: '',
+          dietaryReligious: [], dietaryLifestyle: [], dietaryMedical: [], dietaryPreferences: [],
+          preferencesAccommodation: ['King Bed', 'Quiet Room'], preferencesTransport: ['Front Seat'], preferencesInterests: ['Wine', 'Wellness']
+        },
+        { 
+          id: 2, first: 'Guinevere', last: 'Pendelton', preferredName: 'Gwen', age: 'Adult', nationality: '🇬🇧 United Kingdom', country: '🇬🇧 United Kingdom', isLead: false, notes: 'Celebrates anniversary', languagesSpoken: ['English', 'French'],
+          accessibilityMobility: [], accessibilityVision: [], accessibilityHearing: [], medicalOperationalNotes: '',
+          dietaryReligious: [], dietaryLifestyle: ['Vegetarian'], dietaryMedical: [], dietaryPreferences: [],
+          preferencesAccommodation: ['King Bed', 'Garden View'], preferencesTransport: ['Window Seat'], preferencesInterests: ['Wildlife', 'Photography']
+        }
+      ],
+      family: [
+        { 
+          id: 1, first: 'Michael', last: 'Vance', preferredName: 'Mike', age: 'Adult', nationality: '🇺🇸 United States', country: '🇺🇸 United States', isLead: true, notes: 'Father', languagesSpoken: ['English'],
+          accessibilityMobility: [], accessibilityVision: [], accessibilityHearing: [], medicalOperationalNotes: '',
+          dietaryReligious: [], dietaryLifestyle: [], dietaryMedical: [], dietaryPreferences: [],
+          preferencesAccommodation: ['King Bed'], preferencesTransport: ['Air Conditioning'], preferencesInterests: ['Wildlife', 'Photography']
+        },
+        { 
+          id: 2, first: 'Sarah', last: 'Vance', preferredName: 'Sarah', age: 'Adult', nationality: '🇺🇸 United States', country: '🇺🇸 United States', isLead: false, notes: 'Mother', languagesSpoken: ['English'],
+          accessibilityMobility: [], accessibilityVision: [], accessibilityHearing: [], medicalOperationalNotes: '',
+          dietaryReligious: [], dietaryLifestyle: [], dietaryMedical: ['Gluten Free'], dietaryPreferences: [],
+          preferencesAccommodation: ['King Bed'], preferencesTransport: ['Extra Leg Room'], preferencesInterests: ['Wellness', 'Relaxation']
+        },
+        { 
+          id: 3, first: 'Chloe', last: 'Vance', preferredName: 'Chloe', age: 'Teen', nationality: '🇺🇸 United States', country: '🇺🇸 United States', isLead: false, notes: 'Daughter', languagesSpoken: ['English'],
+          accessibilityMobility: [], accessibilityVision: [], accessibilityHearing: [], medicalOperationalNotes: '',
+          dietaryReligious: [], dietaryLifestyle: [], dietaryMedical: [], dietaryPreferences: [],
+          preferencesAccommodation: ['Twin Beds', 'Interleading Rooms'], preferencesTransport: ['Wi-Fi'], preferencesInterests: ['Adventure', 'Culture']
+        },
+        { 
+          id: 4, first: 'Toby', last: 'Vance', preferredName: 'Toby', age: 'Child', nationality: '🇺🇸 United States', country: '🇺🇸 United States', isLead: false, notes: 'Son', languagesSpoken: ['English'],
+          accessibilityMobility: [], accessibilityVision: [], accessibilityHearing: [], medicalOperationalNotes: '',
+          dietaryReligious: [], dietaryLifestyle: [], dietaryMedical: [], dietaryPreferences: ['Child Meals', 'Soft Foods'],
+          preferencesAccommodation: ['Twin Beds', 'Interleading Rooms'], preferencesTransport: ['Child Seat Required'], preferencesInterests: ['Wildlife']
+        }
+      ],
+      solo: [
+        { 
+          id: 1, first: 'Helena', last: 'Rostova', preferredName: 'Helena', age: 'Adult', nationality: '🇨🇦 Canada', country: '🇨🇦 Canada', isLead: true, notes: 'Private custom photographic tour', languagesSpoken: ['English', 'Russian'],
+          accessibilityMobility: [], accessibilityVision: [], accessibilityHearing: [], medicalOperationalNotes: '',
+          dietaryReligious: [], dietaryLifestyle: [], dietaryMedical: [], dietaryPreferences: [],
+          preferencesAccommodation: ['Quiet Room', 'High Floor'], preferencesTransport: ['Window Seat'], preferencesInterests: ['Photography', 'Bird Watching', 'Adventure']
+        }
+      ],
+      group8: [
+        { id: 1, first: 'John', last: 'Smith', preferredName: 'John', age: 'Adult', nationality: '🇺🇸 United States', country: '🇺🇸 United States', isLead: true, notes: '', languagesSpoken: ['English'] },
+        { id: 2, first: 'Jane', last: 'Smith', preferredName: 'Jane', age: 'Adult', nationality: '🇺🇸 United States', country: '🇺🇸 United States', isLead: false, notes: '', languagesSpoken: ['English'] },
+        { id: 3, first: 'Robert', last: 'Jones', preferredName: 'Bob', age: 'Adult', nationality: '🇺🇸 United States', country: '🇺🇸 United States', isLead: false, notes: '', languagesSpoken: ['English'] },
+        { id: 4, first: 'Alice', last: 'Jones', preferredName: 'Alice', age: 'Adult', nationality: '🇺🇸 United States', country: '🇺🇸 United States', isLead: false, notes: '', languagesSpoken: ['English'] },
+        { id: 5, first: 'David', last: 'Miller', preferredName: 'Dave', age: 'Adult', nationality: '🇺🇸 United States', country: '🇺🇸 United States', isLead: false, notes: '', languagesSpoken: ['English'] },
+        { id: 6, first: 'Emily', last: 'Miller', preferredName: 'Em', age: 'Adult', nationality: '🇺🇸 United States', country: '🇺🇸 United States', isLead: false, notes: '', languagesSpoken: ['English'] },
+        { id: 7, first: 'James', last: 'Davis', preferredName: 'Jim', age: 'Adult', nationality: '🇺🇸 United States', country: '🇺🇸 United States', isLead: false, notes: '', languagesSpoken: ['English'] },
+        { id: 8, first: 'Mary', last: 'Davis', preferredName: 'Mary', age: 'Adult', nationality: '🇺🇸 United States', country: '🇺🇸 United States', isLead: false, notes: '', languagesSpoken: ['English'] }
+      ]
+    };
+
+    if (presets[type]) {
+      presets[type].forEach(g => onAddGuest(g));
+      if (presets[type][0]) {
+        onUpdateClient({ 
+          name: `${presets[type][0].first} ${presets[type][0].last} Group`, 
+          country: presets[type][0].nationality || presets[type][0].country 
+        });
+      }
+    }
+  };
+
+  const toggleGroupPrivateRoom = (gId: number) => {
+    const list = [...groupMgmt.requiresPrivateRoomIds];
+    const updated = list.includes(gId) ? list.filter(id => id !== gId) : [...list, gId];
+    handleUpdateGroupMgmt({ requiresPrivateRoomIds: updated });
+  };
+
+  const toggleGroupStaff = (gId: number) => {
+    const list = [...groupMgmt.staffIds];
+    const updated = list.includes(gId) ? list.filter(id => id !== gId) : [...list, gId];
+    handleUpdateGroupMgmt({ staffIds: updated });
+  };
+
+  // Operational advisor metrics
+  const activeAccessibilityIssues = state.guests.filter(g => 
+    (g.accessibilityMobility && g.accessibilityMobility.length > 0) ||
+    (g.accessibilityVision && g.accessibilityVision.length > 0) ||
+    (g.accessibilityHearing && g.accessibilityHearing.length > 0)
+  );
+
+  const activeDietaryIssues = state.guests.filter(g => 
+    (g.dietaryReligious && g.dietaryReligious.length > 0) ||
+    (g.dietaryLifestyle && g.dietaryLifestyle.length > 0) ||
+    (g.dietaryMedical && g.dietaryMedical.length > 0) ||
+    (g.dietaryPreferences && g.dietaryPreferences.length > 0)
+  );
+
+  const countChildren = state.guests.filter(g => g.age === 'Child' || g.age === 'Infant').length;
+  const countStaff = state.guests.filter(g => groupMgmt.staffIds.includes(g.id)).length;
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-12 max-w-[1500px] mx-auto animate-in fade-in duration-500">
       
-      {/* SECTION: STATUS & SOURCE */}
-      <div className="card">
-        <div className="stitle"><i className="fa-solid fa-flag"></i> Booking Status & Source</div>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div>
-            <label className="lbl">Booking Priority</label>
-            <div className="flex flex-wrap gap-2">
-              {['hot', 'confirmed', 'exploratory', 'pending'].map(p => {
-                const icon = p === 'hot' ? 'fa-fire text-red-500' : p === 'confirmed' ? 'fa-check-circle text-green-600' : p === 'exploratory' ? 'fa-compass text-blue-500' : 'fa-clock text-amber-500';
-                return (
-                  <div 
-                    key={p} 
-                    onClick={() => onUpdateState({ priority: p as any })} 
-                    className={`chip ${state.priority === p ? 'active' : ''}`}
-                  >
-                    <i className={`fa-solid ${icon} text-[10px]`}></i>
-                    <span className="capitalize">{p} Lead</span>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-
-          <div>
-            <label className="lbl">Lead Source</label>
-            <div className="flex flex-wrap gap-2">
-              {['direct', 'agent', 'referral', 'website', 'social'].map(s => {
-                const icon = s === 'direct' ? 'fa-user' : s === 'agent' ? 'fa-handshake' : s === 'referral' ? 'fa-user-group' : s === 'website' ? 'fa-globe' : 'fa-instagram';
-                return (
-                  <div 
-                    key={s} 
-                    onClick={() => {
-                      onUpdateState({ source: s as any });
-                      if (s !== 'agent') {
-                        onUpdateState({ agent: { id: '', contact: '', email: '', comm: '' } });
-                      }
-                    }} 
-                    className={`chip ${state.source === s ? 'active' : ''}`}
-                  >
-                    <i className={`fa-${s === 'social' ? 'brands' : 'solid'} ${icon} text-[10px]`}></i>
-                    <span className="capitalize">{s}</span>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        </div>
-
-        {/* AGENT SELECTION - FULL WIDTH */}
-        {state.source === 'agent' && (
-          <div className="agent-panel visible mt-4 border border-gray-200">
-            <label className="lbl">Select Partner Travel Agent</label>
-            <select 
-              id="agent-select" 
-              value={state.agent.id}
-              onChange={handleAgentSelect} 
-              className="field-input mb-3"
-              style={{ width: '100%' }}
-            >
-              <option value="">Choose partner agent...</option>
-              <option value="safari_dreams">Safari Dreams Travel — Emma Williams (emma@safaridreams.co.uk) — 12% Comm</option>
-              <option value="wanderlust">Wanderlust Adventures — Hans Müller (hans@wanderlust.de) — 10% Comm</option>
-              <option value="cape_connect">Cape Connect Tours — Mike Johnson (mike@capeconnect.com) — 15% Comm</option>
-              <option value="bespoke_africa">Bespoke Africa Partners — Claire Thompson (claire@bespokeafrica.au) — 8% Comm</option>
-            </select>
-
-            {state.agent.id && (
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2 border-t border-gray-100">
-                <div>
-                  <label className="lbl">Agent Contact</label>
-                  <input type="text" value={state.agent.contact} className="field-input bg-gray-50" readOnly />
-                </div>
-                <div>
-                  <label className="lbl">Agent Email</label>
-                  <input type="email" value={state.agent.email} className="field-input bg-gray-50" readOnly />
-                </div>
-                <div>
-                  <label className="lbl">Comm Rate</label>
-                  <input type="text" value={state.agent.comm} className="field-input bg-gray-50" readOnly />
-                </div>
-              </div>
-            )}
-          </div>
-        )}
-      </div>
-
-      {/* SECTION: CLIENT DETAILS */}
-      <div className="card">
-        <div className="stitle"><i className="fa-solid fa-user"></i> Client Profile & Coordinator</div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 mb-4">
-          <div>
-            <label className="lbl">Assigned Consultant</label>
-            <select 
-              value={state.consultant} 
-              onChange={e => onUpdateState({ consultant: e.target.value })} 
-              className="field-input font-medium"
-            >
-              <option>Sarah Jenkins</option>
-              <option>Peter van der Merwe</option>
-              <option>Maria Santos</option>
-            </select>
-          </div>
-          <div>
-            <label className="lbl">Client / Group Name</label>
-            <input 
-              type="text" 
-              value={state.client.name} 
-              onChange={e => onUpdateClient({ name: e.target.value })} 
-              className="field-input font-medium text-gray-900" 
-              placeholder="e.g. Harrison Group" 
-            />
-          </div>
-          <div>
-            <label className="lbl">Country of Origin</label>
-            <div className="relative">
-              <input 
-                type="text" 
-                value={countrySearch} 
-                onChange={e => {
-                  setCountrySearch(e.target.value);
-                  setShowCountryDD(true);
-                }} 
-                onFocus={() => setShowCountryDD(true)}
-                className="field-input font-medium" 
-                placeholder="Type to search country..." 
-                autoComplete="off"
-              />
-              {showCountryDD && filteredCountries.length > 0 && (
-                <div className="cdd open">
-                  {filteredCountries.map(c => (
-                    <div 
-                      key={c} 
-                      onClick={() => {
-                        setCountrySearch(c);
-                        onUpdateClient({ country: c });
-                        setShowCountryDD(false);
-                      }} 
-                      className="copt"
-                    >
-                      {c}
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <div>
-            <label className="lbl">Email Address</label>
-            <input 
-              type="email" 
-              value={state.client.email} 
-              onChange={e => onUpdateClient({ email: e.target.value })} 
-              className="field-input" 
-              placeholder="Email address" 
-            />
-          </div>
-          <div>
-            <label className="lbl">Phone / WhatsApp</label>
-            <input 
-              type="text" 
-              value={state.client.phone} 
-              onChange={e => onUpdateClient({ phone: e.target.value })} 
-              className="field-input" 
-              placeholder="Phone number" 
-            />
-          </div>
-          <div>
-            <label className="lbl">Preferred Contact</label>
-            <div className="flex gap-2">
-              {['whatsapp', 'email', 'call'].map(method => (
-                <button 
-                  key={method}
-                  onClick={() => onUpdateClient({ contactMethod: method as any })}
-                  className={`chip flex-1 justify-center ${state.client.contactMethod === method ? 'active' : ''}`}
-                >
-                  <i className={`fa-${method === 'whatsapp' ? 'brands fa-whatsapp' : method === 'email' ? 'solid fa-envelope' : 'solid fa-phone'} text-[10px]`}></i>
-                  <span className="capitalize text-[11px] ml-1">{method}</span>
-                </button>
-              ))}
-            </div>
-          </div>
+      {/* Title Header */}
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 pb-6 border-b border-gray-100">
+        <div className="space-y-2">
+          <span className="text-xs uppercase tracking-[0.2em] font-bold text-[#D4AF37] flex items-center gap-2">
+            <Users size={14} /> DMC OPERATIONS COMMAND
+          </span>
+          <h1 className="text-3xl font-bold tracking-tight text-gray-900 font-sans">Traveller Intake & Operations Desk</h1>
+          <p className="text-gray-500 max-w-2xl text-sm leading-relaxed">
+            Configure confirmed lead client dossiers, scheduled safari calendar ranges, intelligent group dynamics, and professional Operational Traveller Profiles.
+          </p>
         </div>
       </div>
 
-      {/* SECTION: TRIP CONFIGURATION */}
-      <div className="card">
-        <div className="stitle"><i className="fa-solid fa-calendar"></i> Trip Configuration</div>
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-5">
-          {[
-            { id: 'multi', label: 'Multi-Day Package', desc: 'Full itinerary with accommodation.', icon: 'fa-mountain-sun text-accent' },
-            { id: 'day', label: 'Day Excursion', desc: 'Single-day tour. No overnight.', icon: 'fa-sun text-amber-500' },
-            { id: 'transfer', label: 'Transfer Only', desc: 'Airport or point-to-point transfer.', icon: 'fa-car-side text-blue-500' }
-          ].map(type => (
-            <div 
-              key={type.id}
-              onClick={() => onUpdateClient({ tripType: type.id as any })}
-              className={`trip-card ${state.client.tripType === type.id ? 'active' : ''}`}
-            >
-              <div className="flex items-start gap-3">
-                <div className="trip-dot mt-0.5"></div>
-                <div>
-                  <p className="text-xs font-bold text-gray-900 mb-0.5 flex items-center gap-1.5"><i className={`fa-solid ${type.icon}`}></i> {type.label}</p>
-                  <p className="text-[11px] text-gray-500 leading-snug">{type.desc}</p>
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-          <div>
-            <label className="lbl">Start Date</label>
-            <input 
-              type="date" 
-              value={state.client.startDate} 
-              onChange={e => handleDateChange('startDate', e.target.value)} 
-              className="field-input" 
-            />
+      {/* Quick Action Strip for Guest Roster & Inheritance */}
+      <div className="bg-emerald-900/90 text-white rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-md border border-emerald-800">
+        <div className="flex items-center gap-3">
+          <div className="w-9 h-9 rounded-xl bg-[#D4AF37] text-[#1A3326] flex items-center justify-center font-black text-sm">
+            <Users size={18} />
           </div>
           <div>
-            <label className="lbl">End Date</label>
-            <input 
-              type="date" 
-              value={state.client.endDate} 
-              disabled={state.client.tripType === 'day'}
-              onChange={e => handleDateChange('endDate', e.target.value)} 
-              className="field-input" 
-            />
-          </div>
-          <div>
-            <label className="lbl">Duration</label>
-            <div id="duration-box" className="field-input bg-gray-50 text-center font-bold text-accent">
-              {state.client.startDate && state.client.endDate ? state.client.durationText : 'Select dates'}
-            </div>
-          </div>
-          <div>
-            <label className="lbl">Occasion</label>
-            <div className="flex gap-1.5 flex-wrap">
-              {['Honeymoon', 'Birthday', 'Anniversary'].map(occ => (
-                <span 
-                  key={occ}
-                  onClick={() => handleOccasionToggle(occ)} 
-                  className={`tag-chip ${state.client.occasion === occ ? 'active' : ''}`}
-                >
-                  {occ}
-                </span>
-              ))}
-              <span 
-                onClick={() => handleOccasionToggle('Other')} 
-                className={`tag-chip ${state.client.occasion === 'Other' ? 'active' : ''}`}
-              >
-                Other
-              </span>
-            </div>
-            {state.client.occasion === 'Other' && (
-              <input 
-                type="text" 
-                value={state.client.otherOccasion}
-                onChange={e => onUpdateClient({ otherOccasion: e.target.value })}
-                className="field-input mt-2" 
-                placeholder="Describe special occasion..." 
-              />
-            )}
-          </div>
-        </div>
-      </div>
-
-      {/* SECTION: PROFILE TAGS */}
-      <div className="card">
-        <div className="stitle"><i className="fa-solid fa-tags"></i> Profile Profiling Tags</div>
-        <div className="flex flex-wrap gap-2">
-          {['Family', 'Solo Traveler', 'Honeymooners', 'Historic Landscape', 'Adventure & Ocean', 'Adventure & Safari', 'Corporate Delegates', 'VIPs'].map(tag => (
-            <span 
-              key={tag}
-              onClick={() => handleProfileTagToggle(tag)} 
-              className={`tag-chip ${state.client.tags.includes(tag) ? 'active' : ''}`}
-            >
-              {tag}
+            <span className="text-xs font-bold text-white block">Group Inheritance & Bulk Actions</span>
+            <span className="text-[11px] text-emerald-200 block">
+              Default Country: <strong>{state.client.country || 'Not Set'}</strong> • Emergency Contact: <strong>{state.client.phone || state.client.email || 'Not Set'}</strong>
             </span>
-          ))}
-        </div>
-      </div>
-
-      {/* SECTION: GROUP-WIDE CONDITIONS */}
-      <div className="card">
-        <div className="stitle"><i className="fa-solid fa-people-group"></i> Group-Wide Conditions (Inherited)</div>
-        <div className="bg-[#f0fdf4] border border-[#a7f3d0] rounded-md p-4 mb-4 text-[11px] text-[#065f46] space-y-1">
-          <p className="font-bold flex items-center gap-1.5"><Info size={13} /> Collective Travel Requirements</p>
-          <p className="text-gray-600">Assign conditions below that apply generally to all travelers. Individual roster members can override these later inside their guest card.</p>
-        </div>
-
-        <div className="space-y-4">
-          <div>
-            <label className="lbl">Group Dietary Requirements</label>
-            <div className="flex flex-wrap gap-1.5">
-              {['None', 'Vegetarian', 'Vegan', 'Halal', 'Kosher', 'Gluten-Free', 'Nut Allergy', 'No Pork', 'No Beef'].map(d => (
-                <span 
-                  key={d}
-                  onClick={() => handleGroupConditionToggle('dietary', d)}
-                  className={`tag-chip ${state.groupConditions.dietary.includes(d) || (d === 'None' && state.groupConditions.dietary.length === 0) ? 'active' : ''}`}
-                >
-                  {d}
-                </span>
-              ))}
-            </div>
-          </div>
-
-          <div>
-            <label className="lbl">Group Mobility & Assistance</label>
-            <div className="flex flex-wrap gap-1.5">
-              {['None', 'Wheelchair Required', 'Walking Difficulty', 'Cannot Climb Stairs', 'Requires Assistance'].map(m => (
-                <span 
-                  key={m}
-                  onClick={() => handleGroupConditionToggle('mobility', m)}
-                  className={`tag-chip ${state.groupConditions.mobility.includes(m) || (m === 'None' && state.groupConditions.mobility.length === 0) ? 'active' : ''}`}
-                >
-                  {m}
-                </span>
-              ))}
-            </div>
-          </div>
-
-          <div>
-            <label className="lbl">Group Medical Conditions</label>
-            <div className="flex flex-wrap gap-1.5">
-              {['None', 'Heart Condition', 'Asthma', 'Diabetes', 'Epilepsy', 'Pregnant', 'Carries Medication'].map(m => (
-                <span 
-                  key={m}
-                  onClick={() => handleGroupConditionToggle('medical', m)}
-                  className={`tag-chip ${state.groupConditions.medical.includes(m) || (m === 'None' && state.groupConditions.medical.length === 0) ? 'active' : ''}`}
-                >
-                  {m}
-                </span>
-              ))}
-            </div>
-          </div>
-
-          <div>
-            <label className="lbl">Group Seating / Travel Preferences</label>
-            <div className="flex flex-wrap gap-1.5">
-              {['Window Seats', 'Front of Vehicle', 'Extra Legroom', 'Quiet/No Music', 'Child Seats Needed'].map(p => (
-                <span 
-                  key={p}
-                  onClick={() => handleGroupConditionToggle('prefs', p)}
-                  className={`tag-chip ${state.groupConditions.prefs.includes(p) ? 'active' : ''}`}
-                >
-                  {p}
-                </span>
-              ))}
-            </div>
-          </div>
-
-          <div>
-            <label className="lbl">Group Special Instructions Notes</label>
-            <textarea 
-              value={state.groupConditions.notes}
-              onChange={e => onUpdateGroupConditions({ notes: e.target.value })}
-              className="field-input font-medium"
-              placeholder="e.g. Grandma needs extra assistance boarding, kids prefer quiet entertainment, whole family is generally vegetarian except father..."
-              style={{ resize: 'vertical', minHeight: '80px' }}
-            />
           </div>
         </div>
-      </div>
 
-      {/* SECTION: GUEST ROSTER */}
-      <div className="card">
-        <div className="flex items-center justify-between mb-4">
-          <div className="stitle mb-0">
-            <i className="fa-solid fa-users"></i> Guest Roster
-            <span id="g-count" className="badge bg-gray-100 text-gray-800 border border-gray-300 ml-2">{state.guests.length} Pax</span>
-          </div>
-          <button onClick={() => handleOpenGuestModal()} className="btn1">
-            <Plus size={14} /> Add Guest
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            onClick={() => {
+              const groupCountry = state.client.country || '🇺🇸 United States';
+              const updated = state.guests.map(g => ({
+                ...g,
+                country: groupCountry,
+                nationality: groupCountry,
+                inheritCountry: true,
+                inheritNationality: true
+              }));
+              onUpdateState({ guests: updated });
+            }}
+            className="px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-bold transition border border-white/10"
+          >
+            Apply Group Country to All
+          </button>
+          
+          <button
+            onClick={() => {
+              const lead = state.guests.find(g => g.isLead) || state.guests[0];
+              if (lead) {
+                const updated = state.guests.map(g => ({
+                  ...g,
+                  emergencyContactName: `${lead.first} ${lead.last}`,
+                  emergencyContactPhone: state.client.phone || '',
+                  inheritEmergencyContact: true
+                }));
+                onUpdateState({ guests: updated });
+              }
+            }}
+            className="px-3 py-1.5 rounded-xl bg-[#D4AF37] hover:bg-[#c59f2e] text-[#1A3326] text-xs font-bold transition"
+          >
+            Copy Lead Contact to All
+          </button>
+
+          <button
+            onClick={() => handleOpenGuestModal({ age: 'Adult', isLead: state.guests.length === 0, inheritCountry: true, inheritNationality: true, inheritEmergencyContact: true })}
+            className="px-3.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition flex items-center gap-1.5 shadow"
+          >
+            <Plus size={14} /> Add Traveller
           </button>
         </div>
-
-        <div className="flex items-center gap-1.5 mb-5 pb-4 border-b border-gray-200 flex-wrap">
-          <span className="text-[11px] font-semibold text-gray-600 mr-1.5">Template Quick Add:</span>
-          <button onClick={() => handleQuickAddTemplate('couple')} className="btn2 text-[11px] py-1 px-3">Couple (2 Adults)</button>
-          <button onClick={() => handleQuickAddTemplate('family')} className="btn2 text-[11px] py-1 px-3">Family (2A + 2C)</button>
-          <button onClick={() => handleQuickAddTemplate('solo')} className="btn2 text-[11px] py-1 px-3">Solo Traveler</button>
-          <button onClick={() => handleQuickAddTemplate('group8')} className="btn2 text-[11px] py-1 px-3">Group of 8</button>
-        </div>
-
-        {/* Guest cards Roster List */}
-        <div id="guest-list" className="space-y-3">
-          {state.guests.length === 0 ? (
-            <div className="text-center py-10 text-gray-400 text-sm italic">
-              Guest roster is empty. Use templates or "Add Guest" above to build your group.
-            </div>
-          ) : (
-            state.guests.map(g => {
-              const initials = (g.first[0] + g.last[0]).toUpperCase();
-              const isExpanded = expandedGuestId === g.id;
-
-              return (
-                <div key={g.id} className={`grow ${g.isLead ? 'lead' : ''}`}>
-                  <div className="flex items-center justify-between gap-3 flex-wrap sm:flex-nowrap">
-                    <div className="flex items-center gap-3 min-w-0">
-                      <div className="w-9 h-9 rounded-md bg-accent text-white flex items-center justify-center font-bold text-[11px] shrink-0">
-                        {initials}
-                      </div>
-                      <div className="min-w-0">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <span className="text-[13px] font-bold text-gray-900">{g.first} {g.last}</span>
-                          {g.isLead && (
-                            <span className="badge bg-accentLight text-accent border border-accentBorder text-[9px]"><Crown size={8} /> Lead</span>
-                          )}
-                          <span className="badge bg-gray-100 text-gray-600 border border-gray-200 text-[9px]">{g.age}</span>
-                        </div>
-                        <p className="text-[11px] text-gray-500 mt-0.5">{g.country || 'No nationality'}</p>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center gap-1 shrink-0 ml-auto">
-                      <button 
-                        onClick={() => setExpandedGuestId(isExpanded ? null : g.id)} 
-                        className="w-7 h-7 rounded flex items-center justify-center text-gray-400 hover:text-accent hover:bg-accentLight transition"
-                      >
-                        <ChevronDown size={14} className={`transform transition ${isExpanded ? 'rotate-180' : ''}`} />
-                      </button>
-                      <button 
-                        onClick={() => handleOpenGuestModal(g)} 
-                        className="w-7 h-7 rounded flex items-center justify-center text-gray-400 hover:text-accent hover:bg-accentLight transition"
-                      >
-                        <Edit3 size={12} />
-                      </button>
-                      <button 
-                        onClick={() => onSetLeadGuest(g.id)} 
-                        className="w-7 h-7 rounded flex items-center justify-center text-gray-400 hover:text-accent hover:bg-accentLight transition"
-                      >
-                        <Crown size={12} />
-                      </button>
-                      <button 
-                        onClick={() => onRemoveGuest(g.id)} 
-                        className="w-7 h-7 rounded flex items-center justify-center text-gray-400 hover:text-rose hover:bg-roseLight transition"
-                      >
-                        <Trash2 size={12} />
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Expanded individual Overrides display */}
-                  {isExpanded && (
-                    <div id={`exp-${g.id}`} className="expand-content open">
-                      <div className="mt-4 pt-4 border-t border-gray-200 text-[11px] space-y-2">
-                        <div><strong className="text-gray-700">Dietary Overrides:</strong> <span className="text-gray-600">{g.diet.length ? g.diet.join(', ') : 'None (Inherits from group)'}</span></div>
-                        <div><strong className="text-gray-700">Mobility Overrides:</strong> <span className="text-gray-600">{g.mob.length ? g.mob.join(', ') : 'None (Inherits from group)'}</span></div>
-                        <div><strong className="text-gray-700">Medical Overrides:</strong> <span className="text-gray-600">{g.med.length ? g.med.join(', ') : 'None (Inherits from group)'}</span></div>
-                        <div><strong className="text-gray-700">Preferences Overrides:</strong> <span className="text-gray-600">{g.pref.length ? g.pref.join(', ') : 'None (Inherits from group)'}</span></div>
-                        {g.notes && (
-                          <div><strong className="text-gray-700 font-bold">Notes:</strong> <span className="text-gray-600 italic">{g.notes}</span></div>
-                        )}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              );
-            })
-          )}
-        </div>
       </div>
 
-      {/* GUEST ADD/EDIT MODAL OVERLAY */}
-      {modalOpen && (
-        <div className="modal-bg open">
-          <div className="modal-inner">
-            <div className="flex items-center justify-between mb-5 pb-2 border-b border-gray-100">
-              <h3 className="text-sm font-bold text-gray-900 flex items-center gap-1.5"><User size={16} className="text-accent" /> {modalGuest.id ? 'Edit Guest Details' : 'Add Guest to Group'}</h3>
-              <button onClick={closeModal} className="w-7 h-7 rounded flex items-center justify-center text-gray-400 hover:text-gray-700 hover:bg-gray-100">
-                <i className="fa-solid fa-xmark"></i>
-              </button>
-            </div>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
 
-            <div className="grid grid-cols-2 gap-3 mb-4">
-              <div>
-                <label className="lbl">First Name</label>
+        
+        {/* LEFT COLUMN: Lead Client Information & Schedule */}
+        <div className="lg:col-span-2 space-y-8">
+          
+          {/* Card: Basic Lead Demographics */}
+          <div className="bg-white rounded-[24px] border border-gray-100 p-6 md:p-8 shadow-sm space-y-6">
+            <h3 className="text-sm font-bold text-gray-900 font-sans border-b border-gray-100 pb-3 flex items-center gap-2">
+              <User size={16} className="text-[#D4AF37]" /> Core Agency / Client Dossier
+            </h3>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              
+              <div className="space-y-1.5">
+                <label className="text-[11px] text-gray-500 font-bold uppercase tracking-wider block">Lead Group/Dossier Name</label>
                 <input 
                   type="text" 
-                  value={modalGuest.first || ''} 
-                  onChange={e => setModalGuest({ ...modalGuest, first: e.target.value })}
-                  className="field-input font-medium" 
-                  placeholder="First name" 
+                  value={state.client.name} 
+                  onChange={e => onUpdateClient({ name: e.target.value })}
+                  className="w-full h-11 px-4 rounded-xl border border-gray-200 text-xs font-semibold text-gray-800 focus:border-[#D4AF37] transition"
+                  placeholder="e.g. Harrison Expedition Group"
                 />
               </div>
-              <div>
-                <label className="lbl">Last Name</label>
-                <input 
-                  type="text" 
-                  value={modalGuest.last || ''} 
-                  onChange={e => setModalGuest({ ...modalGuest, last: e.target.value })}
-                  className="field-input font-medium" 
-                  placeholder="Last name" 
-                />
-              </div>
-            </div>
 
-            <div className="grid grid-cols-2 gap-3 mb-4">
-              <div>
-                <label className="lbl">Age Category</label>
-                <select 
-                  value={modalGuest.age || 'Adult'} 
-                  onChange={e => setModalGuest({ ...modalGuest, age: e.target.value as any })}
-                  className="field-input"
-                >
-                  <option value="Adult">Adult (18-64)</option>
-                  <option value="Elderly">Elderly (65+)</option>
-                  <option value="Teen">Teen (13-17)</option>
-                  <option value="Child">Child (3-12)</option>
-                  <option value="Infant">Infant (0-2)</option>
-                </select>
-              </div>
-              <div>
-                <label className="lbl">Nationality</label>
+              <div className="space-y-1.5">
+                <label className="text-[11px] text-gray-500 font-bold uppercase tracking-wider block">Lead Traveler Email</label>
                 <div className="relative">
+                  <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-gray-400">
+                    <Mail size={12} />
+                  </span>
+                  <input 
+                    type="email" 
+                    value={state.client.email} 
+                    onChange={e => onUpdateClient({ email: e.target.value })}
+                    className="w-full h-11 pl-9 pr-4 rounded-xl border border-gray-200 text-xs font-semibold text-gray-800 focus:border-[#D4AF37] transition"
+                    placeholder="client@harrisonexpedition.com"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-[11px] text-gray-500 font-bold uppercase tracking-wider block">Contact Phone Number</label>
+                <div className="relative">
+                  <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-gray-400">
+                    <Phone size={12} />
+                  </span>
                   <input 
                     type="text" 
-                    value={modalCountrySearch} 
+                    value={state.client.phone} 
+                    onChange={e => onUpdateClient({ phone: e.target.value })}
+                    className="w-full h-11 pl-9 pr-4 rounded-xl border border-gray-200 text-xs font-semibold text-gray-800 focus:border-[#D4AF37] transition"
+                    placeholder="+1 415 555 9284"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-1.5 relative">
+                <label className="text-[11px] text-gray-500 font-bold uppercase tracking-wider block">Origin Country</label>
+                <div className="relative">
+                  <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-gray-400">
+                    <Globe size={12} />
+                  </span>
+                  <input 
+                    type="text" 
+                    value={countrySearch} 
                     onChange={e => {
-                      setModalCountrySearch(e.target.value);
-                      setShowModalCountryDD(true);
-                    }} 
-                    onFocus={() => setShowModalCountryDD(true)}
-                    className="field-input" 
-                    placeholder="Search country..." 
+                      setCountrySearch(e.target.value);
+                      setShowCountryDD(true);
+                    }}
+                    onFocus={() => setShowCountryDD(true)}
+                    className="w-full h-11 pl-9 pr-4 rounded-xl border border-gray-200 text-xs font-semibold text-gray-800 focus:border-[#D4AF37] transition"
+                    placeholder="Search country..."
                     autoComplete="off"
                   />
-                  {showModalCountryDD && filteredModalCountries.length > 0 && (
-                    <div className="cdd open">
-                      {filteredModalCountries.map(c => (
+                  {showCountryDD && filteredCountries.length > 0 && (
+                    <div className="absolute top-full left-0 right-0 bg-white border border-gray-200 rounded-xl shadow-lg mt-2 z-50 overflow-hidden">
+                      {filteredCountries.map(c => (
                         <div 
                           key={c} 
                           onClick={() => {
-                            setModalCountrySearch(c);
-                            setShowModalCountryDD(false);
-                          }} 
-                          className="copt"
+                            setCountrySearch(c);
+                            onUpdateClient({ country: c });
+                            setShowCountryDD(false);
+                          }}
+                          className="px-4 py-2.5 text-xs hover:bg-gray-50 cursor-pointer font-medium text-gray-700"
                         >
                           {c}
                         </div>
@@ -763,102 +522,882 @@ export const IntakeView: React.FC<IntakeViewProps> = ({
                   )}
                 </div>
               </div>
-            </div>
 
-            <div className="bg-[#eff6ff] border border-[#bfdbfe] rounded-md p-3 mb-4 text-[10px] text-[#2563eb] flex gap-2">
-              <i className="fa-solid fa-circle-info mt-0.5"></i>
-              <span>Leave sections unselected below to inherit Group-Wide conditions. Select only to configure overrides for this guest.</span>
             </div>
+          </div>
 
-            <div className="mb-4">
-              <label className="lbl">Dietary Overrides</label>
-              <div className="flex flex-wrap gap-1.5">
-                {GUEST_DIETARY_OPTIONS.filter(o => o !== 'None').map(d => {
-                  const active = modalGuest.diet?.includes(d) || false;
-                  return (
-                    <span 
-                      key={d} 
-                      onClick={() => toggleModalTag('diet', d)} 
-                      className={`tag ${active ? 'active' : ''}`}
-                    >
-                      {d}
-                    </span>
-                  );
-                })}
+          {/* Card: Calendar Schedule */}
+          <div className="bg-white rounded-[24px] border border-gray-100 p-6 md:p-8 shadow-sm space-y-6">
+            <h3 className="text-sm font-bold text-gray-900 font-sans border-b border-gray-100 pb-3 flex items-center gap-2">
+              <Calendar size={16} className="text-[#D4AF37]" /> Expedition Operations Calendar
+            </h3>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-end">
+              <div className="space-y-1.5">
+                <label className="text-[11px] text-gray-500 font-bold uppercase tracking-wider block">Safari Arrival Date</label>
+                <input 
+                  type="date" 
+                  value={state.client.startDate} 
+                  onChange={e => handleDateChange('startDate', e.target.value)}
+                  className="w-full h-11 px-4 rounded-xl border border-gray-200 text-xs font-semibold text-gray-800 focus:border-[#D4AF37] transition"
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-[11px] text-gray-500 font-bold uppercase tracking-wider block">Safari Departure Date</label>
+                <input 
+                  type="date" 
+                  value={state.client.endDate} 
+                  onChange={e => handleDateChange('endDate', e.target.value)}
+                  className="w-full h-11 px-4 rounded-xl border border-gray-200 text-xs font-semibold text-gray-800 focus:border-[#D4AF37] transition"
+                />
+              </div>
+
+              <div className="h-11 px-4 rounded-xl bg-slate-50 border border-slate-100 flex items-center justify-between text-xs">
+                <span className="font-bold text-gray-400 uppercase">Total Field Duration:</span>
+                <strong className="text-[#1A3326] font-bold">{state.client.durationText}</strong>
               </div>
             </div>
+          </div>
 
-            <div className="mb-4">
-              <label className="lbl">Mobility Overrides</label>
-              <div className="flex flex-wrap gap-1.5">
-                {GUEST_MOBILITY_OPTIONS.filter(o => o !== 'None').map(m => {
-                  const active = modalGuest.mob?.includes(m) || false;
-                  return (
-                    <span 
-                      key={m} 
-                      onClick={() => toggleModalTag('mob', m)} 
-                      className={`tag ${active ? 'active' : ''}`}
-                    >
-                      {m}
-                    </span>
-                  );
-                })}
-              </div>
+          {/* Intelligent Group Management Panel */}
+          <div className="bg-white rounded-[24px] border border-gray-100 p-6 md:p-8 shadow-sm space-y-6">
+            <div className="flex justify-between items-center border-b border-gray-100 pb-3">
+              <h3 className="text-sm font-bold text-gray-900 font-sans flex items-center gap-2">
+                <Sliders size={16} className="text-[#D4AF37]" /> Intelligent Group Management
+              </h3>
+              <span className="text-[10px] uppercase font-extrabold tracking-wider bg-[#1A3326] text-white px-2.5 py-1 rounded-full">
+                {groupMgmt.groupType} Group
+              </span>
             </div>
 
-            <div className="mb-4">
-              <label className="lbl">Medical Overrides</label>
-              <div className="flex flex-wrap gap-1.5">
-                {GUEST_MEDICAL_OPTIONS.filter(o => o !== 'None').map(m => {
-                  const active = modalGuest.med?.includes(m) || false;
-                  return (
-                    <span 
-                      key={m} 
-                      onClick={() => toggleModalTag('med', m)} 
-                      className={`tag ${active ? 'active' : ''}`}
-                    >
-                      {m}
-                    </span>
-                  );
-                })}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="space-y-4">
+                <div className="space-y-1.5">
+                  <label className="text-[11px] text-gray-500 font-bold uppercase tracking-wider block">Group Dynamics Typology</label>
+                  <select 
+                    value={groupMgmt.groupType}
+                    onChange={e => handleUpdateGroupMgmt({ groupType: e.target.value as any })}
+                    className="w-full h-11 px-4 rounded-xl border border-gray-200 text-xs bg-white text-gray-800 font-semibold focus:border-[#D4AF37] transition"
+                  >
+                    <option value="Couples">Couples</option>
+                    <option value="Families">Families</option>
+                    <option value="Friends">Friends Sharing</option>
+                    <option value="Corporate">Corporate Group</option>
+                    <option value="Incentive">Incentive Group</option>
+                    <option value="Weddings">Weddings & Honeymoons</option>
+                    <option value="VIP">VIP / Diplomatic Delegation</option>
+                    <option value="School">School / Educational Group</option>
+                    <option value="Photography">Photography Expeditions</option>
+                    <option value="Other">Other Bespoke Setup</option>
+                  </select>
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-[11px] text-gray-500 font-bold uppercase tracking-wider block">Rooming & Sharing Strategy</label>
+                  <textarea 
+                    value={groupMgmt.sharingPreferences}
+                    onChange={e => handleUpdateGroupMgmt({ sharingPreferences: e.target.value })}
+                    rows={3}
+                    className="w-full p-3.5 rounded-xl border border-gray-200 text-xs text-gray-800 focus:border-[#D4AF37] transition"
+                    placeholder="Specify couples, single supplement needs, children sharing config..."
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-4">
+                <span className="text-[11px] text-gray-500 font-bold uppercase tracking-wider block">Dynamics Mapping Matrix</span>
+                
+                {state.guests.length === 0 ? (
+                  <div className="text-center py-6 bg-slate-50 rounded-xl border border-dashed border-gray-100">
+                    <span className="text-xs text-gray-400 italic">No travelers listed in roster yet.</span>
+                  </div>
+                ) : (
+                  <div className="space-y-2 max-h-[190px] overflow-y-auto pr-1">
+                    {state.guests.map(g => {
+                      const isPrivate = groupMgmt.requiresPrivateRoomIds.includes(g.id);
+                      const isStaff = groupMgmt.staffIds.includes(g.id);
+                      return (
+                        <div key={g.id} className="flex items-center justify-between p-2.5 bg-slate-50 rounded-xl border border-gray-100 text-xs">
+                          <span className="font-bold text-gray-800 truncate max-w-[120px]">{g.first} {g.last}</span>
+                          <div className="flex gap-2">
+                            <button 
+                              onClick={() => toggleGroupPrivateRoom(g.id)}
+                              className={`px-2.5 py-1 rounded text-[10px] font-bold border transition ${
+                                isPrivate ? 'bg-[#D4AF37]/10 text-[#D4AF37] border-[#D4AF37]/30' : 'bg-white border-gray-200 text-gray-400 hover:text-gray-600'
+                              }`}
+                            >
+                              Private Room
+                            </button>
+                            <button 
+                              onClick={() => toggleGroupStaff(g.id)}
+                              className={`px-2.5 py-1 rounded text-[10px] font-bold border transition ${
+                                isStaff ? 'bg-[#1A3326]/10 text-[#1A3326] border-[#1A3326]/20' : 'bg-white border-gray-200 text-gray-400 hover:text-gray-600'
+                              }`}
+                            >
+                              Staff / Escort
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
             </div>
+          </div>
 
-            <div className="mb-4">
-              <label className="lbl">Travel / Seating Preferences</label>
-              <div className="flex flex-wrap gap-1.5">
-                {GUEST_PREF_OPTIONS.map(p => {
-                  const active = modalGuest.pref?.includes(p) || false;
-                  return (
-                    <span 
+        </div>
+
+        {/* RIGHT COLUMN: Partner Agent & Guest Roster templates */}
+        <div className="space-y-8">
+          
+          {/* Card: Partner Agent & Priority */}
+          <div className="bg-white rounded-[24px] border border-gray-100 p-6 shadow-sm space-y-6">
+            <h3 className="text-sm font-bold text-gray-900 font-sans border-b border-gray-100 pb-3 flex items-center gap-2">
+              <Briefcase size={16} className="text-[#D4AF37]" /> Sourcing Source & Agent Lock
+            </h3>
+
+            <div className="space-y-6">
+              <div>
+                <label className="text-[11px] text-gray-400 font-bold uppercase tracking-wider block mb-2">Proposal Priority</label>
+                <div className="grid grid-cols-3 gap-2">
+                  {['high', 'medium', 'confirmed'].map(p => (
+                    <button 
                       key={p} 
-                      onClick={() => toggleModalTag('pref', p)} 
-                      className={`tag ${active ? 'active' : ''}`}
+                      onClick={() => onUpdateState({ priority: p as any })}
+                      className={`py-2 rounded-xl border text-center text-xs font-bold capitalize transition-all ${
+                        state.priority === p 
+                          ? 'border-[#D4AF37] bg-yellow-50 text-[#1A3326]' 
+                          : 'border-gray-100 hover:border-gray-200 text-gray-500'
+                      }`}
                     >
                       {p}
-                    </span>
-                  );
-                })}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <label className="text-[11px] text-gray-400 font-bold uppercase tracking-wider block mb-2">Acquisition Source</label>
+                <div className="grid grid-cols-2 gap-2">
+                  {['direct', 'agent', 'referral', 'website'].map(s => (
+                    <button 
+                      key={s} 
+                      onClick={() => {
+                        onUpdateState({ source: s as any });
+                        if (s !== 'agent') {
+                          onUpdateState({ agent: { id: '', contact: '', email: '', comm: '' } });
+                        }
+                      }} 
+                      className={`py-2 rounded-xl border text-center text-xs font-bold capitalize transition-all ${
+                        state.source === s 
+                          ? 'border-[#D4AF37] bg-yellow-50 text-[#1A3326]' 
+                          : 'border-gray-100 hover:border-gray-200 text-gray-500'
+                      }`}
+                    >
+                      {s}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {state.source === 'agent' && (
+                <div className="space-y-2 pt-3 border-t border-gray-50 animate-in fade-in duration-300">
+                  <label className="text-[11px] text-gray-400 font-bold uppercase block">Partner Agent</label>
+                  <select 
+                    value={state.agent.id}
+                    onChange={handleAgentSelect} 
+                    className="w-full h-11 px-4 rounded-xl border border-gray-200 text-xs font-semibold text-gray-700 bg-white hover:border-[#D4AF37]"
+                  >
+                    <option value="">Select travel partner...</option>
+                    <option value="safari_dreams">Safari Dreams (UK) — 12% Comm</option>
+                    <option value="wanderlust">Wanderlust (DE) — 10% Comm</option>
+                    <option value="cape_connect">Cape Connect — 15% Comm</option>
+                    <option value="bespoke_africa">Bespoke Africa Partners — 8% Comm</option>
+                  </select>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Card: Operational Traveller Profiles List */}
+          <div className="bg-white rounded-[24px] border border-gray-100 p-6 shadow-sm space-y-6">
+            <div className="flex justify-between items-center pb-3 border-b border-gray-50">
+              <div>
+                <h4 className="font-bold text-gray-900 text-sm font-sans">Operational Traveller Profiles</h4>
+                <p className="text-[11px] text-gray-400">{state.guests.length} Confirmed Travelers</p>
+              </div>
+              <button 
+                onClick={() => handleOpenGuestModal()} 
+                className="w-9 h-9 rounded-xl bg-yellow-50 text-[#D4AF37] border border-[#D4AF37]/20 flex items-center justify-center hover:bg-yellow-100 transition-colors"
+                title="Add Traveller Profile"
+              >
+                <Plus size={16} />
+              </button>
+            </div>
+
+            {/* Quick Templates */}
+            <div className="space-y-2.5">
+              <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider block">Sourcing Templates</span>
+              <div className="grid grid-cols-2 gap-2">
+                <button onClick={() => handleQuickAddTemplate('couple')} className="py-2 rounded-xl border border-gray-100 text-[10px] font-bold text-gray-600 hover:border-[#D4AF37] transition-all">Couple (2A)</button>
+                <button onClick={() => handleQuickAddTemplate('family')} className="py-2 rounded-xl border border-gray-100 text-[10px] font-bold text-gray-600 hover:border-[#D4AF37] transition-all">Family (2A+2C)</button>
+                <button onClick={() => handleQuickAddTemplate('solo')} className="py-2 rounded-xl border border-gray-100 text-[10px] font-bold text-gray-600 hover:border-[#D4AF37] transition-all">Solo Traveler</button>
+                <button onClick={() => handleQuickAddTemplate('group8')} className="py-2 rounded-xl border border-gray-100 text-[10px] font-bold text-gray-600 hover:border-[#D4AF37] transition-all">Large Group (8A)</button>
               </div>
             </div>
 
-            <div className="mb-5">
-              <label className="lbl">Individual Notes</label>
-              <textarea 
-                value={modalGuest.notes || ''} 
-                onChange={e => setModalGuest({ ...modalGuest, notes: e.target.value })}
-                className="field-input font-medium" 
-                placeholder="Specific instructions or preferences..."
-                style={{ resize: 'vertical', minHeight: '60px' }}
-              />
-            </div>
+            {/* Guest List Roster */}
+            <div className="space-y-3 pt-4 border-t border-gray-50">
+              {state.guests.length === 0 ? (
+                <div className="text-center py-6">
+                  <span className="text-xs text-gray-400 italic block">No Operational Traveller Profiles configured yet. Click add or pick a preset template.</span>
+                </div>
+              ) : (
+                state.guests.map(g => (
+                  <div key={g.id} className="p-3.5 rounded-2xl border border-gray-100 bg-slate-50/50 space-y-2.5 hover:shadow-xs transition duration-200 group">
+                    <div className="flex justify-between items-center gap-2">
+                      <div className="flex items-center gap-2 min-w-0">
+                        {g.isLead ? <Crown size={12} className="text-[#D4AF37]" /> : <User size={12} className="text-gray-400" />}
+                        <span className="text-xs font-bold text-[#1A3326] truncate">
+                          {g.first} {g.last} {g.preferredName ? `(${g.preferredName})` : ''}
+                        </span>
+                      </div>
+                      <span className="text-[9px] bg-white border border-gray-100 text-gray-500 px-2 py-0.5 rounded font-bold uppercase tracking-wider">{g.age}</span>
+                    </div>
 
-            <div className="flex justify-end gap-2 pt-2 border-t border-gray-100">
-              <button onClick={closeModal} className="btn2">Cancel</button>
-              <button onClick={handleSaveModalGuest} className="btn1">
-                <Check size={14} /> Save Guest
+                    <div className="flex flex-wrap gap-1">
+                      {g.accessibilityMobility && g.accessibilityMobility.length > 0 && (
+                        <span className="text-[8px] bg-amber-50 text-amber-700 font-extrabold px-1.5 py-0.5 rounded uppercase tracking-wider">Mobility Assistance</span>
+                      )}
+                      {(g.dietaryLifestyle?.length || 0) + (g.dietaryMedical?.length || 0) > 0 && (
+                        <span className="text-[8px] bg-emerald-50 text-emerald-700 font-extrabold px-1.5 py-0.5 rounded uppercase tracking-wider">Special Diet</span>
+                      )}
+                      {groupMgmt.staffIds.includes(g.id) && (
+                        <span className="text-[8px] bg-[#1A3326]/10 text-[#1A3326] font-extrabold px-1.5 py-0.5 rounded uppercase tracking-wider">Staff</span>
+                      )}
+                    </div>
+
+                    <div className="flex justify-between items-center pt-2 border-t border-gray-100 text-[10px]">
+                      <span className="text-gray-400">{g.nationality || g.country || 'Global Citizens'}</span>
+                      <div className="flex gap-2">
+                        <button onClick={() => handleOpenGuestModal(g)} className="text-[#1A3326] hover:text-[#D4AF37] font-bold">Edit Profile</button>
+                        <span className="text-gray-200">|</span>
+                        <button onClick={() => onRemoveGuest(g.id)} className="text-rose-500 hover:text-rose-700 font-bold">Delete</button>
+                      </div>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+
+          {/* Smart Operational & Dispatch Advisor */}
+          <div className="bg-[#1A3326] text-white rounded-[24px] p-6 shadow-lg space-y-4">
+            <h4 className="text-xs font-bold uppercase tracking-[0.2em] text-[#D4AF37] flex items-center gap-1.5">
+              <Sparkles size={13} /> AI Operational Dispatch Advisor
+            </h4>
+            <p className="text-[11px] text-emerald-100/80 leading-relaxed">
+              Real-time analysis of active group profiles to recommend fleet, meal basis, and lodging specifications.
+            </p>
+
+            <div className="space-y-3 pt-2 text-[11px]">
+              {/* Alert: Lead Traveler Check */}
+              {state.guests.length > 0 && !state.guests.some(g => g.isLead) && (
+                <div className="flex gap-2 bg-rose-500/10 border border-rose-500/20 p-2.5 rounded-xl text-rose-200">
+                  <AlertCircle size={14} className="shrink-0 mt-0.5" />
+                  <span>No lead traveller contact locked. Check 'Lead Contact' checkbox.</span>
+                </div>
+              )}
+
+              {/* Mobility Analysis */}
+              {activeAccessibilityIssues.length > 0 ? (
+                <div className="flex gap-2 bg-amber-500/10 border border-amber-500/20 p-2.5 rounded-xl text-amber-200">
+                  <Accessibility size={14} className="shrink-0 mt-0.5" />
+                  <div>
+                    <strong className="block text-[#D4AF37]">Accessibility Requirements Alert</strong>
+                    <span className="text-[10px]">
+                      {activeAccessibilityIssues.length} guests with mobility/vision requests. Recommending accessible fleet transfer vehicles, roll-in lodge facilities, and ground floor bookings.
+                    </span>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex gap-2 bg-white/5 p-2 rounded-xl text-emerald-100/60">
+                  <Check size={12} className="text-emerald-400 mt-0.5 shrink-0" />
+                  <span>No mobility or physical assistance restrictions registered. Standard luxury vehicles appropriate.</span>
+                </div>
+              )}
+
+              {/* Diet Analysis */}
+              {activeDietaryIssues.length > 0 && (
+                <div className="flex gap-2 bg-white/5 p-2 rounded-xl text-emerald-100/80">
+                  <Egg size={12} className="text-[#D4AF37] mt-0.5 shrink-0" />
+                  <div>
+                    <strong className="text-white block font-semibold">Catering Operations Notice</strong>
+                    <span className="text-[10px] text-emerald-100/60">
+                      Dietary requirements logged: {activeDietaryIssues.map(g => g.first).join(', ')}. Dispatch automatic allergen alerts to lodge kitchens.
+                    </span>
+                  </div>
+                </div>
+              )}
+
+              {/* Family/Children */}
+              {countChildren > 0 && (
+                <div className="flex gap-2 bg-white/5 p-2 rounded-xl text-emerald-100/80">
+                  <Coffee size={12} className="text-yellow-400 mt-0.5 shrink-0" />
+                  <span>{countChildren} child/infant travellers logged. Require booster transport seating and child-friendly lodge dining checks.</span>
+                </div>
+              )}
+
+              {/* Staff Accommodations */}
+              {countStaff > 0 && (
+                <div className="flex gap-2 bg-white/5 p-2 rounded-xl text-emerald-100/80">
+                  <Users size={12} className="text-[#D4AF37] mt-0.5 shrink-0" />
+                  <span>{countStaff} staff member(s) listed on itinerary. Recommend adding separate Guide/Driver lodging block.</span>
+                </div>
+              )}
+            </div>
+          </div>
+
+        </div>
+
+      </div>
+
+      {/* COMPREHENSIVE GUEST ADD/EDIT MODAL OVERLAY (Operational Traveller Profile) */}
+      {modalOpen && (
+        <div className="fixed inset-0 bg-gray-900/40 backdrop-blur-md flex items-center justify-center z-[110] p-4">
+          <div className="bg-white rounded-[24px] max-w-2xl w-full max-h-[92vh] overflow-hidden shadow-2xl flex flex-col animate-in zoom-in-95 duration-200">
+            
+            {/* Header */}
+            <div className="p-6 border-b border-gray-100 bg-slate-50/50 flex justify-between items-center">
+              <div>
+                <span className="text-[9px] uppercase tracking-widest font-black text-[#D4AF37] block mb-0.5">DMC Operations Profile Editor</span>
+                <h3 className="font-bold text-[#1A3326] text-base font-sans flex items-center gap-2">
+                  <User size={18} />
+                  {modalGuest.id ? `Operational Profile: ${modalGuest.first} ${modalGuest.last}` : 'Create Operational Traveller Profile'}
+                </h3>
+              </div>
+              <button onClick={closeModal} className="text-gray-400 hover:text-gray-600 transition p-1.5 rounded-lg hover:bg-gray-100">
+                <X size={18} />
               </button>
             </div>
+
+            {/* Modal Navigation Tabs (Progressive Disclosure) */}
+            <div className="flex border-b border-gray-100 px-6 bg-white overflow-x-auto text-xs font-bold text-gray-500 shrink-0">
+              <button 
+                onClick={() => setModalTab('basic')}
+                className={`py-3.5 px-4 border-b-2 -mb-px transition-all ${modalTab === 'basic' ? 'border-[#D4AF37] text-[#1A3326]' : 'border-transparent hover:text-gray-950'}`}
+              >
+                1. Basic Info
+              </button>
+              <button 
+                onClick={() => setModalTab('accessibility')}
+                className={`py-3.5 px-4 border-b-2 -mb-px transition-all ${modalTab === 'accessibility' ? 'border-[#D4AF37] text-[#1A3326]' : 'border-transparent hover:text-gray-950'}`}
+              >
+                2. Accessibility & Mobility
+              </button>
+              <button 
+                onClick={() => setModalTab('dietary')}
+                className={`py-3.5 px-4 border-b-2 -mb-px transition-all ${modalTab === 'dietary' ? 'border-[#D4AF37] text-[#1A3326]' : 'border-transparent hover:text-gray-950'}`}
+              >
+                3. Dietary Categories
+              </button>
+              <button 
+                onClick={() => setModalTab('preferences')}
+                className={`py-3.5 px-4 border-b-2 -mb-px transition-all ${modalTab === 'preferences' ? 'border-[#D4AF37] text-[#1A3326]' : 'border-transparent hover:text-gray-950'}`}
+              >
+                4. Comfort & Preferences
+              </button>
+            </div>
+
+            {/* Body */}
+            <div className="p-6 md:p-8 overflow-y-auto space-y-6 flex-grow">
+              
+              {/* TAB 1: BASIC INFORMATION */}
+              {modalTab === 'basic' && (
+                <div className="space-y-6 animate-in fade-in duration-150">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="text-[10px] text-gray-400 font-bold uppercase block tracking-wider mb-2">First Name</label>
+                      <input 
+                        type="text" 
+                        value={modalGuest.first || ''} 
+                        onChange={e => setModalGuest({ ...modalGuest, first: e.target.value })}
+                        className="w-full h-11 px-4 rounded-xl border border-gray-200 text-xs font-semibold focus:border-[#D4AF37] transition" 
+                        placeholder="John" 
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[10px] text-gray-400 font-bold uppercase block tracking-wider mb-2">Last Name</label>
+                      <input 
+                        type="text" 
+                        value={modalGuest.last || ''} 
+                        onChange={e => setModalGuest({ ...modalGuest, last: e.target.value })}
+                        className="w-full h-11 px-4 rounded-xl border border-gray-200 text-xs font-semibold focus:border-[#D4AF37] transition" 
+                        placeholder="Smith" 
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="text-[10px] text-gray-400 font-bold uppercase block tracking-wider mb-2">Preferred / Call Name</label>
+                      <input 
+                        type="text" 
+                        value={modalGuest.preferredName || ''} 
+                        onChange={e => setModalGuest({ ...modalGuest, preferredName: e.target.value })}
+                        className="w-full h-11 px-4 rounded-xl border border-gray-200 text-xs font-semibold focus:border-[#D4AF37] transition" 
+                        placeholder="e.g. Jack" 
+                      />
+                    </div>
+                    <div>
+                      <div className="flex items-center justify-between mb-2">
+                        <label className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Nationality / Passport</label>
+                        {state.client.country && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setModalCountrySearch(state.client.country);
+                              setModalGuest({ ...modalGuest, country: state.client.country, nationality: state.client.country, inheritCountry: true });
+                            }}
+                            className="text-[10px] text-emerald-700 font-bold hover:underline"
+                          >
+                            Same as Group ({state.client.country.slice(0, 10)}...)
+                          </button>
+                        )}
+                      </div>
+                      <div className="relative">
+                        <input 
+                          type="text" 
+                          value={modalCountrySearch} 
+                          onChange={e => {
+                            setModalCountrySearch(e.target.value);
+                            setShowModalCountryDD(true);
+                            setModalGuest({ ...modalGuest, inheritCountry: false });
+                          }} 
+                          onFocus={() => setShowModalCountryDD(true)}
+                          className="w-full h-11 px-4 rounded-xl border border-gray-200 text-xs bg-white focus:border-[#D4AF37] transition" 
+                          placeholder="Search country..." 
+                          autoComplete="off"
+                        />
+                        {showModalCountryDD && filteredModalCountries.length > 0 && (
+                          <div className="absolute top-full left-0 right-0 bg-white border border-gray-200 rounded-xl shadow-lg mt-2 z-50 overflow-hidden">
+                            {filteredModalCountries.map(c => (
+                              <div 
+                                key={c} 
+                                onClick={() => {
+                                  setModalCountrySearch(c);
+                                  setModalGuest({ ...modalGuest, country: c, nationality: c, inheritCountry: false });
+                                  setShowModalCountryDD(false);
+                                }} 
+                                className="px-4 py-2 text-xs hover:bg-gray-50 cursor-pointer text-gray-700 font-medium"
+                              >
+                                {c}
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Emergency Contact Information */}
+                  <div className="p-4 bg-gray-50 rounded-2xl border border-gray-200/80 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <label className="text-[11px] font-bold text-gray-800 uppercase tracking-wider flex items-center gap-1.5">
+                        <Phone size={12} className="text-emerald-700" /> Emergency Contact
+                      </label>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const lead = state.guests.find(g => g.isLead) || state.guests[0];
+                          if (lead) {
+                            setModalGuest({
+                              ...modalGuest,
+                              emergencyContactName: `${lead.first} ${lead.last}`,
+                              emergencyContactPhone: state.client.phone || '',
+                              emergencyContactRelation: 'Lead Group Contact',
+                              inheritEmergencyContact: true
+                            });
+                          }
+                        }}
+                        className="text-[10px] text-emerald-800 font-bold hover:underline"
+                      >
+                        Copy Lead Contact
+                      </button>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                      <div>
+                        <label className="text-[9px] text-gray-400 font-bold uppercase block mb-1">Contact Name</label>
+                        <input
+                          type="text"
+                          value={modalGuest.emergencyContactName || ''}
+                          onChange={e => setModalGuest({ ...modalGuest, emergencyContactName: e.target.value, inheritEmergencyContact: false })}
+                          placeholder="e.g. John Doe"
+                          className="w-full h-9 px-3 rounded-lg border border-gray-200 text-xs bg-white"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-[9px] text-gray-400 font-bold uppercase block mb-1">Phone Number</label>
+                        <input
+                          type="text"
+                          value={modalGuest.emergencyContactPhone || ''}
+                          onChange={e => setModalGuest({ ...modalGuest, emergencyContactPhone: e.target.value, inheritEmergencyContact: false })}
+                          placeholder="+1 555 0199"
+                          className="w-full h-9 px-3 rounded-lg border border-gray-200 text-xs bg-white"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-[9px] text-gray-400 font-bold uppercase block mb-1">Relationship</label>
+                        <input
+                          type="text"
+                          value={modalGuest.emergencyContactRelation || ''}
+                          onChange={e => setModalGuest({ ...modalGuest, emergencyContactRelation: e.target.value, inheritEmergencyContact: false })}
+                          placeholder="e.g. Spouse / Brother"
+                          className="w-full h-9 px-3 rounded-lg border border-gray-200 text-xs bg-white"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="text-[10px] text-gray-400 font-bold uppercase block tracking-wider mb-2">Age Category</label>
+                      <select 
+                        value={modalGuest.age || 'Adult'} 
+                        onChange={e => setModalGuest({ ...modalGuest, age: e.target.value as any })}
+                        className="w-full h-11 px-4 rounded-xl border border-gray-200 text-xs bg-white focus:border-[#D4AF37] transition"
+                      >
+                        <option value="Adult">Adult (18-64)</option>
+                        <option value="Elderly">Elderly (65+)</option>
+                        <option value="Teen">Teen (13-17)</option>
+                        <option value="Child">Child (3-12)</option>
+                        <option value="Infant">Infant (Under 3)</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="text-[10px] text-gray-400 font-bold uppercase block tracking-wider mb-2">Primary Spoken Language</label>
+                      <select 
+                        value={modalGuest.languagesSpoken?.[0] || 'English'} 
+                        onChange={e => setModalGuest({ ...modalGuest, languagesSpoken: [e.target.value] })}
+                        className="w-full h-11 px-4 rounded-xl border border-gray-200 text-xs bg-white focus:border-[#D4AF37] transition"
+                      >
+                        <option value="English">English</option>
+                        <option value="Portuguese">Portuguese (Angolan/BR)</option>
+                        <option value="French">French</option>
+                        <option value="German">German</option>
+                        <option value="Spanish">Spanish</option>
+                        <option value="Mandarin">Mandarin</option>
+                        <option value="Italian">Italian</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2 pt-2">
+                    <input 
+                      type="checkbox" 
+                      id="isLead" 
+                      checked={modalGuest.isLead || false} 
+                      onChange={e => setModalGuest({ ...modalGuest, isLead: e.target.checked })}
+                      className="w-4 h-4 text-emerald-600 border-gray-300 rounded focus:ring-emerald-500" 
+                    />
+                    <label htmlFor="isLead" className="text-xs font-bold text-[#1A3326] cursor-pointer">This traveler is the Lead Booking Contact for the group</label>
+                  </div>
+                </div>
+              )}
+
+              {/* TAB 2: ACCESSIBILITY & MOBILITY */}
+              {modalTab === 'accessibility' && (
+                <div className="space-y-6 animate-in fade-in duration-150">
+                  <div className="space-y-3">
+                    <label className="text-xs font-extrabold text-[#1A3326] flex items-center gap-1.5 uppercase tracking-wider">
+                      <Accessibility size={14} className="text-[#D4AF37]" /> Physical Mobility Status
+                    </label>
+                    <div className="flex flex-wrap gap-2">
+                      {[
+                        'No restrictions', 'Walks short distances only', 'Cannot walk long distances', 
+                        'Uses walking stick', 'Uses walker', 'Manual wheelchair', 'Electric wheelchair', 
+                        'Requires accessible vehicle', 'Cannot climb stairs', 'Requires elevator access', 
+                        'Ground floor room preferred', 'Roll-in shower required', 'Grab rails required', 
+                        'Accessible bathroom required'
+                      ].map(item => {
+                        const isSelected = modalGuest.accessibilityMobility?.includes(item) || false;
+                        return (
+                          <span 
+                            key={item}
+                            onClick={() => toggleModalListTag('accessibilityMobility', item)}
+                            className={`px-3 py-1.5 rounded-xl border text-[10px] font-bold cursor-pointer select-none transition ${
+                              isSelected ? 'bg-amber-50 border-[#D4AF37] text-[#1A3326]' : 'bg-white border-gray-100 text-gray-500 hover:border-gray-200'
+                            }`}
+                          >
+                            {item}
+                          </span>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4 border-t border-gray-100">
+                    <div className="space-y-3">
+                      <label className="text-[10px] text-gray-400 font-bold uppercase tracking-wider block">Visual Support</label>
+                      <div className="flex flex-wrap gap-1.5">
+                        {['Blind', 'Low vision', 'Large print preferred', 'Guide dog travelling'].map(item => {
+                          const isSelected = modalGuest.accessibilityVision?.includes(item) || false;
+                          return (
+                            <span 
+                              key={item}
+                              onClick={() => toggleModalListTag('accessibilityVision', item)}
+                              className={`px-3 py-1.5 rounded-lg border text-[10px] font-bold cursor-pointer select-none transition ${
+                                isSelected ? 'bg-amber-50 border-[#D4AF37] text-[#1A3326]' : 'bg-white border-gray-100 text-gray-400'
+                              }`}
+                            >
+                              {item}
+                            </span>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    <div className="space-y-3">
+                      <label className="text-[10px] text-gray-400 font-bold uppercase tracking-wider block">Hearing Support</label>
+                      <div className="flex flex-wrap gap-1.5">
+                        {['Deaf', 'Hard of hearing', 'Hearing aid', 'Sign language assistance'].map(item => {
+                          const isSelected = modalGuest.accessibilityHearing?.includes(item) || false;
+                          return (
+                            <span 
+                              key={item}
+                              onClick={() => toggleModalListTag('accessibilityHearing', item)}
+                              className={`px-3 py-1.5 rounded-lg border text-[10px] font-bold cursor-pointer select-none transition ${
+                                isSelected ? 'bg-amber-50 border-[#D4AF37] text-[#1A3326]' : 'bg-white border-gray-100 text-gray-400'
+                              }`}
+                            >
+                              {item}
+                            </span>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="space-y-1.5 pt-4 border-t border-gray-100">
+                    <label className="text-[10px] text-gray-400 font-bold uppercase tracking-wider block">Critical Medical Operational Notes</label>
+                    <input 
+                      type="text"
+                      value={modalGuest.medicalOperationalNotes || ''}
+                      onChange={e => setModalGuest({ ...modalGuest, medicalOperationalNotes: e.target.value })}
+                      className="w-full h-11 px-4 rounded-xl border border-gray-200 text-xs font-semibold focus:border-[#D4AF37] transition"
+                      placeholder="e.g. Oxygen support, Medication refrigeration, Pregnancy third trimester, High altitude constraints..."
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* TAB 3: DIETARY REQUIREMENTS */}
+              {modalTab === 'dietary' && (
+                <div className="space-y-6 animate-in fade-in duration-150">
+                  
+                  {/* Category: Religious */}
+                  <div className="space-y-2.5">
+                    <label className="text-[10px] text-gray-400 font-bold uppercase tracking-wider block">Religious / Spiritual Observance</label>
+                    <div className="flex flex-wrap gap-2">
+                      {['Halal', 'Kosher', 'Jain'].map(item => {
+                        const isSelected = modalGuest.dietaryReligious?.includes(item) || false;
+                        return (
+                          <span 
+                            key={item}
+                            onClick={() => toggleModalListTag('dietaryReligious', item)}
+                            className={`px-3 py-1.5 rounded-xl border text-[10px] font-bold cursor-pointer transition ${
+                              isSelected ? 'bg-emerald-50 border-[#D4AF37] text-[#1A3326]' : 'bg-white border-gray-100 text-gray-500'
+                            }`}
+                          >
+                            {item}
+                          </span>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Category: Lifestyle */}
+                  <div className="space-y-2.5 pt-4 border-t border-gray-100">
+                    <label className="text-[10px] text-gray-400 font-bold uppercase tracking-wider block">Lifestyle Diet</label>
+                    <div className="flex flex-wrap gap-2">
+                      {['Vegetarian', 'Vegan', 'Pescatarian'].map(item => {
+                        const isSelected = modalGuest.dietaryLifestyle?.includes(item) || false;
+                        return (
+                          <span 
+                            key={item}
+                            onClick={() => toggleModalListTag('dietaryLifestyle', item)}
+                            className={`px-3 py-1.5 rounded-xl border text-[10px] font-bold cursor-pointer transition ${
+                              isSelected ? 'bg-emerald-50 border-[#D4AF37] text-[#1A3326]' : 'bg-white border-gray-100 text-gray-500'
+                            }`}
+                          >
+                            {item}
+                          </span>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Category: Medical Allergens */}
+                  <div className="space-y-2.5 pt-4 border-t border-gray-100">
+                    <label className="text-[10px] text-gray-400 font-bold uppercase tracking-wider block text-rose-600">Medical / Allergen Constraints</label>
+                    <div className="flex flex-wrap gap-2">
+                      {[
+                        'Gluten Free', 'Dairy Free', 'Nut Allergy', 'Shellfish Allergy', 
+                        'Egg Allergy', 'Soy Allergy', 'Diabetic Meals', 'Low Sodium'
+                      ].map(item => {
+                        const isSelected = modalGuest.dietaryMedical?.includes(item) || false;
+                        return (
+                          <span 
+                            key={item}
+                            onClick={() => toggleModalListTag('dietaryMedical', item)}
+                            className={`px-3 py-1.5 rounded-xl border text-[10px] font-bold cursor-pointer transition ${
+                              isSelected ? 'bg-rose-50 border-rose-400 text-rose-950' : 'bg-white border-gray-100 text-gray-500'
+                            }`}
+                          >
+                            {item}
+                          </span>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Category: Preferences */}
+                  <div className="space-y-2.5 pt-4 border-t border-gray-100">
+                    <label className="text-[10px] text-gray-400 font-bold uppercase tracking-wider block">Kitchen Preferences</label>
+                    <div className="flex flex-wrap gap-2">
+                      {['Mild Food Only', 'No Pork', 'No Beef', 'Child Meals', 'Soft Foods'].map(item => {
+                        const isSelected = modalGuest.dietaryPreferences?.includes(item) || false;
+                        return (
+                          <span 
+                            key={item}
+                            onClick={() => toggleModalListTag('dietaryPreferences', item)}
+                            className={`px-3 py-1.5 rounded-xl border text-[10px] font-bold cursor-pointer transition ${
+                              isSelected ? 'bg-emerald-50 border-[#D4AF37] text-[#1A3326]' : 'bg-white border-gray-100 text-gray-500'
+                            }`}
+                          >
+                            {item}
+                          </span>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                </div>
+              )}
+
+              {/* TAB 4: COMFORT & EXPERIENCE PREFERENCES */}
+              {modalTab === 'preferences' && (
+                <div className="space-y-6 animate-in fade-in duration-150">
+                  
+                  {/* Accommodation Comfort */}
+                  <div className="space-y-2.5">
+                    <label className="text-[10px] text-gray-400 font-bold uppercase tracking-wider block">Lodge / Suite Comfort</label>
+                    <div className="flex flex-wrap gap-2">
+                      {[
+                        'King Bed', 'Twin Beds', 'Separate Beds', 'Quiet Room', 'High Floor', 'Low Floor', 
+                        'Near Elevator', 'Away from Elevator', 'Ocean View', 'Mountain View', 'Garden View', 
+                        'Interleading Rooms', 'Accessible Room'
+                      ].map(item => {
+                        const isSelected = modalGuest.preferencesAccommodation?.includes(item) || false;
+                        return (
+                          <span 
+                            key={item}
+                            onClick={() => toggleModalListTag('preferencesAccommodation', item)}
+                            className={`px-3 py-1.5 rounded-xl border text-[10px] font-bold cursor-pointer transition ${
+                              isSelected ? 'bg-yellow-50 border-[#D4AF37] text-[#1A3326]' : 'bg-white border-gray-100 text-gray-500'
+                            }`}
+                          >
+                            {item}
+                          </span>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Transport Comfort */}
+                  <div className="space-y-2.5 pt-4 border-t border-gray-100">
+                    <label className="text-[10px] text-gray-400 font-bold uppercase tracking-wider block">Vehicular Dispatch Comfort</label>
+                    <div className="flex flex-wrap gap-2">
+                      {[
+                        'Front Seat', 'Window Seat', 'Air Conditioning', 'Wi-Fi', 'Extra Leg Room', 
+                        'Child Seat Required'
+                      ].map(item => {
+                        const isSelected = modalGuest.preferencesTransport?.includes(item) || false;
+                        return (
+                          <span 
+                            key={item}
+                            onClick={() => toggleModalListTag('preferencesTransport', item)}
+                            className={`px-3 py-1.5 rounded-xl border text-[10px] font-bold cursor-pointer transition ${
+                              isSelected ? 'bg-yellow-50 border-[#D4AF37] text-[#1A3326]' : 'bg-white border-gray-100 text-gray-500'
+                            }`}
+                          >
+                            {item}
+                          </span>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Experience Interests */}
+                  <div className="space-y-2.5 pt-4 border-t border-gray-100">
+                    <label className="text-[10px] text-gray-400 font-bold uppercase tracking-wider block">Curation Focus & Interests</label>
+                    <div className="flex flex-wrap gap-2">
+                      {[
+                        'Wildlife', 'Photography', 'Bird Watching', 'Wine', 'Food Experiences', 
+                        'Culture', 'Shopping', 'Luxury', 'Wellness', 'Adventure', 'Relaxation'
+                      ].map(item => {
+                        const isSelected = modalGuest.preferencesInterests?.includes(item) || false;
+                        return (
+                          <span 
+                            key={item}
+                            onClick={() => toggleModalListTag('preferencesInterests', item)}
+                            className={`px-3 py-1.5 rounded-xl border text-[10px] font-bold cursor-pointer transition ${
+                              isSelected ? 'bg-yellow-50 border-[#D4AF37] text-[#1A3326]' : 'bg-white border-gray-100 text-gray-500'
+                            }`}
+                          >
+                            {item}
+                          </span>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* General Custom Notes */}
+                  <div className="space-y-1.5 pt-4 border-t border-gray-100">
+                    <label className="text-[10px] text-gray-400 font-bold uppercase tracking-wider block">Bespoke Guest Notes & Operational Guidelines</label>
+                    <textarea 
+                      value={modalGuest.notes || ''} 
+                      onChange={e => setModalGuest({ ...modalGuest, notes: e.target.value })}
+                      className="w-full p-4 rounded-xl border border-gray-200 text-xs font-medium focus:border-[#D4AF37] transition" 
+                      placeholder="e.g. celebrating a 40th anniversary, loves hot cocoa, very enthusiastic about spotting big cats..."
+                      style={{ resize: 'vertical', minHeight: '80px' }}
+                    />
+                  </div>
+
+                </div>
+              )}
+
+            </div>
+
+            {/* Footer */}
+            <div className="p-6 border-t border-gray-100 bg-slate-50/50 shrink-0 flex justify-between items-center">
+              <span className="text-[10px] text-gray-400 font-bold">
+                {modalTab === 'basic' && 'Next: Accessibility & Mobility'}
+                {modalTab === 'accessibility' && 'Next: Dietary Categories'}
+                {modalTab === 'dietary' && 'Next: Comfort & Preferences'}
+                {modalTab === 'preferences' && 'Ready to save profile'}
+              </span>
+              <div className="flex gap-3">
+                <button onClick={closeModal} className="px-5 py-2.5 rounded-xl border border-gray-200 text-xs font-bold hover:bg-gray-50 bg-white transition">Cancel</button>
+                <button onClick={handleSaveModalGuest} className="px-5 py-2.5 bg-[#1A3326] text-white rounded-xl text-xs font-bold hover:bg-[#12241b] transition shadow-md">Save Traveller Dossier</button>
+              </div>
+            </div>
+
           </div>
         </div>
       )}

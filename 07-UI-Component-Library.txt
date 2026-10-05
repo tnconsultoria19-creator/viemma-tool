@@ -1,0 +1,78 @@
+Viemma Tours - Workspace OS
+================================================================================
+07 - UI COMPONENT LIBRARY
+================================================================================
+Context: Design System & Reusable UI Component Audit
+Version: 1.0.0
+Author: Senior Enterprise Solution Architect
+
+This document outlines the UI component library derived from the existing 
+React/Tailwind implementation. Note: Components are currently implemented as 
+pattern-based modules within View files.
+
+================================================================================
+1. STYLE & DESIGN TOKENS
+================================================================================
+Typography:
+- Primary (UI/Body): 'Plus Jakarta Sans', sans-serif
+- Display (Headings/Hero): 'Outfit', serif
+
+Brand Palette:
+- Safari Dark: #1A3326 (Primary UI background, text)
+- Safari Gold: #D4AF37 (Accent, badges, timeline indicators)
+- Safari Sand: #FAF9F6 (Component backgrounds)
+- Neutral: #F8FAFC (Global background)
+
+Icons:
+- Library: Lucide-React (Extensive usage: Home, Users, Plane, Hotel, Route, 
+  Settings, Save, etc.)
+
+================================================================================
+2. COMPONENT LIST
+================================================================================
+
+A. Buttons
+- Primary Action (Solid): `h-11 px-4 rounded-xl bg-[#D4AF37] text-[#1A3326] font-black`
+- Primary Action (Dark): `h-11 px-4 rounded-xl bg-[#1A3326] text-white font-bold`
+- Secondary (Bordered): `h-11 px-4 rounded-xl border border-gray-200 text-xs font-bold`
+- Nav Trigger: `group bg-white border border-gray-100 p-5 rounded-[24px]`
+- IconButton: `w-9 h-9 rounded-xl border border-gray-200 hover:text-gray-900`
+
+B. Cards
+- Dashboard Bento Card: `bg-white rounded-[24px] border border-gray-100 p-6 md:p-8 shadow-sm`
+- Relational Item Card (Flight/Transfer/Suite): `bg-white rounded-[24px] border border-gray-100 shadow-sm hover:shadow-md`
+- Catalog/Library Card: `bg-white rounded-[24px] border border-gray-100 overflow-hidden shadow-xs hover:shadow-md`
+
+C. Timelines
+- Activity Day View: `timeline-step` CSS utility + Lucide `Clock` icon.
+- Progress Ring (Client Portal): `conic-gradient` CSS-based progress circle.
+
+D. Hero Sections
+- Welcome Banner (Home): `w-full min-h-[460px] rounded-[32px] relative` + background image URL.
+- Client Portal Hero: `w-full min-h-[460px] rounded-[32px] relative` + dark gradient overlay.
+
+E. Modals
+- Form/Entry Modal: `fixed inset-0 bg-black/75 backdrop-blur-md flex items-center justify-center`
+- Detail Overlay (Client View): `fixed inset-0 z-[120] bg-black/60 backdrop-blur-md`
+
+F. Forms
+- Input (Standard): `w-full h-11 px-4 rounded-xl border border-gray-200 text-xs font-semibold`
+- Textarea: `w-full p-4 rounded-xl border border-gray-200 text-xs font-medium`
+- Select (Dropdown): `w-full h-11 px-4 rounded-xl border border-gray-200 text-xs bg-white`
+- Tags Selector (Inclusions/Amenities): `px-3.5 py-2 rounded-xl text-[11px] font-semibold cursor-pointer border`
+
+G. Galleries
+- Catalog Image Grids: `grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6`
+
+H. Charts
+- Itinerary Allocation (Donut): Custom SVG drawing within `AnalyticsView`.
+- Revenue/Cost Trends: Custom SVG drawing within `AnalyticsView`.
+
+I. Navigation
+- App Shell Nav: Horizontal top-aligned flex container.
+- Tab Launcher (Mobile): Slide-in sidebar (`w-[290px] bg-[#1A3326]`).
+- Day Switcher (Client Portal): Grid-based button array (`grid-cols-2 md:grid-cols-4`).
+
+J. Uploaders
+- Note: File upload functionality currently uses native HTML file input interfaces 
+  wrapped within stylized component containers.

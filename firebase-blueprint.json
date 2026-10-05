@@ -1,0 +1,36 @@
+{
+  "entities": {
+    "Trip": {
+      "title": "Trip",
+      "description": "Master operations travel record for Viemma Tours Southern Africa",
+      "type": "object",
+      "properties": {
+        "ref": { "type": "string", "description": "Unique booking reference (e.g. VT-2026-9999)", "maxLength": 64 },
+        "title": { "type": "string", "description": "Trip title / Expedition name", "maxLength": 256 },
+        "status": { "type": "string", "enum": ["draft", "quoted", "confirmed", "in_travel", "completed", "archived"], "description": "Trip lifecycle status" },
+        "version": { "type": "number", "description": "Trip schema / mutation version" },
+        "consultant": { "type": "string", "description": "Assigned travel designer / ops consultant", "maxLength": 128 },
+        "priority": { "type": "string", "enum": ["hot", "confirmed", "exploratory", "pending"], "description": "Trip priority" },
+        "source": { "type": "string", "description": "Lead source channel", "maxLength": 64 },
+        "client": { "type": "object", "description": "Client contact and trip dates" },
+        "guests": { "type": "array", "description": "Guest manifest roster with rooming and dietary flags" },
+        "flights": { "type": "array", "description": "Flights schedule and passenger allocations" },
+        "transfers": { "type": "array", "description": "Transfers, vehicles, drivers, and pickup times" },
+        "rooms": { "type": "array", "description": "Accommodations and room allocations" },
+        "activities": { "type": "array", "description": "Day-by-day scheduled experiences and private guides" },
+        "finance": { "type": "object", "description": "Financial margins, commission, currency rates and payment status" },
+        "internalNotes": { "type": "string", "description": "Internal operations notes", "maxLength": 5000 },
+        "editorial": { "type": "object", "description": "Editorial stories, photography URLs and concierge notes" },
+        "publishing": { "type": "object", "description": "Role-specific access tokens and publishing metadata" },
+        "changeLog": { "type": "array", "description": "Audit trail of changes made to the itinerary" }
+      },
+      "required": ["ref", "status", "client"]
+    }
+  },
+  "firestore": {
+    "/trips/{tripId}": {
+      "schema": "Trip",
+      "description": "Collection of all Viemma Tours client itineraries and operations files"
+    }
+  }
+}

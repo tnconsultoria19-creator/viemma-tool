@@ -1,0 +1,319 @@
+Workspace Layout (App.tsx)
+    Header Navigation
+        Logo
+        File Master Info Stack
+        Desktop Navigation Menu
+        Mobile Navigation Menu (Launcher)
+    Quick Actions Toolbar
+        Save File Button
+        View Client Link Button
+        Publish Output Button
+        Workspace Settings Button
+    Workspace Settings Modal
+        Consultant Name Field
+        Itinerary Reference Field
+        Operations Priority Dropdown
+        Cancel Button
+        Save & Refresh Dashboard Button
+    Footer
+
+Home View
+    Hero Action Grid
+        Intake & Guests Roster Trigger
+        Flights Panel Trigger
+        Transfers & Fleet Trigger
+        Rooming Board Trigger
+        Experiences Trigger
+        Print Hub Trigger
+    Recent Tour Profiles
+        Load Template (Angola - SA Premium Corridor)
+        Start Fresh Worksheet
+    Local Workspace Services (Status panel)
+        Commercial Pricing Engine Status
+        Auto-Save Cache Status
+        jsPDF Document Compiler Status
+
+Intake & Guests View (IntakeView.tsx)
+    Lead & Acquisition Strategy
+        Client Name Input
+        Contact Number Input
+        Email Address Input
+        Preferred Contact Method Dropdown
+        Proposal Priority Dropdown
+        Acquisition Source Dropdown
+        Partner Agent Dropdown (Conditional)
+    Expedition Parameters
+        Starting Origin Input
+        Destination Focus Input
+        Total Expected Duration Input
+        Start Date Picker
+        End Date Picker
+        Occasion Type Dropdown
+        Viemma Profile Tags Selector
+    Dietary & Mobility Requirements
+        Medical & Dietary Global Tags
+        Travel Preferences Global Tags
+    Traveler Roster Roster
+        Quick Templates (Couple, Family, Solo, Group)
+        Add Traveler Button
+        Traveler Cards List
+            Edit Guest Button
+            Delete Guest Button
+    Traveler Configuration Modal
+        First Name Input
+        Last Name Input
+        Age Category Dropdown
+        Nationality Dropdown
+        Is Lead Booking Contact Checkbox
+        Dietary Requirements Tags Selector
+        Bespoke Guest Notes & Preferences Textarea
+        Cancel Button
+        Save Guest Profile Button
+
+Flights Panel (FlightsView.tsx)
+    Empty State / Add First Flight Button
+    Flight Sectors List
+        Flight Sector Card
+            Edit Button
+            Delete Button
+    Flight Sector Modal
+        Flight Sector Direction Dropdown
+        Take-off Date Input
+        Airline/Carrier Input
+        Flight Number Input
+        Ticket PNR Input
+        Cabin Class Dropdown
+        Booking Status Dropdown
+        Route Passage (Origin, Dest, Dep, Arr, Duration)
+        Multi-Stop Corridor Planner
+            Add Stop Button
+            Stop Configuration Fields (Airport, Arr Time, Dep Time, Dur)
+        Commercial Ledger
+            Passengers Quantity
+            Net Cost Per Pax
+            Margin / Markup Per Pax
+        Luggage Allowances
+            Hand Luggage
+            Checked Baggage
+            Oversized / Special Items
+        Assign Passengers (Roster Link)
+        Coordination & Internal Notes Textarea
+        Cancel Button
+        Save Flight Sector Button
+
+Transfers & Fleet (TransfersView.tsx)
+    Empty State / Add First Transfer Button
+    Fleet Transfers List
+        Transfer Card
+            Edit Button
+            Delete Button
+    Transfer Configuration Modal
+        Dispatch Type Dropdown
+        Departure Date Input
+        Vehicle Category Input
+        Driver Name Input
+        Driver Phone Input
+        Pick-up Location Input
+        Drop-off Destination Input
+        Meet & Greet Placard Input
+        Departure Time Input
+        Journey Duration Input
+        Logistical Checkpoint Waypoints
+            Add Waypoint Button
+            Waypoint Fields (Location, Wait Time)
+        Fleet Load Specifications
+            Passenger Count
+            Hand Luggage
+            Checked Baggage
+            Oversized Cargo
+        Commercial Estimate
+            Net Cost per Vehicle
+            Tolls Estimated
+            Parking Estimated
+        Bespoke In-Vehicle Amenities Selector (Child Seat, Wi-Fi, Champagne, etc)
+        Assign Passengers
+        Internal Logistics Coordination Notes Textarea
+        Cancel Button
+        Save Dispatch Plan Button
+
+Rooming Board (RoomingView.tsx)
+    Empty State / Add First Booking Button
+    Accommodations List
+        Property Booking Card
+            Edit Button
+            Delete Button
+    Accommodation Configuration Modal
+        Property / Lodge Name Input
+        Booking Voucher / Conf Input
+        Payment Settlement Dropdown
+        Room Layout Category Input
+        Bedding Configuration Dropdown
+        Meal Basis / Board Dropdown
+        Check-In Date Input
+        Check-Out Date Input
+        Stay Duration (Nights) Input
+        Net Nightly Base Rate Input
+        Conservation Fee / Single Supp Input
+        Link Lodged Travelers
+        Accessibility & Special Amenity Requests Selector (Honeymoon Setup, etc)
+        Rooming Notes & Concierge Coordination Textarea
+        Cancel Button
+        Save Lodging Block Button
+
+Experiences (ActivitiesView.tsx)
+    Empty State / Add First Activity Button
+    Daily Experiences List
+        Experience Card
+            Edit Button
+            Delete Button
+    Daily Experience Modal
+        Itinerary Day Number Selector
+        Schedule Slot Dropdown
+        Experience Name Input
+        Core Description Textarea
+        Pick-up Logistics Dropdown
+        Pick-up Location Name Input
+        Operating Supplier Input
+        Supplier Emergency Phone Input
+        Schedule Start Time Input
+        Total Expected Duration Input
+        Booking / Voucher Conf Input
+        Operating Status Dropdown
+        Tickets & Headcount Breakdown
+            Adult Count
+            Child Count
+            Adult Net Rate
+            Child Net Rate
+            Flat Rate Toggle / Checkbox
+        Outing Net Cost Calculator
+        Assign Travelers
+        Outing Ticket Inclusions Selector (Transport, Meals, Gear, etc)
+        Adverse Weather Backup Plan Input
+        Special Instructions / Notes Input
+        Cancel Button
+        Save Experience Block Button
+
+Analytics & Insights (AnalyticsView.tsx)
+    Financial Performance Trends (Chart/Metrics)
+    Itinerary Allocation Ratio (Donut Chart)
+    Roster & Operational Readiness
+        Workspace Integrity Check
+        Guests Passenger Manifest Check
+        Accommodations & Lodging Allocations Check
+    Expedition Overview Parameters
+    Advisor Insights Note
+
+Print Hub (PrintHubView.tsx)
+    Tab Controls (Publish Web Link, Compose Client Email)
+    Publish Web Link Tab
+        Viewport Control (Desktop, Tablet, Mobile)
+        Interactive Output Preview Frame
+        Itinerary Publication History List
+            Rollback/Revert Version Button
+        Publication Version Remark Input
+        Publish Digital Experience Button
+    Compose Client Email Tab
+        To / Recipient Preview
+        Subject Preview
+        Personalize Welcome Message Input
+        HTML Email Template Preview
+            Send To Client Button (Visual only)
+
+Database & Catalogs (DatabaseView.tsx)
+    Excursion & Tour Catalog Table
+    Arrival Welcoming Extras Catalog Table
+    Partner Travel Agents Master List Table
+    Assigned Driver Roster Table
+    Fleet Core Vehicles Table
+    Property Master List Table
+
+Experience Library (ExperienceLibraryView.tsx)
+    Tabs (Tour & Excursion Catalog, Destination & Route Guides)
+    Tour & Excursion Catalog Tab
+        Destination Filter Dropdown
+        Category Filter Dropdown
+        Difficulty Filter Dropdown
+        Search Input
+        Add Experience Button
+        Experience Cards List
+            Edit Button
+            Delete Button
+    Experience Configuration Modal
+        Experience Name Input
+        Destination Anchor Input
+        Total Duration Input
+        Activity Category Dropdown
+        Difficulty Level Dropdown
+        Adult Net Rate Input
+        Child Net Rate Input
+        Main Image URL Input
+        Preferred Supplier / Operator Input
+        Luxury Detailed Description Textarea
+        Marketing Highlights Tags Input
+        Client FAQs (Question/Answer Inputs)
+        Cancel Button
+        Save Experience Profile Button
+    Destination & Route Guides Tab
+        Search Input
+        Add Destination Guide Button
+        Destination Cards List
+            Edit Button
+            Delete Button
+    Destination Guide Modal
+        Destination Name Input
+        Country Focus Input
+        Region String Input
+        Cover Image URL Input
+        Cultural Overview Textarea
+        Best Climate & Times to Visit Input
+        Trading Currency Input
+        Emergency Contacts Input
+        Expert Tips / Local Nuances List (Add Button, Remove Button)
+        Packing Advice List (Add Button, Remove Button)
+        Cancel Button
+        Save Destination Guide Button
+
+Finance & Ledger (FinanceView.tsx)
+    Global Selling Currency Settings
+        Output Retail Currency Dropdown
+        Active Rate Display
+    Commercial Margin Overrides
+        Global Markup Setting Dropdown (% or Fixed)
+        Computed Gross Profit Display
+    Gateway & Surcharges
+        Settlement Channel Dropdown
+        Calculated Surcharge Display
+    Discounts & Promos
+        Discount (ZAR) Input
+        Deducted Price Display
+    Incident & Buffer
+        Safety Buffer (ZAR) Input
+        Protection Buffer Display
+    Financial & Operational Buffer Context
+        Context Notes Textarea
+    Grand Operational Commercial Ledger
+        Functional Segment Cost Sums Breakdown
+        Exchange Rates Registry Inputs (ZAR to USD, EUR, BRL, AOA)
+
+Client View (ClientView.tsx)
+    Hero Welcome Banner
+        Client Name & Journey Title
+        Dates & Duration
+        Status Badge
+    Daily Navigation Grid
+        Day Selector Buttons
+    Daily Chronicle Itinerary
+        Activity List Items
+            View Details Button
+    Destination & Logistics Overview
+        Sanctuary Host / Hotel Status
+        Regional Climate Status
+        Local Currency Status
+        Destination Overview Text
+    Activity Detail Modal
+        Cover Image
+        Schedule & Title
+        Description
+        Meeting / Pickup Information
+        Time Details
+        Close Details Button

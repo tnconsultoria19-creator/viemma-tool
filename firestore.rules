@@ -1,0 +1,18 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isValidId(id) {
+      return id is string && id.size() > 0 && id.size() <= 128;
+    }
+
+    // /trips/{tripId} Collection
+    match /trips/{tripId} {
+      // Allow read for trips (for owner cockpit, client shareable links, agent portal, operator sheets)
+      allow read: if true;
+
+      // Allow writes with valid document ID
+      allow write: if isValidId(tripId);
+    }
+  }
+}
