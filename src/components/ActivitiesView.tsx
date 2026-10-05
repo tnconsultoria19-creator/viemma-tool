@@ -209,7 +209,10 @@ export const ActivitiesView: React.FC<ActivitiesViewProps> = ({
       photographyOpportunities: aForm.photographyOpportunities || '',
       seasonalAvailability: aForm.seasonalAvailability || '',
       faqs: aForm.faqs || [],
-      guideNotes: aForm.guideNotes || ''
+      guideNotes: aForm.guideNotes || '',
+      guideId: aForm.guideId || '',
+      guideName: aForm.guideName || '',
+      guidePhone: aForm.guidePhone || ''
     };
 
     if (editingActivityId === -1) {
@@ -583,6 +586,44 @@ export const ActivitiesView: React.FC<ActivitiesViewProps> = ({
                         className="w-full p-3 rounded-lg border border-gray-200 text-xs focus:border-[#D4AF37]"
                         placeholder="Demarcated path rules, baboon safety guidelines, keep hydrated..."
                       />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Guide Assignment */}
+                <div className="bg-white rounded-[20px] p-6 border border-gray-100 shadow-sm space-y-5">
+                  <h3 className="text-xs uppercase font-bold text-[#1A3326] tracking-wider border-b border-gray-100 pb-2 flex items-center gap-2">
+                    <Users size={14} className="text-[#D4AF37]" /> Guide Assignment
+                  </h3>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="md:col-span-2 space-y-1.5">
+                      <label className="text-[11px] text-gray-500 font-bold uppercase tracking-wider block">Assigned Guide</label>
+                      <select
+                        value={aForm.guideId || ''}
+                        onChange={e => {
+                          const guide = DB_DEFAULT.guides.find(g => g.id === e.target.value);
+                          setAForm({
+                            ...aForm,
+                            guideId: guide?.id || '',
+                            guideName: guide?.name || '',
+                            guidePhone: guide?.phone || ''
+                          });
+                        }}
+                        className="w-full h-11 px-4 rounded-xl border border-gray-200 text-xs font-semibold text-gray-700 bg-white focus:border-[#D4AF37] transition"
+                      >
+                        <option value="">Select guide...</option>
+                        {DB_DEFAULT.guides.map(guide => (
+                          <option key={guide.id} value={guide.id}>
+                            {guide.name} — {guide.phone}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="space-y-1.5">
+                      <label className="text-[11px] text-gray-500 font-bold uppercase tracking-wider block">Guide Contact</label>
+                      <div className="w-full h-11 px-4 rounded-xl border border-gray-200 bg-slate-50 flex items-center text-xs font-semibold text-gray-700">
+                        {aForm.guidePhone || 'Select a guide'}
+                      </div>
                     </div>
                   </div>
                 </div>
