@@ -359,31 +359,31 @@ export const TripsDashboardView: React.FC<TripsDashboardViewProps> = ({
                       <Briefcase size={14} /> {isSelected ? 'In Workspace' : 'Open Trip'}
                     </button>
 
-                    {/* Quick Portal Share Buttons */}
+                    {/* Quick Secure Token Portal Share Buttons */}
                     <div className="flex items-center gap-1.5 bg-gray-50 p-1.5 rounded-xl border border-gray-200">
                       <a
-                        href={`${window.location.origin}${window.location.pathname}?trip=${trip.ref}&role=client`}
+                        href={`${window.location.origin}${window.location.pathname}?share=client&token=${trip.publishing?.clientToken || ''}`}
                         target="_blank"
                         rel="noopener noreferrer"
-                        title="Open Live Client Portal"
+                        title="Open Live Client Portal via Secure Token"
                         className="px-2.5 py-1.5 rounded-lg bg-white hover:bg-emerald-50 text-gray-700 hover:text-emerald-800 text-[11px] font-bold transition-colors shadow-xs flex items-center gap-1"
                       >
                         <Eye size={12} className="text-[#D4AF37]" /> Client
                       </a>
                       <a
-                        href={`${window.location.origin}${window.location.pathname}?trip=${trip.ref}&role=agent`}
+                        href={`${window.location.origin}${window.location.pathname}?share=agent&token=${trip.publishing?.agentToken || ''}`}
                         target="_blank"
                         rel="noopener noreferrer"
-                        title="Open Live B2B Agent Portal"
+                        title="Open Live B2B Agent Portal via Secure Token"
                         className="px-2.5 py-1.5 rounded-lg bg-white hover:bg-amber-50 text-gray-700 hover:text-amber-900 text-[11px] font-bold transition-colors shadow-xs flex items-center gap-1"
                       >
                         <ShieldCheck size={12} className="text-amber-600" /> Agent
                       </a>
                       <a
-                        href={`${window.location.origin}${window.location.pathname}?trip=${trip.ref}&role=operator`}
+                        href={`${window.location.origin}${window.location.pathname}?share=ops&token=${trip.publishing?.opsToken || ''}`}
                         target="_blank"
                         rel="noopener noreferrer"
-                        title="Open Live Ground Ops Sheet"
+                        title="Open Live Ground Ops Sheet via Secure Token"
                         className="px-2.5 py-1.5 rounded-lg bg-white hover:bg-slate-100 text-gray-700 hover:text-slate-900 text-[11px] font-bold transition-colors shadow-xs flex items-center gap-1"
                       >
                         <ExternalLink size={12} className="text-slate-600" /> Ops

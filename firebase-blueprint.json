@@ -25,12 +25,100 @@
         "changeLog": { "type": "array", "description": "Audit trail of changes made to the itinerary" }
       },
       "required": ["ref", "status", "client"]
+    },
+    "ClientShare": {
+      "title": "ClientShare",
+      "description": "Public-safe visual experience projection for travellers, strictly excluding financial margins, supplier costs, and internal notes",
+      "type": "object",
+      "properties": {
+        "token": { "type": "string", "description": "Secure unguessable access token" },
+        "tripRef": { "type": "string", "description": "Master trip reference code" },
+        "role": { "type": "string", "enum": ["client"], "description": "Audience role" },
+        "active": { "type": "boolean", "description": "Token validity flag" },
+        "version": { "type": "number", "description": "Snapshot revision number" },
+        "lastUpdated": { "type": "string", "description": "Timestamp of last synchronization" },
+        "title": { "type": "string", "description": "Trip title" },
+        "clientName": { "type": "string", "description": "Client name" },
+        "startDate": { "type": "string", "description": "Start date" },
+        "endDate": { "type": "string", "description": "End date" },
+        "durationText": { "type": "string", "description": "Duration text" },
+        "editorial": { "type": "object", "description": "Editorial stories and imagery" },
+        "destinations": { "type": "array", "description": "Destinations list" },
+        "activities": { "type": "array", "description": "Public activities list" },
+        "accommodations": { "type": "array", "description": "Lodging details and photos" },
+        "flights": { "type": "array", "description": "Flight segments schedule" },
+        "transfers": { "type": "array", "description": "Transfers schedule" },
+        "timeline": { "type": "array", "description": "Normalized chronological events" },
+        "consultant": { "type": "object", "description": "Contact info of assigned specialist" }
+      },
+      "required": ["token", "tripRef", "role", "active"]
+    },
+    "AgentShare": {
+      "title": "AgentShare",
+      "description": "B2B Agent projection with scannable guest timetable, retail rates, and commission; zero internal supplier net costs or margins",
+      "type": "object",
+      "properties": {
+        "token": { "type": "string", "description": "Secure unguessable access token" },
+        "tripRef": { "type": "string", "description": "Master trip reference code" },
+        "role": { "type": "string", "enum": ["agent"], "description": "Audience role" },
+        "active": { "type": "boolean", "description": "Token validity flag" },
+        "version": { "type": "number", "description": "Snapshot revision number" },
+        "lastUpdated": { "type": "string", "description": "Timestamp of last synchronization" },
+        "title": { "type": "string", "description": "Trip proposal title" },
+        "clientName": { "type": "string", "description": "Client name" },
+        "startDate": { "type": "string", "description": "Start date" },
+        "endDate": { "type": "string", "description": "End date" },
+        "durationText": { "type": "string", "description": "Duration text" },
+        "consultant": { "type": "object", "description": "Consultant contact details" },
+        "agent": { "type": "object", "description": "Agent agency and contact details" },
+        "retailPricing": { "type": "object", "description": "Gross retail price and agency commission" },
+        "timeline": { "type": "array", "description": "Chronological logistics flow" },
+        "flights": { "type": "array", "description": "Flight details" },
+        "accommodations": { "type": "array", "description": "Accommodation details" },
+        "transfers": { "type": "array", "description": "Transfer details" },
+        "guestInstructions": { "type": "string", "description": "Important travel instructions" }
+      },
+      "required": ["token", "tripRef", "role", "active"]
+    },
+    "OpsShare": {
+      "title": "OpsShare",
+      "description": "Operations run-sheet for drivers and guides with structured operational details and strictly zero financials",
+      "type": "object",
+      "properties": {
+        "token": { "type": "string", "description": "Secure unguessable access token" },
+        "tripRef": { "type": "string", "description": "Master trip reference code" },
+        "role": { "type": "string", "enum": ["ops"], "description": "Audience role" },
+        "active": { "type": "boolean", "description": "Token validity flag" },
+        "version": { "type": "number", "description": "Snapshot revision number" },
+        "lastUpdated": { "type": "string", "description": "Timestamp of last synchronization" },
+        "tripTitle": { "type": "string", "description": "Trip title" },
+        "clientName": { "type": "string", "description": "Client name" },
+        "leadPaxName": { "type": "string", "description": "Lead passenger name" },
+        "totalPaxCount": { "type": "number", "description": "Total passenger count" },
+        "emergencyContact": { "type": "object", "description": "24/7 Operations Desk contact" },
+        "guestManifest": { "type": "array", "description": "Guest manifest with dietary and mobility flags" },
+        "timeline": { "type": "array", "description": "Normalized timeline events" },
+        "services": { "type": "array", "description": "Operational services list" }
+      },
+      "required": ["token", "tripRef", "role", "active"]
     }
   },
   "firestore": {
     "/trips/{tripId}": {
       "schema": "Trip",
-      "description": "Collection of all Viemma Tours client itineraries and operations files"
+      "description": "Private master operations travel records, accessible only to authenticated staff"
+    },
+    "/clientShares/{token}": {
+      "schema": "ClientShare",
+      "description": "Public-safe visual experience projections accessible by secure token"
+    },
+    "/agentShares/{token}": {
+      "schema": "AgentShare",
+      "description": "B2B partner proposals accessible by secure token"
+    },
+    "/opsShares/{token}": {
+      "schema": "OpsShare",
+      "description": "Field logistics and driver run-sheets accessible by secure token"
     }
   }
 }

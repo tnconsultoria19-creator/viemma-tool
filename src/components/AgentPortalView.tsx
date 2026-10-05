@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { AppState } from '../types';
 import { getAgentTripView } from '../utils/roleFiltering';
+import { buildNormalizedTimeline, TimelineEvent } from '../utils/timelineEngine';
 import { 
   Building2, 
   Download, 
@@ -273,42 +274,95 @@ export const AgentPortalView: React.FC<AgentPortalViewProps> = ({ state: rawStat
                 </div>
               </div>
 
-              <div className="flex justify-end pt-2">
+              <div className="flex items-center justify-end gap-3 pt-2">
                 <button 
-                  onClick={() => alert('Booking information and notes successfully transmitted to Viemma Operations.')}
+                  onClick={() => {
+                    const btn = document.getElementById('b2b-submit-msg');
+                    if (btn) btn.style.display = 'block';
+                  }}
                   className="px-6 py-2.5 rounded-xl bg-[#1A3326] text-white hover:bg-[#234433] text-xs font-bold transition shadow-xs flex items-center gap-2"
                 >
                   <ShieldCheck size={14} className="text-[#D4AF37]" /> Send Info to Viemma
                 </button>
               </div>
+              <p id="b2b-submit-msg" style={{ display: 'none' }} className="text-right text-xs text-emerald-700 font-bold">
+                ✓ Booking information and notes successfully transmitted to Viemma Operations.
+              </p>
             </div>
           </div>
         )}
 
-        {/* Tab Content: Itemized Schedule */}
+        {/* Tab Content: Chronological Logistics Flow (Normalized Timeline Engine) */}
         {selectedTab === 'schedule' && (
           <div className="bg-white rounded-2xl p-6 md:p-8 border border-gray-100 shadow-sm space-y-6">
-            <h2 className="text-xl font-bold font-serif text-gray-900">Chronological Logistics Flow</h2>
+            <div className="flex items-center justify-between border-b border-gray-100 pb-3">
+              <div>
+                <h2 className="text-xl font-bold font-serif text-gray-900">Chronological Guest Movement Schedule</h2>
+                <p className="text-xs text-gray-500 mt-0.5">Unified day-by-day movements with verified calendar dates, transfer times, and supplier handoffs.</p>
+              </div>
+              <span className="text-[10px] bg-emerald-50 text-emerald-800 font-bold px-3 py-1 rounded-full uppercase tracking-wider">
+                Full Logistics
+              </span>
+            </div>
+
             <div className="space-y-4">
-              {state.activities.map((act, i) => (
-                <div key={act.id} className="p-4 rounded-xl border border-gray-200 flex items-start gap-4">
-                  <div className="w-12 h-12 rounded-xl bg-emerald-50 text-emerald-800 font-bold flex flex-col items-center justify-center shrink-0">
-                    <span className="text-[10px] uppercase font-bold">Day</span>
-                    <span className="text-sm font-black">{act.day}</span>
-                  </div>
-                  <div className="space-y-1">
-                    <h3 className="font-bold text-gray-900 text-sm">{act.name}</h3>
-                    <p className="text-xs text-gray-500">{act.desc}</p>
-                    <div className="flex flex-wrap gap-2 pt-1">
-                      {act.inc?.map((inc, j) => (
-                        <span key={j} className="text-[10px] px-2 py-0.5 rounded-md bg-gray-100 text-gray-600 font-medium">
-                          ✓ {inc}
+              {buildNormalizedTimeline(state).length === 0 ? (
+                <div className="text-center py-12 text-gray-400 text-xs">
+                  No itinerary events scheduled yet.
+                </div>
+              ) : (
+                buildNormalizedTimeline(state).map((event) => (
+                  <div key={event.id} className="p-4 rounded-xl border border-gray-200/90 hover:border-gray-300 transition bg-white flex flex-col sm:flex-row items-start gap-4">
+                    <div className="w-16 h-16 rounded-xl bg-[#1A3326] text-white font-bold flex flex-col items-center justify-center shrink-0 shadow-xs">
+                      <span className="text-[9px] uppercase tracking-wider text-[#D4AF37]">Day {event.day}</span>
+                      <span className="text-xs font-bold text-gray-200">{event.time}</span>
+                    </div>
+                    <div className="space-y-1.5 flex-1 min-w-0">
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <h3 className="font-bold text-gray-900 text-sm flex items-center gap-2">
+                          <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${
+                            event.category === 'flight' ? 'bg-sky-100 text-sky-800' :
+                            event.category === 'transfer' ? 'bg-amber-100 text-amber-800' :
+                            event.category === 'accommodation' ? 'bg-purple-100 text-purple-800' :
+                            'bg-emerald-100 text-emerald-800'
+                          }`}>
+                            {event.category}
+                          </span>
+                          {event.title}
+                        </h3>
+                        <span className="text-xs font-medium text-gray-400">
+                          {event.displayDate}
                         </span>
-                      ))}
+                      </div>
+                      <p className="text-xs text-gray-600 leading-relaxed">{event.description}</p>
+                      
+                      {/* Operational Details Scannable by Agent */}
+                      <div className="flex flex-wrap items-center gap-3 pt-1 text-[11px] text-gray-500">
+                        {event.driverName && (
+                          <span className="flex items-center gap-1 font-medium text-gray-700 bg-gray-50 px-2.5 py-1 rounded-md border border-gray-100">
+                            Chauffeur: <strong className="text-gray-900">{event.driverName}</strong>
+                          </span>
+                        )}
+                        {event.guideName && (
+                          <span className="flex items-center gap-1 font-medium text-gray-700 bg-gray-50 px-2.5 py-1 rounded-md border border-gray-100">
+                            Private Guide: <strong className="text-gray-900">{event.guideName}</strong>
+                          </span>
+                        )}
+                        {event.location && (
+                          <span className="flex items-center gap-1 text-gray-500">
+                            📍 {event.location}
+                          </span>
+                        )}
+                        {event.importantNotes && (
+                          <span className="flex items-center gap-1 text-amber-800 bg-amber-50/80 px-2 py-0.5 rounded border border-amber-200/50">
+                            ℹ️ {event.importantNotes}
+                          </span>
+                        )}
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
+                ))
+              )}
             </div>
           </div>
         )}

@@ -18,6 +18,12 @@ import { AgentPortalView } from './components/AgentPortalView';
 import { OperatorGroundSheetView } from './components/OperatorGroundSheetView';
 import { INITIAL_TRIPS } from './data/sampleTrips';
 import { saveTripToCloud, subscribeToTrip, listAllTrips, getTripById } from './lib/tripService';
+import { 
+  subscribeToShareDoc, 
+  clientDocToAppState, 
+  agentDocToAppState, 
+  opsDocToAppState 
+} from './lib/shareService';
 import { isCloudConnected } from './lib/firebase';
 import { LandingPageView } from './components/LandingPageView';
 import { JourneyPlannerView } from './components/JourneyPlannerView';
@@ -59,10 +65,12 @@ import {
   Sparkles,
   ShieldCheck,
   Radio,
-  Calendar
+  Calendar,
+  Lock,
+  ShieldAlert
 } from 'lucide-react';
 
-const INITIAL_STATE: AppState = {
+export const INITIAL_STATE: AppState = {
   ref: 'VT-2026-1048',
   consultant: 'Sarah Jenkins',
   priority: 'confirmed',
@@ -383,6 +391,32 @@ export default function App() {
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
   const [copiedRole, setCopiedRole] = useState<string | null>(null);
 
+  // Secure Public Token Share Mode Detection
+  const [publicShare, setPublicShare] = useState<{ role: 'client' | 'agent' | 'ops'; token: string } | null>(() => {
+    if (typeof window === 'undefined') return null;
+    const urlParams = new URLSearchParams(window.location.search);
+    const shareRole = urlParams.get('share');
+    const shareToken = urlParams.get('token');
+    const pathMatch = window.location.pathname.match(/\/share\/(client|agent|ops)\/([^/]+)/);
+    const effectiveRole = (pathMatch ? pathMatch[1] : shareRole) as 'client' | 'agent' | 'ops' | null;
+    const effectiveToken = pathMatch ? pathMatch[2] : shareToken;
+    if (effectiveRole && effectiveToken) {
+      return { role: effectiveRole, token: effectiveToken };
+    }
+    return null;
+  });
+
+  const [shareDocData, setShareDocData] = useState<any | null>(undefined); // undefined: loading, null: revoked/not found
+
+  // Real-time listener for public share projection
+  useEffect(() => {
+    if (!publicShare) return;
+    const unsubscribe = subscribeToShareDoc(publicShare.role, publicShare.token, (data) => {
+      setShareDocData(data);
+    });
+    return () => unsubscribe();
+  }, [publicShare]);
+
   const tabsList = useMemo(() => [
     { id: 'home', label: 'Home', icon: <Home size={15} /> },
     { id: 'trips', label: 'Trips Portfolio', icon: <Briefcase size={15} /> },
@@ -536,8 +570,9 @@ export default function App() {
     }
   };
 
-  // URL Query Parameter Listener for deep-linking and role switching
+  // URL Query Parameter Listener for deep-linking and role switching (OWNER SESSION ONLY)
   useEffect(() => {
+    if (publicShare) return; // Strictly ignore in public share mode
     const urlParams = new URLSearchParams(window.location.search);
     const tripParam = urlParams.get('trip') || urlParams.get('id');
     const roleParam = urlParams.get('role') || urlParams.get('view');
@@ -559,10 +594,11 @@ export default function App() {
         setState(found);
       }
     }
-  }, [tripsList]);
+  }, [tripsList, publicShare]);
 
   // Subscribe to real-time updates for active trip (Firestore onSnapshot + BroadcastChannel + Local fallback)
   useEffect(() => {
+    if (publicShare) return; // Strictly ignore in public share mode
     if (!state?.ref) return;
     const unsubscribe = subscribeToTrip(state.ref, (updatedTrip) => {
       setState(prev => {
@@ -572,10 +608,11 @@ export default function App() {
       });
     });
     return () => unsubscribe();
-  }, [state?.ref]);
+  }, [state?.ref, publicShare]);
 
-  // Load from Cloud Firestore / local storage on mount
+  // Load from Cloud Firestore / local storage on mount (OWNER SESSION ONLY)
   useEffect(() => {
+    if (publicShare) return; // Strictly ignore in public share mode
     let isMounted = true;
     listAllTrips().then(trips => {
       if (isMounted && trips && trips.length > 0) {
@@ -860,13 +897,70 @@ export default function App() {
       publishing: {
         ...INITIAL_STATE.publishing,
         tripId: newRef,
-        publicUrl: `https://portal.viemmatours.com/trip/${newRef}`,
+        publicUrl: `${window.location.origin}${window.location.pathname}?share=client&token=cli_${Math.random().toString(36).substring(2, 10)}`,
         lastUpdated: new Date().toISOString()
       }
     };
     updateFullState(newEmptyTrip);
     setActiveTab('guests');
   };
+
+  // 1. ISOLATED PUBLIC SHARE VIEW (Zero master access, strict projection rendering)
+  if (publicShare) {
+    if (shareDocData === undefined) {
+      return (
+        <div className="min-h-screen bg-[#1A3326] flex items-center justify-center p-6 text-white text-center font-sans">
+          <div className="space-y-3">
+            <div className="w-10 h-10 border-4 border-[#D4AF37] border-t-transparent rounded-full animate-spin mx-auto" />
+            <p className="text-xs uppercase tracking-widest text-[#D4AF37] font-bold">Verifying Secure Access Token...</p>
+          </div>
+        </div>
+      );
+    }
+
+    if (shareDocData === null || shareDocData.active === false) {
+      return (
+        <div className="min-h-screen bg-[#1A3326] flex items-center justify-center p-6 text-white text-center font-sans">
+          <div className="max-w-md bg-white/10 backdrop-blur-md p-8 rounded-3xl border border-white/20 space-y-4 shadow-2xl">
+            <div className="w-12 h-12 rounded-2xl bg-rose-500/20 text-rose-300 flex items-center justify-center mx-auto">
+              <Lock size={24} />
+            </div>
+            <h2 className="text-xl font-bold font-serif">Access Restricted</h2>
+            <p className="text-xs text-gray-200 leading-relaxed">
+              This secure itinerary share link is invalid, expired, or has been revoked by Viemma Tours Operations.
+            </p>
+            <p className="text-[11px] text-[#D4AF37] font-medium">
+              Please contact your Viemma Private Travel Designer for a new access link.
+            </p>
+          </div>
+        </div>
+      );
+    }
+
+    if (publicShare.role === 'client') {
+      return (
+        <div className="min-h-screen relative flex flex-col font-sans bg-[#FDFBF7]">
+          <ClientView state={clientDocToAppState(shareDocData)} />
+        </div>
+      );
+    }
+
+    if (publicShare.role === 'agent') {
+      return (
+        <div className="min-h-screen relative flex flex-col font-sans bg-slate-950 p-4 md:p-8">
+          <AgentPortalView state={agentDocToAppState(shareDocData)} />
+        </div>
+      );
+    }
+
+    if (publicShare.role === 'ops') {
+      return (
+        <div className="min-h-screen relative flex flex-col font-sans bg-slate-100 p-4 md:p-8">
+          <OperatorGroundSheetView state={opsDocToAppState(shareDocData)} />
+        </div>
+      );
+    }
+  }
 
   if (appMode === 'landing') {
     return <LandingPageView onSelectMode={(mode) => setAppMode(mode === 'planner' ? 'client-portal' : mode)} />;
@@ -912,8 +1006,8 @@ export default function App() {
             client: {
               ...INITIAL_STATE.client,
               name: data.clientName || 'Valued Guest',
-              email: data.clientEmail || 'lead@harrisonfamily.com',
-              phone: data.clientPhone || '+27 21 555 0100',
+              email: data.clientEmail || '',
+              phone: data.clientPhone || '',
               tripType: "multi",
               durationText: data.duration || '7 Days / 6 Nights',
               occasion: data.inspiredBy?.join(', ') || 'Custom Expedition',
@@ -928,7 +1022,7 @@ export default function App() {
             },
             publishing: {
               tripId: newRef,
-              publicUrl: `${window.location.origin}${window.location.pathname}?trip=${newRef}&role=client`,
+              publicUrl: `${window.location.origin}${window.location.pathname}?share=client&token=cli_${Math.random().toString(36).substring(2, 10)}`,
               publishStatus: 'Published',
               version: 1,
               publishedAt: new Date().toISOString(),
@@ -1466,12 +1560,12 @@ export default function App() {
                   <input
                     type="text"
                     readOnly
-                    value={`https://portal.viemmatours.com/trip/${state.ref}?token=${state.publishing?.clientToken || 'cli_vip'}`}
-                    className="w-full h-9 px-3 text-xs bg-white rounded-xl border border-emerald-200 text-gray-700 font-mono"
+                    value={`${window.location.origin}${window.location.pathname}?share=client&token=${state.publishing?.clientToken || 'cli_vip'}`}
+                    className="w-full h-9 px-3 text-xs bg-white rounded-xl border border-emerald-200 text-gray-700 font-mono select-all"
                   />
                   <button
                     onClick={() => {
-                      navigator.clipboard.writeText(`https://portal.viemmatours.com/trip/${state.ref}?token=${state.publishing?.clientToken || 'cli_vip'}`);
+                      navigator.clipboard.writeText(`${window.location.origin}${window.location.pathname}?share=client&token=${state.publishing?.clientToken || 'cli_vip'}`);
                       setCopiedRole('client');
                       setTimeout(() => setCopiedRole(null), 2000);
                     }}
@@ -1507,12 +1601,12 @@ export default function App() {
                   <input
                     type="text"
                     readOnly
-                    value={`https://portal.viemmatours.com/agent/${state.ref}?token=${state.publishing?.agentToken || 'agt_b2b'}`}
-                    className="w-full h-9 px-3 text-xs bg-white rounded-xl border border-amber-200 text-gray-700 font-mono"
+                    value={`${window.location.origin}${window.location.pathname}?share=agent&token=${state.publishing?.agentToken || 'agt_b2b'}`}
+                    className="w-full h-9 px-3 text-xs bg-white rounded-xl border border-amber-200 text-gray-700 font-mono select-all"
                   />
                   <button
                     onClick={() => {
-                      navigator.clipboard.writeText(`https://portal.viemmatours.com/agent/${state.ref}?token=${state.publishing?.agentToken || 'agt_b2b'}`);
+                      navigator.clipboard.writeText(`${window.location.origin}${window.location.pathname}?share=agent&token=${state.publishing?.agentToken || 'agt_b2b'}`);
                       setCopiedRole('agent');
                       setTimeout(() => setCopiedRole(null), 2000);
                     }}
@@ -1548,12 +1642,12 @@ export default function App() {
                   <input
                     type="text"
                     readOnly
-                    value={`https://portal.viemmatours.com/ops/${state.ref}?token=${state.publishing?.opsToken || 'ops_sheet'}`}
-                    className="w-full h-9 px-3 text-xs bg-white rounded-xl border border-blue-200 text-gray-700 font-mono"
+                    value={`${window.location.origin}${window.location.pathname}?share=ops&token=${state.publishing?.opsToken || 'ops_sheet'}`}
+                    className="w-full h-9 px-3 text-xs bg-white rounded-xl border border-blue-200 text-gray-700 font-mono select-all"
                   />
                   <button
                     onClick={() => {
-                      navigator.clipboard.writeText(`https://portal.viemmatours.com/ops/${state.ref}?token=${state.publishing?.opsToken || 'ops_sheet'}`);
+                      navigator.clipboard.writeText(`${window.location.origin}${window.location.pathname}?share=ops&token=${state.publishing?.opsToken || 'ops_sheet'}`);
                       setCopiedRole('ops');
                       setTimeout(() => setCopiedRole(null), 2000);
                     }}

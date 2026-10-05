@@ -2,6 +2,7 @@ import { doc, onSnapshot, setDoc, getDoc, collection, getDocs } from 'firebase/f
 import { db, isCloudConnected, handleFirestoreError, OperationType } from './firebase';
 import { AppState, TripChangeLogEntry } from '../types';
 import { INITIAL_TRIPS } from '../data/sampleTrips';
+import { syncProjectionsToFirestore } from './shareService';
 
 // Multi-window / multi-tab synchronization bus
 const syncChannel = typeof window !== 'undefined' && 'BroadcastChannel' in window
@@ -134,6 +135,9 @@ export async function saveTripToCloud(
 
       const docRef = doc(db, 'trips', tripId);
       await setDoc(docRef, updatedTrip, { merge: true });
+
+      // Automatically synchronize client, agent, and ops share projections to Firestore
+      await syncProjectionsToFirestore(updatedTrip);
     } catch (error) {
       handleFirestoreError(error, OperationType.WRITE, `trips/${tripId}`);
     }

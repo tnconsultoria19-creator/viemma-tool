@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { AppState } from '../types';
 import { getOperatorServiceView } from '../utils/roleFiltering';
+import { buildNormalizedTimeline } from '../utils/timelineEngine';
 import { 
   Car, 
   MapPin, 
@@ -38,11 +39,13 @@ export const OperatorGroundSheetView: React.FC<OperatorGroundSheetViewProps> = (
   // Apply strict zero-financial operator projection
   const state = useMemo(() => getOperatorServiceView(rawState, selectedServiceId), [rawState, selectedServiceId]);
 
-  // Extract all distinct dates across transfers and activities
-  const allDates = Array.from(new Set([
-    ...state.transfers.map(t => t.date),
-    ...state.activities.map(a => `${state.client.startDate}`)
-  ])).filter(Boolean);
+  // Normalized timeline events with verified dates
+  const timeline = useMemo(() => buildNormalizedTimeline(state), [state]);
+
+  // Extract all distinct dates across verified timeline
+  const allDates = useMemo(() => {
+    return Array.from(new Set(timeline.map(e => e.date).filter(Boolean)));
+  }, [timeline]);
 
   const filteredTransfers = state.transfers.filter(t => {
     if (activeDateFilter === 'all') return true;

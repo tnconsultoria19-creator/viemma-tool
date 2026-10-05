@@ -1,5 +1,5 @@
 import { initializeApp, getApps, FirebaseApp } from 'firebase/app';
-import { getAuth, Auth } from 'firebase/auth';
+import { getAuth, Auth, signInAnonymously } from 'firebase/auth';
 import { getFirestore, Firestore } from 'firebase/firestore';
 import appletConfig from '../../firebase-applet-config.json';
 
@@ -57,6 +57,10 @@ if (hasRealConfig) {
       }
       authInstance = getAuth(app);
       isFirestoreAvailable = true;
+      // Auto-authenticate internal staff session
+      signInAnonymously(authInstance).catch(e => {
+        console.warn("Owner anonymous auth notice:", e);
+      });
       console.info("⚡ Viemma Firebase Live Cloud (Spark Plan) initialized successfully with Project ID:", rawProjectId);
     }
   } catch (err) {

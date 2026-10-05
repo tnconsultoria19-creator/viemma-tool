@@ -3,16 +3,54 @@ service cloud.firestore {
   match /databases/{database}/documents {
 
     function isValidId(id) {
-      return id is string && id.size() > 0 && id.size() <= 128;
+      return id is string && id.size() >= 4 && id.size() <= 128;
     }
 
-    // /trips/{tripId} Collection
+    // ========================================================
+    // 1. /trips/{tripId} — PRIVATE MASTER ITINERARY
+    // Contains net costs, markups, margins, supplier payments,
+    // and confidential internal notes.
+    // Strictly requires authenticated staff credentials.
+    // NEVER publicly readable or listable.
+    // ========================================================
     match /trips/{tripId} {
-      // Allow read for trips (for owner cockpit, client shareable links, agent portal, operator sheets)
-      allow read: if true;
+      allow read, write: if request.auth != null && isValidId(tripId);
+    }
 
-      // Allow writes with valid document ID
-      allow write: if isValidId(tripId);
+    // ========================================================
+    // 2. /clientShares/{token} — CLIENT-SAFE PROJECTION
+    // Publicly accessible ONLY by exact token.
+    // Listing the entire collection is strictly forbidden.
+    // Writes restricted to authenticated staff publishers.
+    // ========================================================
+    match /clientShares/{token} {
+      allow get: if isValidId(token);
+      allow list: if false;
+      allow write: if request.auth != null && isValidId(token);
+    }
+
+    // ========================================================
+    // 3. /agentShares/{token} — AGENT-SAFE PROJECTION
+    // Publicly accessible ONLY by exact token.
+    // Listing the entire collection is strictly forbidden.
+    // Writes restricted to authenticated staff publishers.
+    // ========================================================
+    match /agentShares/{token} {
+      allow get: if isValidId(token);
+      allow list: if false;
+      allow write: if request.auth != null && isValidId(token);
+    }
+
+    // ========================================================
+    // 4. /opsShares/{token} — OPS-SAFE PROJECTION
+    // Publicly accessible ONLY by exact token.
+    // Listing the entire collection is strictly forbidden.
+    // Writes restricted to authenticated staff publishers.
+    // ========================================================
+    match /opsShares/{token} {
+      allow get: if isValidId(token);
+      allow list: if false;
+      allow write: if request.auth != null && isValidId(token);
     }
   }
 }

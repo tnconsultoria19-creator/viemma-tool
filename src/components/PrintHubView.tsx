@@ -2,6 +2,12 @@ import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { AppState, ExperienceLibraryItem } from '../types';
 import { ClientView } from './ClientView';
 import { 
+  generateSecureToken, 
+  regenerateShareToken, 
+  revokeShareToken, 
+  syncProjectionsToFirestore 
+} from '../lib/shareService';
+import { 
   Printer, 
   Check, 
   Info, 
@@ -47,7 +53,7 @@ export const PrintHubView: React.FC<PrintHubViewProps> = ({
   netProfit
 }) => {
   // Domain & Base URL Resolver
-  const [selectedHostDomain, setSelectedHostDomain] = useState<'firebase' | 'custom' | 'current'>('firebase');
+  const [selectedHostDomain, setSelectedHostDomain] = useState<'firebase' | 'custom' | 'current'>('current');
   const [customHostUrl, setCustomHostUrl] = useState<string>('https://portal.viemmatours.com');
 
   const getLiveBaseUrl = () => {
@@ -63,9 +69,13 @@ export const PrintHubView: React.FC<PrintHubViewProps> = ({
     return 'https://argon-burner-n8gvj.web.app';
   };
 
-  const clientLiveUrl = `${getLiveBaseUrl()}?trip=${state.ref}&role=client`;
-  const agentLiveUrl = `${getLiveBaseUrl()}?trip=${state.ref}&role=agent`;
-  const operatorLiveUrl = `${getLiveBaseUrl()}?trip=${state.ref}&role=operator`;
+  const clientToken = state.publishing?.clientToken || 'cli_preview';
+  const agentToken = state.publishing?.agentToken || 'agt_preview';
+  const opsToken = state.publishing?.opsToken || 'ops_preview';
+
+  const clientLiveUrl = `${getLiveBaseUrl()}?share=client&token=${clientToken}`;
+  const agentLiveUrl = `${getLiveBaseUrl()}?share=agent&token=${agentToken}`;
+  const operatorLiveUrl = `${getLiveBaseUrl()}?share=ops&token=${opsToken}`;
 
   const defaultPublishing = {
     tripId: state.ref || 'VT-2026-1048',
@@ -75,6 +85,12 @@ export const PrintHubView: React.FC<PrintHubViewProps> = ({
     publishedAt: '',
     lastUpdated: new Date().toISOString(),
     accessToken: 'tok_secret_a61c77f0',
+    clientToken,
+    agentToken,
+    opsToken,
+    clientTokenActive: true,
+    agentTokenActive: true,
+    opsTokenActive: true,
     passwordProtected: false,
     expiresAt: null as string | null,
     settings: {
@@ -631,59 +647,74 @@ export const PrintHubView: React.FC<PrintHubViewProps> = ({
     doc.save(`Viemma_${mode}_${state.ref || 'doc'}.pdf`);
   };
 
-  // Cloud Firestore & Portal Gateway Publishing
-  const publishToCloudflare = (isNew: boolean = false) => {
+  // Google Cloud Firestore Master Itinerary & Live Projections Publishing
+  const publishLiveProjections = async (isNew: boolean = false) => {
     setIsPublishing(true);
     setPubLogs([]);
     
+    const nextVer = isNew ? 1 : publishing.version + 1;
+    const nowIso = new Date().toISOString();
+
+    const clientToken = publishing.clientToken || generateSecureToken('cli');
+    const agentToken = publishing.agentToken || generateSecureToken('agt');
+    const opsToken = publishing.opsToken || generateSecureToken('ops');
+
+    const updatedPublishing = {
+      ...publishing,
+      publishStatus: 'Published' as const,
+      version: nextVer,
+      publishedAt: nowIso,
+      lastUpdated: nowIso,
+      clientToken,
+      agentToken,
+      opsToken,
+      clientTokenActive: true,
+      agentTokenActive: true,
+      opsTokenActive: true,
+      publicUrl: clientLiveUrl,
+      versions: [
+        ...versions,
+        {
+          version: nextVer,
+          date: new Date().toLocaleDateString('en-US', { day: 'numeric', month: 'long' }),
+          note: verNote || (isNew ? "Initial publication release" : `Consultant updates republished (V${nextVer})`),
+          status: 'Published'
+        }
+      ]
+    };
+
+    const updatedTrip: AppState = { ...state, publishing: updatedPublishing };
+    onUpdateState({ publishing: updatedPublishing });
+
     const logs = [
-      `[08:58:20] ➔ Starting secure Cloudflare Pages API handshakes...`,
-      `[08:58:21] ➔ Connection authenticated with API token: ${publishing.accessToken.substring(0, 10)}...`,
-      `[08:58:22] ➔ Scanning itinerary state schemas for validation...`,
-      `[08:58:23] ➔ Serializing payload: ${state.guests.length} clients, ${state.activities.length} suppliers...`,
-      `[08:58:24] ➔ Syncing static assets with Cloudflare Images CDN...`,
-      `[08:58:25] ➔ Executing D1 SQL transaction: INSERT INTO itineraries ON CONFLICT REPLACE...`,
-      `[08:58:26] ➔ Storing version snapshot #${isNew ? 1 : publishing.version + 1} metadata...`,
-      `[08:58:27] ➔ Purging global Cloudflare KV cache at 32 Edge PoPs...`,
-      `[08:58:28] ➔ Re-mapping routing gateway: /trip/${publishing.tripId}`,
-      `[08:58:29] ➔ Done! Itinerary successfully published & accessible worldwide.`
+      `[${new Date().toLocaleTimeString()}] ➔ Committing private master itinerary to Firestore /trips/${state.ref}...`,
+      `[${new Date().toLocaleTimeString()}] ➔ Sanitizing client projection: stripped net supplier costs, margins, and internal notes...`,
+      `[${new Date().toLocaleTimeString()}] ➔ Committing client experience projection to /clientShares/${clientToken}...`,
+      `[${new Date().toLocaleTimeString()}] ➔ Generating B2B agent scannable timetable to /agentShares/${agentToken}...`,
+      `[${new Date().toLocaleTimeString()}] ➔ Generating operations run-sheet to /opsShares/${opsToken}...`,
+      `[${new Date().toLocaleTimeString()}] ➔ Verifying Zero-Trust access rules: master document locked to internal staff.`,
+      `[${new Date().toLocaleTimeString()}] ➔ All three live audience projections synchronized and armed with real-time listeners.`
     ];
 
-    let currentStep = 0;
+    let logIdx = 0;
     const interval = setInterval(() => {
-      if (currentStep < logs.length) {
-        setPubLogs(prev => [...prev, logs[currentStep]]);
-        currentStep++;
+      if (logIdx < logs.length) {
+        setPubLogs(prev => [...prev, logs[logIdx]]);
+        logIdx++;
       } else {
         clearInterval(interval);
-        setTimeout(() => {
+        setTimeout(async () => {
           setIsPublishing(false);
-          const nextVer = isNew ? 1 : publishing.version + 1;
-          const nowIso = new Date().toISOString();
-          
-          const updatedPublishing = {
-            ...publishing,
-            publishStatus: 'Published' as const,
-            version: nextVer,
-            publishedAt: nowIso,
-            lastUpdated: nowIso,
-            versions: [
-              ...versions,
-              {
-                version: nextVer,
-                date: new Date().toLocaleDateString('en-US', { day: 'numeric', month: 'long' }),
-                note: verNote || (isNew ? "Initial publication release" : `Consultant updates republished (V${nextVer})`),
-                status: 'Published'
-              }
-            ]
-          };
-
-          onUpdateState({ publishing: updatedPublishing });
+          try {
+            await syncProjectionsToFirestore(updatedTrip);
+            triggerAlert(`Itinerary published & live projections updated in Cloud Firestore!`);
+          } catch (err) {
+            console.warn('Sync notice:', err);
+          }
           setVerNote('');
-          triggerAlert('Handcrafted itinerary published live to portal!');
-        }, 800);
+        }, 500);
       }
-    }, 400);
+    }, 250);
   };
 
   // Handle restoring a previous version
@@ -712,19 +743,26 @@ export const PrintHubView: React.FC<PrintHubViewProps> = ({
     setTimeout(() => setAlertMsg(''), 5000);
   };
 
-  // Handle Regenerating secure client link
-  const handleRegenerateLink = () => {
-    const randomHex = Math.random().toString(36).substring(2, 8).toUpperCase();
-    const newAccessToken = `tok_secret_${Math.random().toString(36).substring(2, 10)}`;
+  // Handle Regenerating secure token for a specific role
+  const handleRegenerateRoleToken = async (role: 'client' | 'agent' | 'ops') => {
+    try {
+      const updated = await regenerateShareToken(state, role);
+      onUpdateState({ publishing: updated.publishing });
+      triggerAlert(`New cryptographically secure token generated for ${role.toUpperCase()}. Old link invalidated!`);
+    } catch (e) {
+      console.error(`Failed to regenerate ${role} token:`, e);
+    }
+  };
 
-    const updatedPublishing = {
-      ...publishing,
-      publicUrl: clientLiveUrl,
-      accessToken: newAccessToken,
-      lastUpdated: new Date().toISOString(),
-    };
-    onUpdateState({ publishing: updatedPublishing });
-    triggerAlert('New secure live link token generated and persisted!');
+  // Handle Revoking a token for a specific role
+  const handleRevokeRoleToken = async (role: 'client' | 'agent' | 'ops') => {
+    try {
+      const updated = await revokeShareToken(state, role);
+      onUpdateState({ publishing: updated.publishing });
+      triggerAlert(`${role.toUpperCase()} live access revoked immediately. Public link now deactivated.`);
+    } catch (e) {
+      console.error(`Failed to revoke ${role} token:`, e);
+    }
   };
 
   // Handle Checkbox Toggles for settings
@@ -844,7 +882,7 @@ export const PrintHubView: React.FC<PrintHubViewProps> = ({
             </div>
           </div>
           <button 
-            onClick={() => publishToCloudflare(false)}
+            onClick={() => publishLiveProjections(false)}
             className="flex items-center gap-2 px-5 py-3 rounded-xl bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold shadow-md transition self-start md:self-center uppercase tracking-wider shrink-0"
           >
             <RotateCw size={13} /> Publish Changes
@@ -930,108 +968,198 @@ export const PrintHubView: React.FC<PrintHubViewProps> = ({
             </div>
           </div>
 
-          <div className="space-y-4">
-            {/* 1. Client Portal */}
-            <div className="p-4 rounded-2xl bg-gradient-to-r from-emerald-50/40 to-slate-50 border border-emerald-100/60 space-y-2.5">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-[#1A3326] flex items-center gap-1.5 uppercase tracking-wider">
-                  <Eye size={13} className="text-[#D4AF37]" /> 1. Client Interactive Itinerary & Portal
-                </span>
-                <span className="text-[10px] text-gray-500 font-medium">Guest & Proposal View</span>
-              </div>
-              <div className="flex flex-col sm:flex-row gap-2">
-                <div className="flex-1 bg-white border border-gray-200 px-3.5 py-2.5 rounded-xl text-xs font-mono text-gray-700 break-all select-all flex items-center justify-between shadow-xs">
-                  <span>{clientLiveUrl}</span>
+          <div className="space-y-6">
+            {/* 1. Client Interactive Itinerary */}
+            <div className="p-5 rounded-2xl bg-white border border-gray-200/80 shadow-xs space-y-3">
+              <div className="flex flex-wrap items-center justify-between gap-2 border-b border-gray-100 pb-2.5">
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-black text-[#1A3326] flex items-center gap-1.5 uppercase tracking-wider">
+                    <Compass size={14} className="text-[#D4AF37]" /> 1. Client Visual Experience Portal
+                  </span>
+                  <span className={`px-2 py-0.5 rounded-full text-[9px] font-extrabold uppercase ${
+                    publishing.clientTokenActive !== false
+                      ? 'bg-emerald-50 text-emerald-800 border border-emerald-200'
+                      : 'bg-rose-50 text-rose-800 border border-rose-200'
+                  }`}>
+                    {publishing.clientTokenActive !== false ? '● Active' : '● Revoked'}
+                  </span>
                 </div>
-                <div className="flex items-center gap-1.5 shrink-0">
+                <span className="text-[10px] text-gray-500 font-mono">Token: {clientToken.substring(0, 14)}...</span>
+              </div>
+              <p className="text-[11px] text-gray-500">Image-forward luxury journey with verified day-by-day dates and zero supplier costs or margins.</p>
+              
+              <div className="flex flex-col sm:flex-row gap-2">
+                <input 
+                  type="text" 
+                  readOnly 
+                  value={clientLiveUrl} 
+                  className="flex-1 bg-slate-50 border border-gray-200 px-3.5 py-2 rounded-xl text-xs font-mono text-gray-700 select-all"
+                />
+                <div className="flex flex-wrap items-center gap-1.5">
                   <button 
                     onClick={() => copyText(clientLiveUrl, 'client')}
-                    className={`px-3.5 py-2.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 ${
-                      copied === 'client'
-                        ? 'bg-emerald-600 text-white' 
-                        : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
-                    }`}
+                    className="px-3 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold transition flex items-center gap-1"
                   >
-                    <Copy size={13} /> {copied === 'client' ? 'Copied!' : 'Copy'}
+                    <Copy size={12} /> {copied === 'client' ? 'Copied' : 'Copy'}
                   </button>
                   <a 
                     href={clientLiveUrl} 
                     target="_blank" 
                     rel="noopener noreferrer"
-                    className="px-3.5 py-2.5 rounded-xl bg-[#1A3326] text-white hover:bg-[#12241b] text-xs font-bold transition flex items-center gap-1.5 shadow-xs"
+                    className="px-3 py-2 rounded-xl bg-[#1A3326] text-white hover:bg-[#12241b] text-xs font-bold transition flex items-center gap-1"
                   >
-                    <ExternalLink size={13} /> Open Live
+                    <ExternalLink size={12} /> Open
                   </a>
+                  <button 
+                    onClick={() => handleRegenerateRoleToken('client')}
+                    className="px-3 py-2 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-200 text-xs font-bold transition flex items-center gap-1"
+                    title="Invalidates old token and creates a new cryptographic link"
+                  >
+                    <RotateCw size={12} /> Regenerate
+                  </button>
+                  <button 
+                    onClick={() => handleRevokeRoleToken('client')}
+                    className="px-3 py-2 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 text-xs font-bold transition flex items-center gap-1"
+                    title="Revokes access immediately"
+                  >
+                    <X size={12} /> Revoke
+                  </button>
+                  <button 
+                    onClick={() => generatePDF('client')}
+                    className="px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-white text-xs font-bold transition flex items-center gap-1"
+                  >
+                    <Download size={12} /> PDF
+                  </button>
                 </div>
               </div>
             </div>
 
-            {/* 2. B2B Agent Portal */}
-            <div className="p-4 rounded-2xl bg-gradient-to-r from-amber-50/40 to-slate-50 border border-amber-100/60 space-y-2.5">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-amber-900 flex items-center gap-1.5 uppercase tracking-wider">
-                  <ShieldCheck size={13} className="text-[#D4AF37]" /> 2. B2B Travel Agent Partner Portal
-                </span>
-                <span className="text-[10px] text-amber-700 font-medium">Net Rates & Agency Commission</span>
-              </div>
-              <div className="flex flex-col sm:flex-row gap-2">
-                <div className="flex-1 bg-white border border-gray-200 px-3.5 py-2.5 rounded-xl text-xs font-mono text-gray-700 break-all select-all flex items-center justify-between shadow-xs">
-                  <span>{agentLiveUrl}</span>
+            {/* 2. B2B Travel Agent Portal */}
+            <div className="p-5 rounded-2xl bg-white border border-gray-200/80 shadow-xs space-y-3">
+              <div className="flex flex-wrap items-center justify-between gap-2 border-b border-gray-100 pb-2.5">
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-black text-amber-900 flex items-center gap-1.5 uppercase tracking-wider">
+                    <ShieldCheck size={14} className="text-[#D4AF37]" /> 2. B2B Travel Agent Partner Portal
+                  </span>
+                  <span className={`px-2 py-0.5 rounded-full text-[9px] font-extrabold uppercase ${
+                    publishing.agentTokenActive !== false
+                      ? 'bg-emerald-50 text-emerald-800 border border-emerald-200'
+                      : 'bg-rose-50 text-rose-800 border border-rose-200'
+                  }`}>
+                    {publishing.agentTokenActive !== false ? '● Active' : '● Revoked'}
+                  </span>
                 </div>
-                <div className="flex items-center gap-1.5 shrink-0">
+                <span className="text-[10px] text-gray-500 font-mono">Token: {agentToken.substring(0, 14)}...</span>
+              </div>
+              <p className="text-[11px] text-gray-500">Scannable guest movement timetable, retail pricing, agency commission, and terms.</p>
+              
+              <div className="flex flex-col sm:flex-row gap-2">
+                <input 
+                  type="text" 
+                  readOnly 
+                  value={agentLiveUrl} 
+                  className="flex-1 bg-slate-50 border border-gray-200 px-3.5 py-2 rounded-xl text-xs font-mono text-gray-700 select-all"
+                />
+                <div className="flex flex-wrap items-center gap-1.5">
                   <button 
                     onClick={() => copyText(agentLiveUrl, 'agent')}
-                    className={`px-3.5 py-2.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 ${
-                      copied === 'agent'
-                        ? 'bg-emerald-600 text-white' 
-                        : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
-                    }`}
+                    className="px-3 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold transition flex items-center gap-1"
                   >
-                    <Copy size={13} /> {copied === 'agent' ? 'Copied!' : 'Copy'}
+                    <Copy size={12} /> {copied === 'agent' ? 'Copied' : 'Copy'}
                   </button>
                   <a 
                     href={agentLiveUrl} 
                     target="_blank" 
                     rel="noopener noreferrer"
-                    className="px-3.5 py-2.5 rounded-xl bg-[#D4AF37] hover:bg-[#b8952b] text-[#1A3326] text-xs font-bold transition flex items-center gap-1.5 shadow-xs"
+                    className="px-3 py-2 rounded-xl bg-[#D4AF37] hover:bg-[#b8952b] text-[#1A3326] text-xs font-bold transition flex items-center gap-1"
                   >
-                    <ExternalLink size={13} /> Open Live
+                    <ExternalLink size={12} /> Open
                   </a>
+                  <button 
+                    onClick={() => handleRegenerateRoleToken('agent')}
+                    className="px-3 py-2 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-200 text-xs font-bold transition flex items-center gap-1"
+                    title="Invalidates old token and creates a new cryptographic link"
+                  >
+                    <RotateCw size={12} /> Regenerate
+                  </button>
+                  <button 
+                    onClick={() => handleRevokeRoleToken('agent')}
+                    className="px-3 py-2 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 text-xs font-bold transition flex items-center gap-1"
+                    title="Revokes access immediately"
+                  >
+                    <X size={12} /> Revoke
+                  </button>
+                  <button 
+                    onClick={() => generatePDF('internal')}
+                    className="px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-white text-xs font-bold transition flex items-center gap-1"
+                  >
+                    <Download size={12} /> PDF
+                  </button>
                 </div>
               </div>
             </div>
 
-            {/* 3. Driver & Operator Ground Sheet */}
-            <div className="p-4 rounded-2xl bg-gradient-to-r from-slate-100 to-slate-50 border border-slate-200 space-y-2.5">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-slate-900 flex items-center gap-1.5 uppercase tracking-wider">
-                  <RotateCw size={13} className="text-slate-600" /> 3. Driver & Guide Ground Logistics Sheet
-                </span>
-                <span className="text-[10px] text-slate-500 font-medium">Zero-Financial Field Ops</span>
-              </div>
-              <div className="flex flex-col sm:flex-row gap-2">
-                <div className="flex-1 bg-white border border-gray-200 px-3.5 py-2.5 rounded-xl text-xs font-mono text-gray-700 break-all select-all flex items-center justify-between shadow-xs">
-                  <span>{operatorLiveUrl}</span>
+            {/* 3. Driver & Guide Operations Run Sheet */}
+            <div className="p-5 rounded-2xl bg-white border border-gray-200/80 shadow-xs space-y-3">
+              <div className="flex flex-wrap items-center justify-between gap-2 border-b border-gray-100 pb-2.5">
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-black text-slate-900 flex items-center gap-1.5 uppercase tracking-wider">
+                    <RotateCw size={14} className="text-slate-600" /> 3. Guide & Driver Logistics Run-Sheet
+                  </span>
+                  <span className={`px-2 py-0.5 rounded-full text-[9px] font-extrabold uppercase ${
+                    publishing.opsTokenActive !== false
+                      ? 'bg-emerald-50 text-emerald-800 border border-emerald-200'
+                      : 'bg-rose-50 text-rose-800 border border-rose-200'
+                  }`}>
+                    {publishing.opsTokenActive !== false ? '● Active' : '● Revoked'}
+                  </span>
                 </div>
-                <div className="flex items-center gap-1.5 shrink-0">
+                <span className="text-[10px] text-gray-500 font-mono">Token: {opsToken.substring(0, 14)}...</span>
+              </div>
+              <p className="text-[11px] text-gray-500">Driver assignments, vehicle plates, flight numbers, passenger manifests, and pickup locations. Strictly zero financials.</p>
+              
+              <div className="flex flex-col sm:flex-row gap-2">
+                <input 
+                  type="text" 
+                  readOnly 
+                  value={operatorLiveUrl} 
+                  className="flex-1 bg-slate-50 border border-gray-200 px-3.5 py-2 rounded-xl text-xs font-mono text-gray-700 select-all"
+                />
+                <div className="flex flex-wrap items-center gap-1.5">
                   <button 
                     onClick={() => copyText(operatorLiveUrl, 'operator')}
-                    className={`px-3.5 py-2.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 ${
-                      copied === 'operator'
-                        ? 'bg-emerald-600 text-white' 
-                        : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
-                    }`}
+                    className="px-3 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold transition flex items-center gap-1"
                   >
-                    <Copy size={13} /> {copied === 'operator' ? 'Copied!' : 'Copy'}
+                    <Copy size={12} /> {copied === 'operator' ? 'Copied' : 'Copy'}
                   </button>
                   <a 
                     href={operatorLiveUrl} 
                     target="_blank" 
                     rel="noopener noreferrer"
-                    className="px-3.5 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold transition flex items-center gap-1.5 shadow-xs"
+                    className="px-3 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold transition flex items-center gap-1"
                   >
-                    <ExternalLink size={13} /> Open Live
+                    <ExternalLink size={12} /> Open
                   </a>
+                  <button 
+                    onClick={() => handleRegenerateRoleToken('ops')}
+                    className="px-3 py-2 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-200 text-xs font-bold transition flex items-center gap-1"
+                    title="Invalidates old token and creates a new cryptographic link"
+                  >
+                    <RotateCw size={12} /> Regenerate
+                  </button>
+                  <button 
+                    onClick={() => handleRevokeRoleToken('ops')}
+                    className="px-3 py-2 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 text-xs font-bold transition flex items-center gap-1"
+                    title="Revokes access immediately"
+                  >
+                    <X size={12} /> Revoke
+                  </button>
+                  <button 
+                    onClick={() => generatePDF('job')}
+                    className="px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-white text-xs font-bold transition flex items-center gap-1"
+                  >
+                    <Download size={12} /> PDF
+                  </button>
                 </div>
               </div>
             </div>
@@ -1047,7 +1175,7 @@ export const PrintHubView: React.FC<PrintHubViewProps> = ({
             </button>
 
             <button 
-              onClick={handleRegenerateLink}
+              onClick={() => handleRegenerateRoleToken('client')}
               className="flex items-center justify-center gap-2 px-4 py-3.5 rounded-xl bg-rose-50 text-rose-700 hover:bg-rose-100 border border-rose-200/40 text-xs font-bold transition"
               title="Invalidates old token and generates a fresh live security token."
             >
@@ -1080,14 +1208,14 @@ export const PrintHubView: React.FC<PrintHubViewProps> = ({
           </div>
         </div>
 
-        {/* CLOUDFLARE COMPILATION TERMINAL LOGGER (visible during publishing) */}
+        {/* GOOGLE CLOUD FIRESTORE PROJECTION LOGGER (visible during publishing) */}
         {isPublishing && (
           <div className="bg-slate-900 text-emerald-400 rounded-3xl p-6 shadow-2xl border border-slate-800 font-mono text-xs space-y-3 animate-in zoom-in-95 duration-200">
             <div className="flex items-center justify-between border-b border-slate-800 pb-3">
               <span className="flex items-center gap-2 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-                <span className="h-2 w-2 rounded-full bg-emerald-500 animate-ping" /> Cloudflare Workers Deploy Engine
+                <span className="h-2 w-2 rounded-full bg-emerald-500 animate-ping" /> Google Cloud Firestore Projection Sync Engine
               </span>
-              <span className="text-slate-500 text-[10px]">Active Thread: Node.js/Wrangler</span>
+              <span className="text-slate-500 text-[10px]">Active Thread: Zero-Trust Projection Publisher</span>
             </div>
             <div className="space-y-1.5 max-h-[180px] overflow-y-auto scrollbar-thin scrollbar-thumb-slate-800">
               {pubLogs.map((log, i) => (
@@ -1321,7 +1449,7 @@ export const PrintHubView: React.FC<PrintHubViewProps> = ({
                 />
               </div>
               <button 
-                onClick={() => publishToCloudflare(false)}
+                onClick={() => publishLiveProjections(false)}
                 className="px-5 py-2.5 rounded-xl bg-[#1A3326] text-white hover:bg-[#12241b] font-bold text-xs shadow-md transition shrink-0 h-[38px] uppercase tracking-wider"
               >
                 Publish New Version

@@ -196,8 +196,10 @@ export interface Transfer {
   vehicleUsbCharging?: boolean;
   vehicleChildSeats?: boolean;
   vehicleWheelchairLift?: boolean;
-  vehicleLuxuryRating?: number;
-  vehicleImages?: string[];
+  // Structured Staff & Vehicle Identifiers
+  driverId?: string;
+  vehicleId?: string;
+  vehiclePlate?: string;
   driverNotes?: string; // Role-specific notes
 }
 
@@ -308,6 +310,9 @@ export interface Activity {
   seasonalAvailability?: string;
   faqs?: { question: string; answer: string }[];
   guideNotes?: string; // Role-specific notes
+  guideId?: string;
+  guideName?: string;
+  guidePhone?: string;
 }
 
 export interface ExperienceLibraryItem {
@@ -467,6 +472,9 @@ export interface AppState {
     clientToken?: string;
     agentToken?: string;
     opsToken?: string;
+    clientTokenActive?: boolean;
+    agentTokenActive?: boolean;
+    opsTokenActive?: boolean;
     passwordProtected: boolean;
     expiresAt: string | null;
     settings: {
