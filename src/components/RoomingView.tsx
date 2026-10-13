@@ -68,12 +68,15 @@ export const RoomingView: React.FC<RoomingViewProps> = ({
   const [allocRoomForm, setAllocRoomForm] = useState<Partial<AllocatedRoom>>({});
 
   // Quick Book sub-form presets
-  const [qbHotel, setQbHotel] = useState("Silo Hotel (V&A Waterfront / Silo District)");
+  const [qbHotel, setQbHotel] = useState("");
   const [showQuickHotelDropdown, setShowQuickHotelDropdown] = useState(false);
-  const [qbRoomType, setQbRoomType] = useState("Deluxe Suite");
-  const [qbMeal, setQbMeal] = useState("B&B");
-  const [qbGuestsCount, setQbGuestsCount] = useState(2);
-  const [qbRate, setQbRate] = useState(14500);
+  const [qbRoomType, setQbRoomType] = useState("");
+  const [qbMeal, setQbMeal] = useState("");
+  const [qbGuestIds, setQbGuestIds] = useState<number[]>([]);
+  const [qbRate, setQbRate] = useState(0);
+  const [qbAddress, setQbAddress] = useState("");
+  const [qbGoogleMapsUrl, setQbGoogleMapsUrl] = useState("");
+  const [qbNotes, setQbNotes] = useState("");
 
   const handleOpenAddForm = () => {
     setRForm({
@@ -274,15 +277,15 @@ export const RoomingView: React.FC<RoomingViewProps> = ({
       setHotelCatalog(addCustomHotelToCatalogue(chosenHotel));
     }
 
-    const selectedGuestsIds = state.guests.slice(0, qbGuestsCount).map(g => g.id);
+    const selectedGuestsIds = [...qbGuestIds];
 
     const newR: Room = {
       id: Date.now(),
       hotel: chosenHotel,
-      conf: `QB-${Math.floor(10000 + Math.random() * 90000)}`,
-      pay: 'Deposit Paid',
+      conf: '',
+      pay: 'Unpaid',
       roomType: qbRoomType,
-      bed: 'King Bed',
+      bed: '',
       meal: qbMeal,
       cin,
       cout,
@@ -290,44 +293,22 @@ export const RoomingView: React.FC<RoomingViewProps> = ({
       guestIds: selectedGuestsIds,
       rate: qbRate,
       supp: 0,
-      reqs: ["Quiet Side"],
-      notes: "Auto-provisioned via DMC Quick Booking Desk.",
-      address: '',
-      googleMapsUrl: '',
-      allocatedRooms: [
-        {
-          id: Date.now() + 1,
-          roomName: `${qbRoomType} Booking`,
-          roomType: qbRoomType,
-          occupancy: qbGuestsCount === 2 ? 'Couple' : 'Friends sharing',
-          maxOccupancy: qbGuestsCount,
-          adults: qbGuestsCount,
-          children: 0,
-          price: qbRate,
-          currency: 'ZAR',
-          mealBasis: qbMeal,
-          isAccessible: false,
-          isInterleading: false,
-          hasPrivatePool: false,
-          hasBalcony: true,
-          view: 'Standard Panoramic View',
-          smokingPolicy: 'Non-smoking',
-          specialBenefits: 'DMC priority room allocation',
-          internalNotes: 'Urgent confirmed operations dispatch.',
-          guestIds: selectedGuestsIds
-        }
-      ],
+      reqs: [],
+      notes: qbNotes.trim(),
+      address: qbAddress.trim(),
+      googleMapsUrl: qbGoogleMapsUrl.trim(),
+      allocatedRooms: [],
       gpsLocation: '',
-      checkInTime: '14:00',
-      checkOutTime: '11:00',
-      spa: true,
-      gym: true,
-      pool: true,
-      wifi: true,
-      amenities: ['Pool', 'Wi-Fi'],
+      checkInTime: '',
+      checkOutTime: '',
+      spa: false,
+      gym: false,
+      pool: false,
+      wifi: false,
+      amenities: [],
       accessibilityFeatures: [],
-      emergencyContact: 'Hotel Duty Manager',
-      internalNotesHotel: 'Check dietary profile matches on check-in card.'
+      emergencyContact: '',
+      internalNotesHotel: ''
     };
 
     onAddRoom(newR);
