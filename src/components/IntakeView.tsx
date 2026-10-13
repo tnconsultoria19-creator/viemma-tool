@@ -1964,7 +1964,28 @@ export const IntakeView: React.FC<IntakeViewProps> = ({
 
             </div>
 
-            {/* Modal Footer */}
+              {/* TRAVELLER DOCUMENTS */}
+              <div className="px-5 pb-4">
+                <div className="rounded-xl border border-gray-200 p-3 space-y-2">
+                  <div>
+                    <h4 className="text-[10px] uppercase tracking-wider font-bold text-[#1A3326]">Traveller Attachments</h4>
+                    <p className="text-[10px] text-gray-500 mt-1">Attach a PDF or image relevant to this traveller. Sensitive documents stay in the existing protected storage workflow.</p>
+                  </div>
+                  <AttachmentManager
+                    attachments={modalGuest.attachments || []}
+                    onAddAttachment={item => setModalGuest({ ...modalGuest, attachments: [...(modalGuest.attachments || []), item] })}
+                    onRemoveAttachment={id => setModalGuest({ ...modalGuest, attachments: (modalGuest.attachments || []).filter(item => item.id !== id) })}
+                    recordType="guest"
+                    recordId={modalGuest.id || `draft-${state.ref || 'booking'}`}
+                    bookingRef={state.ref || 'draft'}
+                    title="Upload traveller document or image"
+                    description="PDF, JPG, PNG or WebP up to 15 MB."
+                    onExtractToAI={() => onOpenAIImport?.()}
+                  />
+                </div>
+              </div>
+
+              {/* Modal Footer */}
             <div className="p-4 border-t border-gray-100 bg-slate-50 flex justify-end gap-2.5 shrink-0">
               <button
                 type="button"
