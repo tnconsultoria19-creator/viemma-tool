@@ -1,7 +1,6 @@
 import { doc, onSnapshot, setDoc, getDoc, collection, getDocs } from 'firebase/firestore';
 import { db, isCloudConnected, handleFirestoreError, OperationType } from './firebase';
 import { AppState, TripChangeLogEntry } from '../types';
-import { INITIAL_TRIPS } from '../data/sampleTrips';
 import { syncProjectionsToFirestore } from './shareService';
 
 // Multi-window / multi-tab synchronization bus
@@ -90,7 +89,7 @@ export async function saveTripToCloud(
   try {
     localStorage.setItem('viemma_workspace_state', JSON.stringify(trip));
     const listStr = localStorage.getItem('viemma_trips_list');
-    let list: AppState[] = listStr ? JSON.parse(listStr) : INITIAL_TRIPS;
+    let list: AppState[] = listStr ? JSON.parse(listStr) : [];
     const idx = list.findIndex(t => t.ref === trip.ref || t.id === trip.id);
     if (idx >= 0) {
       list[idx] = trip;
@@ -168,7 +167,7 @@ export async function getTripById(tripId: string): Promise<AppState | null> {
     }
   }
 
-  // Fallback to local storage or INITIAL_TRIPS
+  // Fallback to local storage only; an empty workspace must remain empty
   const localListStr = localStorage.getItem('viemma_trips_list');
   if (localListStr) {
     try {
@@ -180,7 +179,7 @@ export async function getTripById(tripId: string): Promise<AppState | null> {
     }
   }
 
-  return INITIAL_TRIPS.find(t => t.ref === tripId || t.id === tripId) || null;
+  return null;
 }
 
 /**
@@ -194,8 +193,7 @@ export async function listAllTrips(): Promise<AppState[]> {
       if (!snap.empty) {
         return snap.docs.map(d => d.data() as AppState);
       } else {
-        // Cloud is empty, seed initial trips to cloud
-        await seedInitialTripsToCloud();
+        return [];
       }
     } catch (error) {
       handleFirestoreError(error, OperationType.LIST, 'trips');
@@ -213,22 +211,5 @@ export async function listAllTrips(): Promise<AppState[]> {
     }
   }
 
-  return INITIAL_TRIPS;
-}
-
-/**
- * Seed initial sample trips to Cloud Firestore
- */
-export async function seedInitialTripsToCloud(): Promise<void> {
-  if (!db || !isCloudConnected) return;
-  try {
-    for (const trip of INITIAL_TRIPS) {
-      const tripId = trip.ref || trip.id;
-      const docRef = doc(db, 'trips', tripId);
-      await setDoc(docRef, trip, { merge: true });
-    }
-    console.info("⚡ Seeded sample trips to Cloud Firestore.");
-  } catch (err) {
-    console.warn("Could not seed initial trips to Cloud Firestore:", err);
-  }
+  return [];
 }
