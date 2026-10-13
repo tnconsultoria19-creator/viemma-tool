@@ -406,6 +406,7 @@ export interface Driver {
   phone: string;
   email: string;
   licenseNo: string;
+  pdpExpiryDate?: string;
   assignedVehicleId?: string;
   status: 'Available' | 'Assigned' | 'Off Duty' | 'Unavailable';
   emergencyContactName?: string;
