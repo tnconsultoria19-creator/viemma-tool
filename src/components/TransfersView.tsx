@@ -86,6 +86,71 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
       return;
     }
 
+    const selectedDriverId = tForm.driverId || (state.drivers || []).find(d => d.name === tForm.driver)?.id ||
+      (tForm.driver ? 'legacy:' + tForm.driver.trim().toLocaleLowerCase() : '');
+    const selectedDriver = (state.drivers || []).find(d => d.id === selectedDriverId);
+    const parseTimeMinutes = (value?: string) => {
+      const match = (value || '').trim().match(/^([01]?\d|2[0-3]):([0-5]\d)$/);
+      return match ? Number(match[1]) * 60 + Number(match[2]) : null;
+    };
+    const parseDurationMinutes = (value?: string) => {
+      const text = (value || '').trim().toLocaleLowerCase();
+      const hour = text.match(/(\d+(?:\.\d+)?)\s*(?:h|hr|hrs|hour|hours)\b/);
+      const minute = text.match(/(\d+(?:\.\d+)?)\s*(?:m|min|mins|minute|minutes)\b/);
+      if (!hour && !minute) return null;
+      return (hour ? Number(hour[1]) * 60 : 0) + (minute ? Number(minute[1]) : 0);
+    };
+    const newStart = parseTimeMinutes(tForm.time);
+    const newDuration = parseDurationMinutes(tForm.dur);
+    const schedulingWarnings: string[] = [];
+
+    if (selectedDriver) {
+      const expiry = selectedDriver.prdpExpiryDate ? new Date(selectedDriver.prdpExpiryDate + 'T00:00:00') : null;
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const daysLeft = expiry && !Number.isNaN(expiry.getTime()) ? Math.ceil((expiry.getTime() - today.getTime()) / 86400000) : null;
+      if (daysLeft === null) schedulingWarnings.push(selectedDriver.name + ': PrDP/PDP expiry date not provided.');
+      else if (daysLeft < 0) schedulingWarnings.push(selectedDriver.name + ': PrDP/PDP expired on ' + selectedDriver.prdpExpiryDate + '.');
+      else if (daysLeft <= 45) schedulingWarnings.push(selectedDriver.name + ': PrDP/PDP expires in ' + daysLeft + ' day(s).');
+      if (selectedDriver.status === 'Off Duty' || selectedDriver.status === 'Unavailable') {
+        schedulingWarnings.push(selectedDriver.name + ': driver status is ' + selectedDriver.status + '.');
+      }
+
+      (state.transfers || []).forEach(existing => {
+        if (existing.id === tForm.id || existing.date !== (tForm.date || '') || !existing.date) return;
+        const existingDriver = existing.driverId || (state.drivers || []).find(d => d.name === existing.driver)?.id ||
+          (existing.driver ? 'legacy:' + existing.driver.trim().toLocaleLowerCase() : '');
+        if (!existingDriver || existingDriver !== selectedDriverId) return;
+        const existingStart = parseTimeMinutes(existing.time);
+        if (newStart === null || existingStart === null) return;
+        const existingDuration = parseDurationMinutes(existing.dur);
+        let definitelyOverlaps = false;
+        let potentialOverlap = false;
+        if (newDuration !== null && existingDuration !== null) {
+          definitelyOverlaps = newStart < existingStart + existingDuration && existingStart < newStart + newDuration;
+        } else if (newDuration !== null) {
+          definitelyOverlaps = existingStart >= newStart && existingStart < newStart + newDuration;
+          potentialOverlap = !definitelyOverlaps;
+        } else if (existingDuration !== null) {
+          definitelyOverlaps = newStart >= existingStart && newStart < existingStart + existingDuration;
+          potentialOverlap = !definitelyOverlaps;
+        } else {
+          potentialOverlap = newStart === existingStart;
+        }
+        if (definitelyOverlaps) {
+          schedulingWarnings.push('Driver overlap: ' + (existing.type || 'Transfer') + ' on ' + existing.date + ' at ' + (existing.time || 'time TBC') + ' already uses ' + selectedDriver.name + '.');
+        } else if (potentialOverlap) {
+          schedulingWarnings.push('Potential driver conflict: another same-day transfer for ' + selectedDriver.name + ' has missing duration data; verify the schedule.');
+        }
+      });
+    }
+
+    if (schedulingWarnings.length && !window.confirm(
+      'Review driver compliance and schedule warnings before saving:\n\n• ' +
+      schedulingWarnings.join('\n• ') +
+      '\n\nCancel to change the driver or schedule. Continue only if the assignment has been checked.'
+    )) return;
+
     const savedTransfer: Transfer = {
       id: tForm.id || Date.now(),
       type: tForm.type || 'Airport Arrival',
