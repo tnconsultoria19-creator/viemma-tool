@@ -262,6 +262,27 @@ export const RoomingView: React.FC<RoomingViewProps> = ({
     else alert('Location details have been imported for review. Please confirm the address before saving.');
   };
 
+  const handleQuickMapsLinkImport = () => {
+    const url = qbGoogleMapsUrl.trim();
+    if (!url) return;
+    let candidateAddress = '';
+    try {
+      const parsed = new URL(url);
+      const query = parsed.searchParams.get('q') || parsed.searchParams.get('query') || parsed.searchParams.get('destination') || '';
+      const placePath = parsed.pathname.match(/\/place\/([^/]+)/)?.[1] || '';
+      const candidate = (query || placePath).replace(/\+/g, ' ').trim();
+      if (candidate && !/^[-+]?\d+(?:\.\d+)?\s*,\s*[-+]?\d+(?:\.\d+)?$/.test(candidate)) {
+        candidateAddress = decodeURIComponent(candidate);
+      }
+    } catch { /* Short links may need manual address confirmation. */ }
+    if (candidateAddress) {
+      setQbAddress(candidateAddress);
+      alert('Address imported for review. Please confirm it before saving.');
+    } else {
+      alert('The Google Maps link is saved for reference. Please enter the hotel address manually if it cannot be resolved.');
+    }
+  };
+
   // QUICK BOOK INTEGRATION
   const handleQuickBookSave = () => {
     if (!state.client.startDate || !state.client.endDate) {
@@ -566,13 +587,30 @@ export const RoomingView: React.FC<RoomingViewProps> = ({
               )}
             </div>
 
-            <div className="space-y-1.5">
+            <div className="space-y-1.5 lg:col-span-3">
+              <label className="text-gray-300 font-semibold uppercase tracking-wider block">Hotel Address</label>
+              <input type="text" value={qbAddress} onChange={e => setQbAddress(e.target.value)} className="w-full h-11 px-4 rounded-xl border border-white/10 bg-white/5 text-white placeholder:text-gray-400 focus:ring-1 focus:ring-[#D4AF37] transition" placeholder="Street address, suburb, city" />
+            </div>
+            <div className="space-y-1.5 lg:col-span-3">
+              <label className="text-gray-300 font-semibold uppercase tracking-wider block">Google Maps Share Link</label>
+              <div className="flex gap-2">
+                <input type="url" value={qbGoogleMapsUrl} onChange={e => setQbGoogleMapsUrl(e.target.value)} className="min-w-0 flex-1 h-11 px-4 rounded-xl border border-white/10 bg-white/5 text-white placeholder:text-gray-400 focus:ring-1 focus:ring-[#D4AF37] transition" placeholder="Paste Maps share URL" />
+                <button type="button" onClick={handleQuickMapsLinkImport} className="shrink-0 px-3 rounded-xl border border-white/15 bg-white/10 text-white hover:bg-white/15 font-bold text-xs">Use link</button>
+              </div>
+            </div>
+            <div className="space-y-1.5 lg:col-span-6">
+              <label className="text-gray-300 font-semibold uppercase tracking-wider block">Property Notes / Requirements</label>
+              <input type="text" value={qbNotes} onChange={e => setQbNotes(e.target.value)} className="w-full h-11 px-4 rounded-xl border border-white/10 bg-white/5 text-white placeholder:text-gray-400 focus:ring-1 focus:ring-[#D4AF37] transition" placeholder="Optional source notes, dietary or room requirements" />
+            </div>
+
+            <div className="space-y-1.5 lg:col-span-1">
               <label className="text-gray-300 font-semibold uppercase tracking-wider block">Room Tier</label>
               <select 
                 value={qbRoomType} 
                 onChange={e => setQbRoomType(e.target.value)}
                 className="w-full h-11 px-4 rounded-xl border border-white/10 bg-white/5 text-white focus:ring-1 focus:ring-[#D4AF37] transition font-medium"
               >
+                <option value="" className="text-[#1A3326]">Choose room type</option>
                 <option value="Deluxe Suite" className="text-[#1A3326]">Deluxe Suite</option>
                 <option value="Superior Villa" className="text-[#1A3326]">Superior Villa</option>
                 <option value="Presidential Suite" className="text-[#1A3326]">Presidential Suite</option>
@@ -587,6 +625,7 @@ export const RoomingView: React.FC<RoomingViewProps> = ({
                 onChange={e => setQbMeal(e.target.value)}
                 className="w-full h-11 px-4 rounded-xl border border-white/10 bg-white/5 text-white focus:ring-1 focus:ring-[#D4AF37] transition font-medium"
               >
+                <option value="" className="text-[#1A3326]">Choose meal plan</option>
                 <option value="B&B" className="text-[#1A3326]">Bed & Breakfast</option>
                 <option value="Half Board" className="text-[#1A3326]">Half Board (HB)</option>
                 <option value="Full Board" className="text-[#1A3326]">Full Board (Inclusive)</option>
@@ -594,29 +633,23 @@ export const RoomingView: React.FC<RoomingViewProps> = ({
               </select>
             </div>
 
-            <div className="space-y-1.5">
-              <label className="text-gray-300 font-semibold uppercase tracking-wider block">Mapped Guests</label>
-              <select 
-                value={qbGuestsCount} 
-                onChange={e => setQbGuestsCount(Number(e.target.value))}
-                className="w-full h-11 px-4 rounded-xl border border-white/10 bg-white/5 text-white focus:ring-1 focus:ring-[#D4AF37] transition font-medium"
-              >
-                <option value={1} className="text-[#1A3326]">1 Guest</option>
-                <option value={2} className="text-[#1A3326]">2 Guests (Double)</option>
-                <option value={3} className="text-[#1A3326]">3 Guests</option>
-                <option value={4} className="text-[#1A3326]">4 Guests</option>
-                <option value={state.guests.length} className="text-[#1A3326]">All ({state.guests.length}) Guests</option>
-              </select>
+            <div className="space-y-1.5 lg:col-span-3">
+              <label className="text-gray-300 font-semibold uppercase tracking-wider block">Assign Existing Travellers</label>
+              <div className="rounded-xl border border-white/10 bg-white/5 p-3 max-h-36 overflow-y-auto space-y-2">
+                {state.guests.length === 0 ? <p className="text-[11px] text-gray-400">Add travellers in Intake first. No duplicate entry is needed here.</p> : state.guests.map(guest => {
+                  const guestLabel = [guest.first, guest.last].filter(Boolean).join(' ').trim() || guest.provisionalLabel || ('Traveller ' + guest.id);
+                  return <label key={guest.id} className="flex items-center gap-2 text-[11px] text-gray-200 cursor-pointer">
+                    <input type="checkbox" checked={qbGuestIds.includes(guest.id)} onChange={e => setQbGuestIds(prev => e.target.checked ? [...prev, guest.id] : prev.filter(id => id !== guest.id))} className="accent-[#D4AF37]" />
+                    <span>{guestLabel}{guest.isLead ? ' · Lead contact' : ''}{guest.isProvisional ? ' · Details pending' : ''}</span>
+                  </label>;
+                })}
+              </div>
+              <p className="text-[10px] text-gray-400">{qbGuestIds.length} traveller(s) selected for this stay.</p>
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-gray-300 font-semibold uppercase tracking-wider block">Nightly Net Rate (R)</label>
-              <input 
-                type="number" 
-                value={qbRate} 
-                onChange={e => setQbRate(Number(e.target.value))}
-                className="w-full h-11 px-4 rounded-xl border border-white/10 bg-white/5 text-white focus:ring-1 focus:ring-[#D4AF37] transition font-bold" 
-              />
+              <label className="text-gray-300 font-semibold uppercase tracking-wider block">Nightly Rate (R, if known)</label>
+              <input type="number" min="0" value={qbRate || ''} onChange={e => setQbRate(e.target.value === '' ? 0 : Number(e.target.value))} className="w-full h-11 px-4 rounded-xl border border-white/10 bg-white/5 text-white focus:ring-1 focus:ring-[#D4AF37] transition font-bold" placeholder="Leave blank if unknown" />
             </div>
           </div>
 
