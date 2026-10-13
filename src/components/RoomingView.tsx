@@ -67,7 +67,8 @@ export const RoomingView: React.FC<RoomingViewProps> = ({
   const [allocRoomForm, setAllocRoomForm] = useState<Partial<AllocatedRoom>>({});
 
   // Quick Book sub-form presets
-  const [qbHotel, setQbHotel] = useState("The Silo Hotel (Cape Town)");
+  const [qbHotel, setQbHotel] = useState("Silo Hotel (V&A Waterfront / Silo District)");
+  const [showQuickHotelDropdown, setShowQuickHotelDropdown] = useState(false);
   const [qbRoomType, setQbRoomType] = useState("Deluxe Suite");
   const [qbMeal, setQbMeal] = useState("B&B");
   const [qbGuestsCount, setQbGuestsCount] = useState(2);
@@ -110,7 +111,7 @@ export const RoomingView: React.FC<RoomingViewProps> = ({
           guestIds: state.guests.slice(0, 2).map(g => g.id)
         }
       ],
-      gpsLocation: '-33.9015, 18.4239',
+      gpsLocation: '',
       checkInTime: '14:00',
       checkOutTime: '11:00',
       amenities: ['Spa', 'Gym', 'Pool', 'Wi-Fi'],
@@ -135,7 +136,7 @@ export const RoomingView: React.FC<RoomingViewProps> = ({
       ...r,
       // fallback initialization if they were missing
       allocatedRooms: r.allocatedRooms || [],
-      gpsLocation: r.gpsLocation || '-33.9015, 18.4239',
+      gpsLocation: r.gpsLocation || '',
       checkInTime: r.checkInTime || '14:00',
       checkOutTime: r.checkOutTime || '11:00',
       amenities: r.amenities || ['Spa', 'Pool', 'Wi-Fi'],
@@ -238,6 +239,22 @@ export const RoomingView: React.FC<RoomingViewProps> = ({
     setRForm({});
   };
 
+  const handleMapsLinkImport = () => {
+    const url = (rForm.googleMapsUrl || '').trim();
+    if (!url) return;
+    let candidateAddress = '';
+    try {
+      const parsed = new URL(url);
+      const query = parsed.searchParams.get('q') || parsed.searchParams.get('query') || parsed.searchParams.get('destination') || '';
+      const placePath = parsed.pathname.match(/\\/place\\/([^/]+)/)?.[1] || '';
+      const candidate = (query || placePath).replace(/\\+/g, ' ').trim();
+      if (candidate && !/^[-+]?\\d+(?:\\.\\d+)?\\s*,\\s*[-+]?\\d+(?:\\.\\d+)?$/.test(candidate)) candidateAddress = decodeURIComponent(candidate);
+    } catch { /* Shortened Google Maps links may need manual address confirmation. */ }
+    setRForm({ ...rForm, googleMapsUrl: url, ...(candidateAddress ? { address: candidateAddress } : {}) });
+    if (!candidateAddress) alert('The Google Maps link has been saved. Please enter or confirm the hotel address manually.');
+    else alert('Location details have been imported for review. Please confirm the address before saving.');
+  };
+
   // QUICK BOOK INTEGRATION
   const handleQuickBookSave = () => {
     if (!state.client.startDate || !state.client.endDate) {
@@ -247,12 +264,17 @@ export const RoomingView: React.FC<RoomingViewProps> = ({
     const cin = state.client.startDate;
     const cout = state.client.endDate;
     const nights = calcNights(cin, cout);
+    const chosenHotel = qbHotel.trim();
+    if (!chosenHotel) { alert('Choose a property or type a custom hotel name first.'); return; }
+    if (!hotelCatalog.some(h => h.toLocaleLowerCase() === chosenHotel.toLocaleLowerCase())) {
+      setHotelCatalog(addCustomHotelToCatalogue(chosenHotel));
+    }
 
     const selectedGuestsIds = state.guests.slice(0, qbGuestsCount).map(g => g.id);
 
     const newR: Room = {
       id: Date.now(),
-      hotel: qbHotel,
+      hotel: chosenHotel,
       conf: `QB-${Math.floor(10000 + Math.random() * 90000)}`,
       pay: 'Deposit Paid',
       roomType: qbRoomType,
@@ -266,6 +288,8 @@ export const RoomingView: React.FC<RoomingViewProps> = ({
       supp: 0,
       reqs: ["Quiet Side"],
       notes: "Auto-provisioned via DMC Quick Booking Desk.",
+      address: '',
+      googleMapsUrl: '',
       allocatedRooms: [
         {
           id: Date.now() + 1,
@@ -289,7 +313,7 @@ export const RoomingView: React.FC<RoomingViewProps> = ({
           guestIds: selectedGuestsIds
         }
       ],
-      gpsLocation: '-33.9015, 18.4239',
+      gpsLocation: '',
       checkInTime: '14:00',
       checkOutTime: '11:00',
       spa: true,
@@ -544,17 +568,17 @@ export const RoomingView: React.FC<RoomingViewProps> = ({
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-6 text-xs">
-            <div className="space-y-1.5 lg:col-span-2">
-              <label className="text-gray-300 font-semibold uppercase tracking-wider block">Hotel Property</label>
-              <select 
-                value={qbHotel} 
-                onChange={e => setQbHotel(e.target.value)}
-                className="w-full h-11 px-4 rounded-xl border border-white/10 bg-white/5 text-white focus:ring-1 focus:ring-[#D4AF37] transition font-medium"
-              >
-                {DB_DEFAULT.hotels.map(h => (
-                  <option key={h.id} value={h.name} className="text-[#1A3326] font-medium">{h.name}</option>
-                ))}
-              </select>
+            <div className="space-y-1.5 lg:col-span-2 relative">
+              <label className="text-gray-300 font-semibold uppercase tracking-wider block">Hotel Property <span className="text-gray-400 font-normal">({hotelCatalog.length} properties)</span></label>
+              <input type="text" value={qbHotel} onChange={e => { setQbHotel(e.target.value); setShowQuickHotelDropdown(true); }} onFocus={() => setShowQuickHotelDropdown(true)} placeholder="Search hotel or enter a custom property" className="w-full h-11 px-4 rounded-xl border border-white/10 bg-white/5 text-white placeholder:text-gray-400 focus:ring-1 focus:ring-[#D4AF37] transition font-medium" autoComplete="off" />
+              {showQuickHotelDropdown && (
+                <div className="absolute left-0 top-full mt-1 w-full bg-white text-gray-800 border border-gray-200 rounded-xl shadow-xl max-h-64 overflow-y-auto z-[80] py-1">
+                  <div className="px-3 py-2 text-[10px] uppercase tracking-wide font-bold text-gray-400 bg-gray-50 border-b border-gray-100 flex items-center justify-between"><span>Shared accommodation catalogue</span><button type="button" onClick={() => setShowQuickHotelDropdown(false)} className="text-gray-500 hover:text-gray-900 underline">Close</button></div>
+                  {(qbHotel.trim() ? hotelCatalog.filter(h => h.toLocaleLowerCase().includes(qbHotel.toLocaleLowerCase())) : hotelCatalog).slice(0, 60).map(hotel => <button type="button" key={hotel} onClick={() => { setQbHotel(hotel); setShowQuickHotelDropdown(false); }} className="block w-full text-left px-3 py-2 text-xs hover:bg-emerald-50 hover:text-[#1A3326]">{hotel}</button>)}
+                  {qbHotel.trim() && !hotelCatalog.some(h => h.toLocaleLowerCase() === qbHotel.trim().toLocaleLowerCase()) && <button type="button" onClick={() => { setHotelCatalog(addCustomHotelToCatalogue(qbHotel)); setShowQuickHotelDropdown(false); }} className="block w-full text-left px-3 py-2.5 text-xs font-bold text-emerald-800 bg-emerald-50 hover:bg-emerald-100">+ Add custom property “{qbHotel.trim()}” to catalogue</button>}
+                  {hotelCatalog.length === 0 && <p className="px-3 py-2 text-xs text-gray-400">The catalogue is loading or unavailable. You can still enter a custom property.</p>}
+                </div>
+              )}
             </div>
 
             <div className="space-y-1.5">
@@ -723,14 +747,16 @@ export const RoomingView: React.FC<RoomingViewProps> = ({
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="text-[11px] text-gray-500 font-bold uppercase tracking-wider block">GPS Coordinates</label>
-                  <input 
-                    type="text" 
-                    value={rForm.gpsLocation || ''} 
-                    onChange={e => setRForm({ ...rForm, gpsLocation: e.target.value })}
-                    className="w-full h-11 px-4 rounded-xl border border-gray-200 text-xs font-medium text-gray-800 focus:border-[#D4AF37] transition"
-                    placeholder="e.g. -33.9015, 18.4239" 
-                  />
+                  <label className="text-[11px] text-gray-500 font-bold uppercase tracking-wider block">Hotel Address</label>
+                  <input type="text" value={rForm.address || ''} onChange={e => setRForm({ ...rForm, address: e.target.value })} className="w-full h-11 px-4 rounded-xl border border-gray-200 text-xs font-medium text-gray-800 focus:border-[#D4AF37] transition" placeholder="Street address, suburb, city" />
+                </div>
+                <div className="space-y-1.5 md:col-span-2">
+                  <label className="text-[11px] text-gray-500 font-bold uppercase tracking-wider block">Google Maps Shared Location Link</label>
+                  <div className="flex gap-2">
+                    <input type="url" value={rForm.googleMapsUrl || ''} onChange={e => setRForm({ ...rForm, googleMapsUrl: e.target.value })} className="min-w-0 flex-1 h-11 px-4 rounded-xl border border-gray-200 text-xs font-medium text-gray-800 focus:border-[#D4AF37] transition" placeholder="Paste the Google Maps Share link" />
+                    <button type="button" onClick={handleMapsLinkImport} className="shrink-0 px-3 rounded-xl border border-gray-200 bg-slate-50 hover:bg-slate-100 text-xs font-bold text-[#1A3326]">Use link</button>
+                  </div>
+                  <p className="text-[10px] text-gray-400">The link is saved for reference. Confirm the address before using it for dispatch.</p>
                 </div>
 
                 <div className="space-y-1.5">
@@ -895,13 +921,14 @@ export const RoomingView: React.FC<RoomingViewProps> = ({
                 <div className="space-y-1.5">
                   <label className="text-[11px] text-gray-500 font-bold uppercase tracking-wider block">Settlement Status</label>
                   <select 
-                    value={rForm.pay || 'Unpaid'}
+                    value={rForm.pay === 'Fully Paid' ? 'Paid' : (rForm.pay || 'Unpaid')}
                     onChange={e => setRForm({ ...rForm, pay: e.target.value as any })}
                     className="w-full h-11 px-4 rounded-xl border border-gray-200 text-xs font-semibold text-gray-700 bg-white hover:border-[#D4AF37] focus:border-[#D4AF37] transition duration-200"
                   >
-                    <option value="Unpaid">Unpaid / Awaiting Voucher</option>
-                    <option value="Deposit Paid">Deposit Paid (DMC Hold)</option>
-                    <option value="Fully Paid">Fully Vouchered / Pre-paid</option>
+                    <option value="Unpaid">Unpaid</option>
+                    <option value="Deposit Paid">Deposit Paid</option>
+                    <option value="Paid">Paid</option>
+                    <option value="Negotiation / Pending Confirmation">Negotiation / Pending Confirmation</option>
                   </select>
                 </div>
 
