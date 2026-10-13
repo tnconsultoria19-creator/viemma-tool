@@ -343,8 +343,8 @@ export const AIItineraryImportModal: React.FC<AIItineraryImportModalProps> = ({
           isLead: g.isLead ?? (idx === 0),
           age: g.age || 'Adult',
           nationality: g.nationality || parsed.client.country || '🇿🇦 South Africa',
-          needsReview: !g.last || !g.first || g.needsReview,
-          reviewReason: !g.last ? 'Missing traveller surname' : g.reviewReason
+          needsReview: !g.last || !g.first || !g.age || (!g.nationality && !parsed.client.country) || g.needsReview,
+          reviewReason: !g.last ? 'Missing traveller surname' : !g.first ? 'Missing traveller first name' : !g.age ? 'Missing traveller age category' : (!g.nationality && !parsed.client.country) ? 'Missing traveller nationality' : g.reviewReason
         })),
         flights: (parsed.flights || []).map(f => ({
           ...f,
@@ -1109,6 +1109,9 @@ export const AIItineraryImportModal: React.FC<AIItineraryImportModalProps> = ({
                       <div className="mt-3 pt-3 border-t border-gray-200 grid grid-cols-1 md:grid-cols-2 gap-2.5">
                         <label className="text-[10px] font-bold text-gray-600">Preferred name
                           <input value={tg.preferredName || ''} onChange={e => handleUpdateTraveller(idx, { preferredName: e.target.value })} className="mt-1 w-full p-2 rounded-lg border border-gray-200 bg-white text-xs font-normal" placeholder="Name to use" />
+                        </label>
+                        <label className="text-[10px] font-bold text-gray-600">Nationality
+                          <input value={tg.nationality || ''} onChange={e => handleUpdateTraveller(idx, { nationality: e.target.value, needsReview: true, isReviewed: false })} className="mt-1 w-full p-2 rounded-lg border border-gray-200 bg-white text-xs font-normal" placeholder="Confirm if not supplied" />
                         </label>
                         <label className="text-[10px] font-bold text-gray-600">Dietary requirements (comma-separated)
                           <input value={(tg.dietary || []).join(', ')} onChange={e => handleUpdateTraveller(idx, { dietary: e.target.value.split(',').map(v => v.trim()).filter(Boolean) })} className="mt-1 w-full p-2 rounded-lg border border-gray-200 bg-white text-xs font-normal" placeholder="Vegetarian, nut allergy..." />
