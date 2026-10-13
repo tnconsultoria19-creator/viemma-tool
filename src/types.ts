@@ -685,6 +685,7 @@ export interface AIImportGuest {
   customAccommodationRequirements?: CustomRequirementItem[];
   dietary?: string[];
   accessibility?: string[];
+  roomPreference?: string;
   notes?: string;
   needsReview?: boolean;
   reviewReason?: string;
