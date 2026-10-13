@@ -1276,11 +1276,11 @@ export const PrintHubView: React.FC<PrintHubViewProps> = ({
             </button>
 
             <button 
-              onClick={() => window.print()}
+              onClick={() => setShowDriverPickupBoard(true)}
               className="flex flex-col items-center justify-center p-4 rounded-2xl bg-slate-50 hover:bg-slate-100 border border-slate-100 hover:border-slate-200 text-gray-700 text-center space-y-2 transition"
             >
               <Printer className="text-gray-600" size={18} />
-              <span className="text-xs font-bold">Print Current Page</span>
+              <span className="text-xs font-bold">Driver Pickup Board (A4)</span>
             </button>
           </div>
         </div>
