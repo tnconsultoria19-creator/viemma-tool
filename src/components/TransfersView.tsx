@@ -103,6 +103,9 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
     const newStart = parseTimeMinutes(tForm.time);
     const newDuration = parseDurationMinutes(tForm.dur);
     const schedulingWarnings: string[] = [];
+    if (tForm.driver && !selectedDriver) {
+      schedulingWarnings.push('Driver "' + tForm.driver + '" is not in the shared driver directory; PrDP/PDP expiry cannot be checked.');
+    }
 
     if (selectedDriver) {
       const expiry = selectedDriver.prdpExpiryDate ? new Date(selectedDriver.prdpExpiryDate + 'T00:00:00') : null;
@@ -120,7 +123,10 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
         if (existing.id === tForm.id || existing.date !== (tForm.date || '') || !existing.date) return;
         const existingDriver = existing.driverId || (state.drivers || []).find(d => d.name === existing.driver)?.id ||
           (existing.driver ? 'legacy:' + existing.driver.trim().toLocaleLowerCase() : '');
-        if (!existingDriver || existingDriver !== selectedDriverId) return;
+        const driverMatch = Boolean(selectedDriverId && existingDriver && existingDriver === selectedDriverId);
+        const newVehicle = (tForm.vehicle || '').trim().toLocaleLowerCase();
+        const sameVehicle = Boolean(newVehicle && (existing.vehicle || '').trim().toLocaleLowerCase() === newVehicle);
+        if (!driverMatch && !sameVehicle) return;
         const existingStart = parseTimeMinutes(existing.time);
         if (newStart === null || existingStart === null) return;
         const existingDuration = parseDurationMinutes(existing.dur);
@@ -137,10 +143,16 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
         } else {
           potentialOverlap = newStart === existingStart;
         }
+        const resourceLabel = driverMatch && sameVehicle ? 'Driver and vehicle conflict' : driverMatch ? 'Driver conflict' : 'Vehicle conflict';
+        const resourceName = driverMatch && sameVehicle
+          ? (selectedDriver?.name || tForm.driver || 'selected driver') + ' / ' + newVehicle
+          : driverMatch
+            ? (selectedDriver?.name || tForm.driver || 'selected driver')
+            : newVehicle;
         if (definitelyOverlaps) {
-          schedulingWarnings.push('Driver overlap: ' + (existing.type || 'Transfer') + ' on ' + existing.date + ' at ' + (existing.time || 'time TBC') + ' already uses ' + selectedDriver.name + '.');
+          schedulingWarnings.push(resourceLabel + ': another assignment on ' + existing.date + ' at ' + (existing.time || 'time TBC') + ' already uses ' + resourceName + '.');
         } else if (potentialOverlap) {
-          schedulingWarnings.push('Potential driver conflict: another same-day transfer for ' + selectedDriver.name + ' has missing duration data; verify the schedule.');
+          schedulingWarnings.push('Potential ' + resourceLabel.toLocaleLowerCase() + ': another same-day assignment for ' + resourceName + ' has missing duration data; verify the schedule.');
         }
       });
     }
