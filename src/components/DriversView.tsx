@@ -38,7 +38,7 @@ export const DriversView: React.FC<DriversViewProps> = ({ state, onUpdateState }
     }
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    const exp = new Date(expiryDate);
+    const exp = new Date(expiryDate + 'T00:00:00');
     const diffTime = exp.getTime() - today.getTime();
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 
