@@ -85,7 +85,7 @@ export const FlightsView: React.FC<FlightsViewProps> = ({
   const handleOpenAddForm = () => {
     setFForm({
       direction: 'Inbound',
-      airline: 'Emirates',
+      airline: '',
       flightNo: '',
       pnr: '',
       confirmationRef: '',
@@ -93,23 +93,24 @@ export const FlightsView: React.FC<FlightsViewProps> = ({
       referenceLinks: [],
       supplierContact: '',
       from: '',
-      to: 'CPT',
+      to: '',
       date: state.client.startDate || '',
       depTime: '',
       arrTime: '',
       duration: '',
       cabin: 'Economy',
       status: 'Quoted',
-      paxIds: state.guests.map(g => g.id), // Default to all guests
-      bagHand: 1,
-      bagCheck: 1,
+      paxIds: [],
+      bagHand: 0,
+      bagCheck: 0,
       bagOver: 0,
       cost: 0,
       markup: 0,
-      qty: state.guests.length || 1,
-      notes: ''
+      qty: state.guests.length,
+      notes: '',
+      attachments: []
     });
-    setAirlineSearch('Emirates');
+    setAirlineSearch('');
     setStopsList([]);
     setValidationError(null);
     setEditingFlightId(-1); // special ID for new form
@@ -157,7 +158,7 @@ export const FlightsView: React.FC<FlightsViewProps> = ({
       bagOver: Number(fForm.bagOver) || 0,
       cost: Number(fForm.cost) || 0,
       markup: Number(fForm.markup) || 0,
-      qty: Number(fForm.qty) || 1,
+      qty: Number(fForm.qty) || (fForm.paxIds?.length ?? 0),
       notes: fForm.notes || '',
       attachments: fForm.attachments || [],
       stops: stopsList,
