@@ -223,6 +223,8 @@ Transform the provided travel itinerary, email inquiry, or client brief into a v
       "relationshipToLead": "Primary Contact" | "Spouse" | "Child" | "Friend",
       "isLead": true | false,
       "dietary": ["Vegetarian", "Gluten-Free", ...],
+      "accessibility": ["Wheelchair", "Step-free access", ...],
+      "roomPreference": "Room type / sharing preference if supplied",
       "notes": "..."
     }
   ],
@@ -487,7 +489,7 @@ export const AIItineraryImportModal: React.FC<AIItineraryImportModalProps> = ({
         preferredName: tg.preferredName || existingGuest?.preferredName || '',
         nationality: tg.nationality || existingGuest?.nationality || payload.client.country || '',
         country: tg.country || existingGuest?.country || payload.client.country || '',
-        age: tg.age || existingGuest?.age || 'Adult',
+        age: (tg.age || existingGuest?.age || '') as Guest['age'],
         exactAge: tg.exactAge ?? existingGuest?.exactAge,
         dob: tg.dob || existingGuest?.dob || '',
         passportNo: tg.passportNo || existingGuest?.passportNo || '',
@@ -511,11 +513,12 @@ export const AIItineraryImportModal: React.FC<AIItineraryImportModalProps> = ({
         dietaryLifestyle: tg.dietary || existingGuest?.dietaryLifestyle || [],
         dietaryMedical: existingGuest?.dietaryMedical || [],
         dietaryPreferences: existingGuest?.dietaryPreferences || [],
-        preferencesAccommodation: existingGuest?.preferencesAccommodation || [],
+        preferencesAccommodation: tg.roomPreference ? [tg.roomPreference] : (existingGuest?.preferencesAccommodation || []),
+        roomTypePref: tg.roomPreference || existingGuest?.roomTypePref || '',
         preferencesTransport: existingGuest?.preferencesTransport || [],
         preferencesInterests: existingGuest?.preferencesInterests || [],
-        isProvisional: false,
-        provisionalLabel: undefined,
+        isProvisional: Boolean(existingGuest?.isProvisional || (!first && !last)),
+        provisionalLabel: (!first && !last) ? (existingGuest?.provisionalLabel || 'Traveller details pending') : undefined,
         leadContactId: existingGuest?.leadContactId
       };
     });
@@ -1108,7 +1111,12 @@ export const AIItineraryImportModal: React.FC<AIItineraryImportModalProps> = ({
                       )}
                       <div className="mt-3 pt-3 border-t border-gray-200 grid grid-cols-1 md:grid-cols-2 gap-2.5">
                         <label className="text-[10px] font-bold text-gray-600">Preferred name
-                          <input value={tg.preferredName || ''} onChange={e => handleUpdateTraveller(idx, { preferredName: e.target.value })} className="mt-1 w-full p-2 rounded-lg border border-gray-200 bg-white text-xs font-normal" placeholder="Name to use" />
+                          <input value={tg.preferredName || ''} onChange={e => handleUpdateTraveller(idx, { preferredName: e.target.value, needsReview: true, isReviewed: false })} className="mt-1 w-full p-2 rounded-lg border border-gray-200 bg-white text-xs font-normal" placeholder="Name to use" />
+                        </label>
+                        <label className="text-[10px] font-bold text-gray-600">Age category
+                          <select value={tg.age || ''} onChange={e => handleUpdateTraveller(idx, { age: (e.target.value || undefined) as AIImportGuest['age'], needsReview: true, isReviewed: false })} className="mt-1 w-full p-2 rounded-lg border border-gray-200 bg-white text-xs font-normal">
+                            <option value="">Not supplied — confirm</option><option value="Adult">Adult</option><option value="Elderly">Elderly</option><option value="Teen">Teen</option><option value="Child">Child</option><option value="Infant">Infant</option>
+                          </select>
                         </label>
                         <label className="text-[10px] font-bold text-gray-600">Nationality
                           <input value={tg.nationality || ''} onChange={e => handleUpdateTraveller(idx, { nationality: e.target.value, needsReview: true, isReviewed: false })} className="mt-1 w-full p-2 rounded-lg border border-gray-200 bg-white text-xs font-normal" placeholder="Confirm if not supplied" />
@@ -1119,8 +1127,11 @@ export const AIItineraryImportModal: React.FC<AIItineraryImportModalProps> = ({
                         <label className="text-[10px] font-bold text-gray-600">Accessibility / mobility requirements
                           <input value={(tg.accessibility || []).join(', ')} onChange={e => handleUpdateTraveller(idx, { accessibility: e.target.value.split(',').map(v => v.trim()).filter(Boolean) })} className="mt-1 w-full p-2 rounded-lg border border-gray-200 bg-white text-xs font-normal" placeholder="Wheelchair, step-free access..." />
                         </label>
+                        <label className="text-[10px] font-bold text-gray-600">Room preference
+                          <input value={tg.roomPreference || ''} onChange={e => handleUpdateTraveller(idx, { roomPreference: e.target.value, needsReview: true, isReviewed: false })} className="mt-1 w-full p-2 rounded-lg border border-gray-200 bg-white text-xs font-normal" placeholder="Twin / double / family / sharing requests" />
+                        </label>
                         <label className="text-[10px] font-bold text-gray-600">Traveller notes
-                          <input value={tg.notes || ''} onChange={e => handleUpdateTraveller(idx, { notes: e.target.value })} className="mt-1 w-full p-2 rounded-lg border border-gray-200 bg-white text-xs font-normal" placeholder="Requirements, room sharing, other notes" />
+                          <input value={tg.notes || ''} onChange={e => handleUpdateTraveller(idx, { notes: e.target.value, needsReview: true, isReviewed: false })} className="mt-1 w-full p-2 rounded-lg border border-gray-200 bg-white text-xs font-normal" placeholder="Requirements, room sharing, other notes" />
                         </label>
                       </div>
                     </div>
