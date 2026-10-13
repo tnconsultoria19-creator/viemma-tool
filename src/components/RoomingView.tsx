@@ -80,83 +80,67 @@ export const RoomingView: React.FC<RoomingViewProps> = ({
 
   const handleOpenAddForm = () => {
     setRForm({
-      hotel: 'The Silo Hotel (Cape Town)',
+      hotel: '',
       conf: '',
       pay: 'Unpaid',
       cin: state.client.startDate || '',
       cout: state.client.endDate || '',
       nights: calcNights(state.client.startDate || '', state.client.endDate || ''),
-      guestIds: state.guests.map(g => g.id), // defaults to all
-      rate: 12000,
+      guestIds: [],
+      rate: 0,
       supp: 0,
       reqs: [],
       notes: '',
-      // Smart rooming defaults
-      allocatedRooms: [
-        {
-          id: Date.now(),
-          roomName: 'Master Suite 101',
-          roomType: 'Deluxe Suite',
-          occupancy: 'Couple',
-          maxOccupancy: 2,
-          adults: 2,
-          children: 0,
-          price: 12000,
-          currency: 'ZAR',
-          mealBasis: 'B&B',
-          isAccessible: false,
-          isInterleading: false,
-          hasPrivatePool: true,
-          hasBalcony: true,
-          view: 'Ocean & Waterfront',
-          smokingPolicy: 'Non-smoking',
-          specialBenefits: 'Complimentary champagne setup.',
-          internalNotes: 'VIP check-in arrangements.',
-          guestIds: state.guests.slice(0, 2).map(g => g.id)
-        }
-      ],
+      allocatedRooms: [],
+      address: '',
+      googleMapsUrl: '',
       gpsLocation: '',
-      checkInTime: '14:00',
-      checkOutTime: '11:00',
-      amenities: ['Spa', 'Gym', 'Pool', 'Wi-Fi'],
-      restaurants: ['The Granary Café', 'The Willaston Bar'],
-      spa: true,
-      gym: true,
-      pool: true,
-      wifi: true,
-      accessibilityFeatures: ['Elevator Access', 'Ground Level Common Areas'],
-      childFriendly: true,
-      sustainabilityRating: '5-Star Green Eco-certified',
-      emergencyContact: 'Silo Front Desk / Duty Manager',
-      nightManager: '+27 21 061 1600',
-      cancellationPolicy: '30 Days 100% refund, inside 14 Days 100% cancellation penalty.',
-      internalNotesHotel: 'Dispatch custom Viemma Tours fruit basket and flower setup upon check-in.'
+      checkInTime: '',
+      checkOutTime: '',
+      amenities: [],
+      restaurants: [],
+      spa: false,
+      gym: false,
+      pool: false,
+      wifi: false,
+      accessibilityFeatures: [],
+      childFriendly: false,
+      sustainabilityRating: '',
+      emergencyContact: '',
+      nightManager: '',
+      cancellationPolicy: '',
+      internalNotesHotel: ''
     });
+    setHotelSearch('');
+    setRoomValidationError(null);
     setEditingRoomId(-1);
   };
 
   const handleEditRoom = (r: Room) => {
-    setRForm({ 
+    setRForm({
       ...r,
-      // fallback initialization if they were missing
       allocatedRooms: r.allocatedRooms || [],
+      address: r.address || '',
+      googleMapsUrl: r.googleMapsUrl || '',
       gpsLocation: r.gpsLocation || '',
-      checkInTime: r.checkInTime || '14:00',
-      checkOutTime: r.checkOutTime || '11:00',
-      amenities: r.amenities || ['Spa', 'Pool', 'Wi-Fi'],
-      restaurants: r.restaurants || ['Main Dinning Room'],
-      spa: r.spa ?? true,
-      gym: r.gym ?? true,
-      pool: r.pool ?? true,
-      wifi: r.wifi ?? true,
+      checkInTime: r.checkInTime || '',
+      checkOutTime: r.checkOutTime || '',
+      amenities: r.amenities || [],
+      restaurants: r.restaurants || [],
+      spa: r.spa ?? false,
+      gym: r.gym ?? false,
+      pool: r.pool ?? false,
+      wifi: r.wifi ?? false,
       accessibilityFeatures: r.accessibilityFeatures || [],
-      childFriendly: r.childFriendly ?? true,
-      sustainabilityRating: r.sustainabilityRating || 'Standard Luxury Rating',
-      emergencyContact: r.emergencyContact || 'Property Front Desk',
+      childFriendly: r.childFriendly ?? false,
+      sustainabilityRating: r.sustainabilityRating || '',
+      emergencyContact: r.emergencyContact || '',
       nightManager: r.nightManager || '',
-      cancellationPolicy: r.cancellationPolicy || 'Standard hotel cancel policy',
+      cancellationPolicy: r.cancellationPolicy || '',
       internalNotesHotel: r.internalNotesHotel || r.notes || ''
     });
+    setHotelSearch(r.hotel || '');
+    setRoomValidationError(null);
     setEditingRoomId(r.id);
   };
 
