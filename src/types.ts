@@ -666,6 +666,8 @@ export interface AIImportReviewableField<T = any> {
 }
 
 export interface AIImportGuest {
+  id?: number;
+  provisionalLabel?: string;
   first: string;
   last: string;
   preferredName?: string;
