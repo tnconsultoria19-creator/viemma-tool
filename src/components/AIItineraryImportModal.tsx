@@ -1144,6 +1144,7 @@ export const AIItineraryImportModal: React.FC<AIItineraryImportModalProps> = ({
                           <label className="text-[10px] font-bold text-gray-600">Direction<select value={f.direction || 'Inbound'} onChange={e => handleUpdateFlight(idx, { direction: e.target.value as AIImportFlight['direction'] })} className="mt-1 w-full p-2 rounded-lg border border-gray-200 bg-white text-xs font-normal"><option>Inbound</option><option>Outbound</option><option>Internal</option></select></label>
                           <label className="text-[10px] font-bold text-gray-600 sm:col-span-2">Notes<input value={f.notes || ''} onChange={e => handleUpdateFlight(idx, { notes: e.target.value })} className="mt-1 w-full p-2 rounded-lg border border-gray-200 bg-white text-xs font-normal" placeholder="Optional flight notes" /></label>
                         </div>
+                        <div className="flex items-center gap-2">
                           {f.needsReview ? (
                             <button
                               type="button"
@@ -1191,6 +1192,7 @@ export const AIItineraryImportModal: React.FC<AIItineraryImportModalProps> = ({
                           <label className="text-[10px] font-bold text-gray-600">Assigned passenger names<input value={(s.assignedPaxNames || []).join(', ')} onChange={e => handleUpdateStay(idx, { assignedPaxNames: e.target.value.split(',').map(v => v.trim()).filter(Boolean) })} className="mt-1 w-full p-2 rounded-lg border border-gray-200 bg-white text-xs font-normal" placeholder="Names separated by commas" /></label>
                           <label className="text-[10px] font-bold text-gray-600 sm:col-span-2 lg:col-span-4">Property notes / requirements<input value={s.notes || ''} onChange={e => handleUpdateStay(idx, { notes: e.target.value })} className="mt-1 w-full p-2 rounded-lg border border-gray-200 bg-white text-xs font-normal" placeholder="Room sharing, dietary or property requirements" /></label>
                         </div>
+                        <div className="flex items-center gap-2">
                           {s.needsReview ? (
                             <button
                               type="button"
