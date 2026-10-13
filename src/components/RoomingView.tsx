@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { AppState, Room, AllocatedRoom } from '../types';
 import { DB_DEFAULT, ROOM_TYPE_OPTIONS, MEAL_PLAN_OPTIONS, ROOM_REQUEST_OPTIONS } from '../dbDefaults';
 import { 
@@ -54,7 +54,16 @@ export const RoomingView: React.FC<RoomingViewProps> = ({
   const [allocRoomForm, setAllocRoomForm] = useState<Partial<AllocatedRoom>>({});
 
   // Quick Book sub-form presets
-  const [qbHotel, setQbHotel] = useState("The Silo Hotel (Cape Town)");
+  const [qbHotel, setQbHotel] = useState("");
+  const [hotelCatalog, setHotelCatalog] = useState<string[]>([]);
+  useEffect(() => {
+    let cancelled = false;
+    fetch('/data/cape-town-hotels.txt')
+      .then(response => { if (!response.ok) throw new Error('Hotel catalogue unavailable'); return response.text(); })
+      .then(text => { if (!cancelled) setHotelCatalog([...new Set(text.split(/\\r?\\n/).map(value => value.trim()).filter(value => value && !value.startsWith('#') && !value.startsWith('Custom hotel'))].sort((a, b) => a.localeCompare(b))); })
+      .catch(error => console.warn('Using built-in hotel suggestions:', error));
+    return () => { cancelled = true; };
+  }, []);
   const [qbRoomType, setQbRoomType] = useState("Deluxe Suite");
   const [qbMeal, setQbMeal] = useState("B&B");
   const [qbGuestsCount, setQbGuestsCount] = useState(2);
@@ -555,7 +564,7 @@ export const RoomingView: React.FC<RoomingViewProps> = ({
                     list="hotels-list"
                   />
                   <datalist id="hotels-list">
-                    {DB_DEFAULT.hotels.map(h => <option key={h.id} value={h.name} />)}
+                    {[...new Set([...DB_DEFAULT.hotels.map(h => h.name), ...hotelCatalog])].sort((a, b) => a.localeCompare(b)).map(hotelName => <option key={hotelName} value={hotelName} />)}
                   </datalist>
                 </div>
 
