@@ -774,11 +774,17 @@ export default function App() {
   };
 
   const handleCreateNewTrip = (newTrip: AppState) => {
-    const updated = [newTrip, ...tripsList];
+    const sharedDrivers = newTrip.drivers?.length
+      ? newTrip.drivers
+      : state.drivers?.length
+        ? state.drivers
+        : (tripsList.find(trip => trip.drivers?.length)?.drivers || []);
+    const tripWithDirectory: AppState = { ...newTrip, drivers: sharedDrivers };
+    const updated = [tripWithDirectory, ...tripsList.filter(trip => trip.ref !== tripWithDirectory.ref)];
     setTripsList(updated);
     localStorage.setItem('viemma_trips_list', JSON.stringify(updated));
-    setState(newTrip);
-    localStorage.setItem('viemma_workspace_state', JSON.stringify(newTrip));
+    setState(tripWithDirectory);
+    localStorage.setItem('viemma_workspace_state', JSON.stringify(tripWithDirectory));
     setActiveTab('guests');
   };
 
@@ -818,6 +824,20 @@ export default function App() {
   const handleUpdateState = (updates: Partial<AppState>) => {
     const updated = { ...state, ...updates };
     updateFullState(updated);
+
+    // Driver profiles are a shared directory across bookings, not trip-specific guests.
+    // Keep the directory consistent in saved local and cloud trip snapshots.
+    if (updates.drivers) {
+      const sharedTrips = tripsList.map(trip => ({ ...trip, drivers: updates.drivers || [] }));
+      const currentIndex = sharedTrips.findIndex(trip => trip.ref === updated.ref);
+      if (currentIndex >= 0) sharedTrips[currentIndex] = updated;
+      else sharedTrips.unshift(updated);
+      setTripsList(sharedTrips);
+      localStorage.setItem('viemma_trips_list', JSON.stringify(sharedTrips));
+      sharedTrips.forEach(trip => {
+        if (trip.ref !== updated.ref) saveTripToCloud(trip);
+      });
+    }
   };
 
   const handleUpdateClient = (updates: Partial<AppState['client']>) => {
@@ -955,8 +975,12 @@ export default function App() {
 
   const handleNewBooking = () => {
     const newRef = `VT-2026-${Math.floor(1000 + Math.random() * 9000)}`;
+    const sharedDrivers = state.drivers?.length
+      ? state.drivers
+      : (tripsList.find(trip => trip.drivers?.length)?.drivers || []);
     const newEmptyTrip: AppState = {
       ...INITIAL_STATE,
+      drivers: sharedDrivers,
       ref: newRef,
       title: `New Itinerary (${newRef})`,
       publishing: {
