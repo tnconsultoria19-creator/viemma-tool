@@ -244,6 +244,8 @@ Transform the provided travel itinerary, email inquiry, or client brief into a v
   "accommodations": [
     {
       "hotel": "Hotel Name (Area)",
+      "address": "Full street address if provided",
+      "googleMapsUrl": "Google Maps share URL if provided",
       "roomType": "Deluxe / Superior / Suite",
       "meal": "B&B" | "HB" | "FB" | "AI",
       "cin": "YYYY-MM-DD",
@@ -353,8 +355,8 @@ export const AIItineraryImportModal: React.FC<AIItineraryImportModalProps> = ({
         })),
         accommodations: (parsed.accommodations || []).map(s => ({
           ...s,
-          meal: s.meal || 'B&B',
-          nights: s.nights || 1,
+          meal: s.meal,
+          nights: s.nights,
           needsReview: !s.hotel || !s.roomType || !s.cin || !s.cout || s.needsReview,
           reviewReason: !s.hotel ? 'Missing property name' : !s.roomType ? 'Missing room type' : !s.cin ? 'Missing check-in date' : !s.cout ? 'Missing check-out date' : s.reviewReason
         })),
@@ -615,8 +617,8 @@ export const AIItineraryImportModal: React.FC<AIItineraryImportModalProps> = ({
         supp: existingRoom?.supp || 0,
         reqs: existingRoom?.reqs || [],
         notes: s.notes || existingRoom?.notes || '',
-        address: existingRoom?.address || '',
-        googleMapsUrl: existingRoom?.googleMapsUrl || '',
+        address: s.address || existingRoom?.address || '',
+        googleMapsUrl: s.googleMapsUrl || existingRoom?.googleMapsUrl || '',
         attachments: existingRoom?.attachments || [],
         allocatedRooms: existingRoom?.allocatedRooms || []
       };
@@ -1177,6 +1179,8 @@ export const AIItineraryImportModal: React.FC<AIItineraryImportModalProps> = ({
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 w-full">
                           <label className="text-[10px] font-bold text-gray-600">Property / accommodation name<input value={s.hotel || ''} onChange={e => handleUpdateStay(idx, { hotel: e.target.value, needsReview: true, isReviewed: false })} className="mt-1 w-full p-2 rounded-lg border border-gray-200 bg-white text-xs font-normal" placeholder="Hotel / property name" /></label>
                           <label className="text-[10px] font-bold text-gray-600">Room type<input value={s.roomType || ''} onChange={e => handleUpdateStay(idx, { roomType: e.target.value, needsReview: true, isReviewed: false })} className="mt-1 w-full p-2 rounded-lg border border-gray-200 bg-white text-xs font-normal" placeholder="Suite, twin room..." /></label>
+                          <label className="text-[10px] font-bold text-gray-600">Hotel address<input value={s.address || ''} onChange={e => handleUpdateStay(idx, { address: e.target.value, needsReview: true, isReviewed: false })} className="mt-1 w-full p-2 rounded-lg border border-gray-200 bg-white text-xs font-normal" placeholder="Street address, suburb, city" /></label>
+                          <label className="text-[10px] font-bold text-gray-600">Google Maps share link<input value={s.googleMapsUrl || ''} onChange={e => handleUpdateStay(idx, { googleMapsUrl: e.target.value })} className="mt-1 w-full p-2 rounded-lg border border-gray-200 bg-white text-xs font-normal" placeholder="Paste location URL if supplied" /></label>
                           <label className="text-[10px] font-bold text-gray-600">Check-in<input type="date" value={s.cin || ''} onChange={e => handleUpdateStay(idx, { cin: e.target.value, needsReview: true, isReviewed: false })} className="mt-1 w-full p-2 rounded-lg border border-gray-200 bg-white text-xs font-normal" /></label>
                           <label className="text-[10px] font-bold text-gray-600">Check-out<input type="date" value={s.cout || ''} onChange={e => handleUpdateStay(idx, { cout: e.target.value, needsReview: true, isReviewed: false })} className="mt-1 w-full p-2 rounded-lg border border-gray-200 bg-white text-xs font-normal" /></label>
                           <label className="text-[10px] font-bold text-gray-600">Nights<input type="number" min="0" value={s.nights ?? ''} onChange={e => handleUpdateStay(idx, { nights: e.target.value === '' ? undefined : Number(e.target.value) })} className="mt-1 w-full p-2 rounded-lg border border-gray-200 bg-white text-xs font-normal" /></label>
