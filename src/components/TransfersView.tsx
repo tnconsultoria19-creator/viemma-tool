@@ -118,8 +118,9 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
       if (selectedDriver.status === 'Off Duty' || selectedDriver.status === 'Unavailable') {
         schedulingWarnings.push(selectedDriver.name + ': driver status is ' + selectedDriver.status + '.');
       }
+    }
 
-      (state.transfers || []).forEach(existing => {
+    (state.transfers || []).forEach(existing => {
         if (existing.id === tForm.id || existing.date !== (tForm.date || '') || !existing.date) return;
         const existingDriver = existing.driverId || (state.drivers || []).find(d => d.name === existing.driver)?.id ||
           (existing.driver ? 'legacy:' + existing.driver.trim().toLocaleLowerCase() : '');
@@ -154,8 +155,7 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
         } else if (potentialOverlap) {
           schedulingWarnings.push('Potential ' + resourceLabel.toLocaleLowerCase() + ': another same-day assignment for ' + resourceName + ' has missing duration data; verify the schedule.');
         }
-      });
-    }
+    });
 
     if (schedulingWarnings.length && !window.confirm(
       'Review driver compliance and schedule warnings before saving:\n\n• ' +
