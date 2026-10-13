@@ -8,7 +8,7 @@ interface DailyTimelinesViewProps {
 }
 
 export const DailyTimelinesView: React.FC<DailyTimelinesViewProps> = ({ state, onUpdateState }) => {
-  const [selectedDate, setSelectedDate] = useState<string>(new Date().toISOString().split('T')[0]);
+  const [selectedDate, setSelectedDate] = useState<string>(state.client.startDate || new Date().toISOString().split('T')[0]);
   const [filterType, setFilterType] = useState<'ALL' | 'TRANSFERS' | 'FLIGHTS' | 'ACTIVITIES' | 'HOTELS'>('ALL');
   const [selectedDriver, setSelectedDriver] = useState<string>('ALL');
 
