@@ -30,9 +30,9 @@ export const DriverPickupBoard: React.FC<DriverPickupBoardProps> = ({ state, onB
   );
 
   const selectedFlight = inboundFlights.find(f => f.id === selectedFlightId);
-  const matchedTransfer = arrivalTransfers.find(t => 
-    selectedFlight && (t.flight === selectedFlight.flightNo || t.linkedFlightId === selectedFlight.id)
-  ) || arrivalTransfers[0];
+  const matchedTransfer = selectedFlight
+    ? arrivalTransfers.find(t => t.flight === selectedFlight.flightNo || t.linkedFlightId === selectedFlight.id)
+    : arrivalTransfers[0];
 
   const leadGuest = state.guests.find(g => g.isLead) || state.guests[0];
   const initialDriver = state.drivers?.find(d => d.id === matchedTransfer?.driverId || d.name === matchedTransfer?.driver);
@@ -42,29 +42,29 @@ export const DriverPickupBoard: React.FC<DriverPickupBoardProps> = ({ state, onB
 
   // Editable display name on placard
   const defaultPlacardName = matchedTransfer?.sign || 
-    (state.client.name ? state.client.name.toUpperCase() : leadGuest ? `${leadGuest.first.toUpperCase()} ${leadGuest.last.toUpperCase()} PARTY` : 'VIP GUEST');
+    (state.client.name ? state.client.name.toUpperCase() : leadGuest ? `${leadGuest.first.toUpperCase()} ${leadGuest.last.toUpperCase()} PARTY` : 'PASSENGER NAME TO BE CONFIRMED');
 
   const [placardName, setPlacardName] = useState(defaultPlacardName);
   const [pickupAirport, setPickupAirport] = useState(
     matchedTransfer?.from || (selectedFlight ? `${selectedFlight.to} International Airport` : 'Cape Town International Airport')
   );
   const [pickupPoint, setPickupPoint] = useState(
-    matchedTransfer?.meet || 'International Arrivals Hall — Door 4'
+    matchedTransfer?.meet || 'Meeting point to be confirmed'
   );
   const [pickupNotes, setPickupNotes] = useState(
-    matchedTransfer?.notes || 'Assist with luxury luggage and escort to private vehicle.'
+    matchedTransfer?.notes || ''
   );
 
   const handlePrint = () => {
     window.print();
   };
 
-  const airlineName = selectedFlight?.airline || 'Scheduled Flight';
-  const flightNumber = selectedFlight?.flightNo || matchedTransfer?.flight || 'PRIVATE ARRIVAL';
+  const airlineName = selectedFlight?.airline || 'Airline to be confirmed';
+  const flightNumber = selectedFlight?.flightNo || matchedTransfer?.flight || 'FLIGHT DETAILS TO BE CONFIRMED';
   const arrivalDate = selectedFlight?.date || matchedTransfer?.date || state.client.startDate || 'Arrival Date';
   const arrivalTime = selectedFlight?.arrTime || matchedTransfer?.time || 'Scheduled Time';
   const driverName = selectedDriver?.name || (selectedDriverId.startsWith('legacy:') ? selectedDriverId.slice(7) : '') || matchedTransfer?.driver || 'Driver to be assigned';
-  const vehicleName = matchedTransfer?.vehicle || state.vehicles?.[0]?.name || 'Luxury VIP Vehicle';
+  const vehicleName = matchedTransfer?.vehicle || state.vehicles?.[0]?.name || 'Vehicle to be assigned';
 
   return (
     <div className="driver-pickup-board space-y-6">
