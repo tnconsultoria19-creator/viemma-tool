@@ -744,6 +744,23 @@ export interface AIImportTransfer {
   isReviewed?: boolean;
 }
 
+export interface AIImportDriver {
+  id?: string;
+  name: string;
+  preferredName?: string;
+  phone?: string;
+  email?: string;
+  prdpExpiryDate?: string;
+  assignedVehicleId?: string;
+  operationalAvailability?: 'Full-time' | 'Part-time' | 'On-Call' | 'Weekend Only';
+  status?: 'Available' | 'Assigned' | 'Off Duty' | 'Unavailable';
+  profileStatus?: 'Active' | 'Suspended' | 'Pending Verification';
+  notes?: string;
+  needsReview?: boolean;
+  reviewReason?: string;
+  isReviewed?: boolean;
+}
+
 export interface AIImportActivity {
   day?: number;
   slot?: 'Morning' | 'Afternoon' | 'Evening' | 'Full Day';
@@ -792,6 +809,7 @@ export interface AIItineraryPayload {
   accommodations?: AIImportStay[];
   transfers?: AIImportTransfer[];
   activities?: AIImportActivity[];
+  drivers?: AIImportDriver[];
   generalNotes?: string;
   warnings?: string[];
 }
