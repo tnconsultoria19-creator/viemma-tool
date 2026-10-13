@@ -1205,33 +1205,65 @@ export const AIItineraryImportModal: React.FC<AIItineraryImportModalProps> = ({
                 </div>
               )}
 
-              {/* SECTION: TRANSFERS & EXPERIENCES QUICK STATS */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="p-4 rounded-2xl bg-gray-50 border border-gray-200 space-y-2">
-                  <h5 className="font-bold text-gray-800 flex items-center gap-1.5 text-xs">
-                    <Car size={13} className="text-emerald-700" />
-                    Transfers to Create ({payload.transfers?.length || 0})
-                  </h5>
-                  <p className="text-[11px] text-gray-600">
-                    {payload.transfers && payload.transfers.length > 0 
-                      ? payload.transfers.map(t => `${t.type}: ${t.from} → ${t.to}`).join('; ')
-                      : 'No ground transfers specified.'}
-                  </p>
-                </div>
+              {/* SECTION: TRANSFERS & ACTIVITIES — REVIEW AND EDIT BEFORE APPLY */}
+              <div className="space-y-4">
+                <section className="space-y-3 bg-white p-5 rounded-2xl border border-gray-100 shadow-xs">
+                  <div className="flex items-center justify-between border-b border-gray-100 pb-2">
+                    <h4 className="text-xs font-bold text-[#1A3326] uppercase tracking-wider flex items-center gap-2"><Car size={14} className="text-emerald-700" /> Ground Transfers ({payload.transfers?.length || 0})</h4>
+                    <span className="text-[10px] text-gray-500">Unknown details are left blank for confirmation.</span>
+                  </div>
+                  {(!payload.transfers || payload.transfers.length === 0) && <p className="text-xs text-gray-400">No ground transfers supplied.</p>}
+                  {(payload.transfers || []).map((t, idx) => (
+                    <div key={idx} className={`p-3 rounded-xl border space-y-3 ${t.needsReview ? 'bg-amber-50/50 border-amber-300' : 'bg-gray-50/60 border-gray-200'}`}>
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                        <span className="text-[11px] font-bold text-gray-700">Transfer {idx + 1}</span>
+                        {t.needsReview ? <button type="button" onClick={() => handleMarkTransferReviewed(idx)} className="px-2.5 py-1 rounded-lg bg-amber-200 text-amber-900 font-bold text-[11px] w-fit"><Check size={11} className="inline mr-1" />Mark Reviewed</button> : <span className="text-[10px] text-emerald-700 font-bold"><CheckCircle size={12} className="inline mr-1" />Verified</span>}
+                      </div>
+                      {t.needsReview && t.reviewReason && <p className="text-[10px] text-amber-800 font-semibold"><AlertTriangle size={11} className="inline mr-1" />{t.reviewReason}</p>}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2">
+                        <label className="text-[10px] font-bold text-gray-600">Transfer type<select value={t.type || ''} onChange={e => handleUpdateTransfer(idx, { type: e.target.value, needsReview: true, isReviewed: false })} className="mt-1 w-full p-2 rounded-lg border border-gray-200 bg-white text-xs font-normal"><option value="">Select type</option><option>Airport Arrival</option><option>Airport Departure</option><option>Inter-Hotel</option><option>Activity Transfer</option><option>Full-Day Vehicle</option><option>Point-to-Point</option></select></label>
+                        <label className="text-[10px] font-bold text-gray-600">Date<input type="date" value={t.date || ''} onChange={e => handleUpdateTransfer(idx, { date: e.target.value, needsReview: true, isReviewed: false })} className="mt-1 w-full p-2 rounded-lg border border-gray-200 bg-white text-xs font-normal" /></label>
+                        <label className="text-[10px] font-bold text-gray-600">Pickup time<input type="time" value={t.time || ''} onChange={e => handleUpdateTransfer(idx, { time: e.target.value, needsReview: true, isReviewed: false })} className="mt-1 w-full p-2 rounded-lg border border-gray-200 bg-white text-xs font-normal" /></label>
+                        <label className="text-[10px] font-bold text-gray-600">Flight number / link<input value={t.flight || ''} onChange={e => handleUpdateTransfer(idx, { flight: e.target.value, needsReview: true, isReviewed: false })} className="mt-1 w-full p-2 rounded-lg border border-gray-200 bg-white text-xs font-normal" placeholder="Optional" /></label>
+                        <label className="text-[10px] font-bold text-gray-600">From / pickup address<input value={t.from || ''} onChange={e => handleUpdateTransfer(idx, { from: e.target.value, needsReview: true, isReviewed: false })} className="mt-1 w-full p-2 rounded-lg border border-gray-200 bg-white text-xs font-normal" placeholder="Origin" /></label>
+                        <label className="text-[10px] font-bold text-gray-600">To / drop-off address<input value={t.to || ''} onChange={e => handleUpdateTransfer(idx, { to: e.target.value, needsReview: true, isReviewed: false })} className="mt-1 w-full p-2 rounded-lg border border-gray-200 bg-white text-xs font-normal" placeholder="Destination" /></label>
+                        <label className="text-[10px] font-bold text-gray-600">Vehicle requested<input value={t.vehicle || ''} onChange={e => handleUpdateTransfer(idx, { vehicle: e.target.value, needsReview: true, isReviewed: false })} className="mt-1 w-full p-2 rounded-lg border border-gray-200 bg-white text-xs font-normal" placeholder="Vehicle type, if known" /></label>
+                        <label className="text-[10px] font-bold text-gray-600">Notes / meet-and-greet instructions<input value={t.notes || ''} onChange={e => handleUpdateTransfer(idx, { notes: e.target.value })} className="mt-1 w-full p-2 rounded-lg border border-gray-200 bg-white text-xs font-normal" placeholder="Do not invent instructions" /></label>
+                      </div>
+                    </div>
+                  ))}
+                </section>
 
-                <div className="p-4 rounded-2xl bg-gray-50 border border-gray-200 space-y-2">
-                  <h5 className="font-bold text-gray-800 flex items-center gap-1.5 text-xs">
-                    <Route size={13} className="text-[#D4AF37]" />
-                    Experiences to Create ({payload.activities?.length || 0})
-                  </h5>
-                  <p className="text-[11px] text-gray-600">
-                    {payload.activities && payload.activities.length > 0
-                      ? payload.activities.map(a => `Day ${a.day}: ${a.name}`).join('; ')
-                      : 'No daily experiences specified.'}
-                  </p>
-                </div>
+                <section className="space-y-3 bg-white p-5 rounded-2xl border border-gray-100 shadow-xs">
+                  <div className="flex items-center justify-between border-b border-gray-100 pb-2">
+                    <h4 className="text-xs font-bold text-[#1A3326] uppercase tracking-wider flex items-center gap-2"><Route size={14} className="text-[#D4AF37]" /> Activities & Experiences ({payload.activities?.length || 0})</h4>
+                    <span className="text-[10px] text-gray-500">Prices and timings are not guessed.</span>
+                  </div>
+                  {(!payload.activities || payload.activities.length === 0) && <p className="text-xs text-gray-400">No activities supplied.</p>}
+                  {(payload.activities || []).map((a, idx) => (
+                    <div key={idx} className={`p-3 rounded-xl border space-y-3 ${a.needsReview ? 'bg-amber-50/50 border-amber-300' : 'bg-gray-50/60 border-gray-200'}`}>
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                        <span className="text-[11px] font-bold text-gray-700">Activity {idx + 1}</span>
+                        {a.needsReview ? <button type="button" onClick={() => handleMarkActivityReviewed(idx)} className="px-2.5 py-1 rounded-lg bg-amber-200 text-amber-900 font-bold text-[11px] w-fit"><Check size={11} className="inline mr-1" />Mark Reviewed</button> : <span className="text-[10px] text-emerald-700 font-bold"><CheckCircle size={12} className="inline mr-1" />Verified</span>}
+                      </div>
+                      {a.needsReview && a.reviewReason && <p className="text-[10px] text-amber-800 font-semibold"><AlertTriangle size={11} className="inline mr-1" />{a.reviewReason}</p>}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2">
+                        <label className="text-[10px] font-bold text-gray-600">Activity name<input value={a.name || ''} onChange={e => handleUpdateActivity(idx, { name: e.target.value, needsReview: true, isReviewed: false })} className="mt-1 w-full p-2 rounded-lg border border-gray-200 bg-white text-xs font-normal" placeholder="Activity / experience" /></label>
+                        <label className="text-[10px] font-bold text-gray-600">Day number<input type="number" min="1" value={a.day ?? ''} onChange={e => handleUpdateActivity(idx, { day: e.target.value === '' ? undefined : Number(e.target.value), needsReview: true, isReviewed: false })} className="mt-1 w-full p-2 rounded-lg border border-gray-200 bg-white text-xs font-normal" /></label>
+                        <label className="text-[10px] font-bold text-gray-600">Time slot<select value={a.slot || 'Morning'} onChange={e => handleUpdateActivity(idx, { slot: e.target.value as AIImportActivity['slot'] })} className="mt-1 w-full p-2 rounded-lg border border-gray-200 bg-white text-xs font-normal"><option>Morning</option><option>Afternoon</option><option>Evening</option><option>Full Day</option></select></label>
+                        <label className="text-[10px] font-bold text-gray-600">Start time<input type="time" value={a.start || ''} onChange={e => handleUpdateActivity(idx, { start: e.target.value, needsReview: true, isReviewed: false })} className="mt-1 w-full p-2 rounded-lg border border-gray-200 bg-white text-xs font-normal" /></label>
+                        <label className="text-[10px] font-bold text-gray-600">Pickup time<input type="time" value={a.pickup || ''} onChange={e => handleUpdateActivity(idx, { pickup: e.target.value })} className="mt-1 w-full p-2 rounded-lg border border-gray-200 bg-white text-xs font-normal" /></label>
+                        <label className="text-[10px] font-bold text-gray-600">Duration<input value={a.dur || ''} onChange={e => handleUpdateActivity(idx, { dur: e.target.value, needsReview: true, isReviewed: false })} className="mt-1 w-full p-2 rounded-lg border border-gray-200 bg-white text-xs font-normal" placeholder="e.g. 3 hours" /></label>
+                        <label className="text-[10px] font-bold text-gray-600">Adult rate (as supplied)<input type="number" min="0" value={a.pAdult ?? ''} onChange={e => handleUpdateActivity(idx, { pAdult: e.target.value === '' ? undefined : Number(e.target.value) })} className="mt-1 w-full p-2 rounded-lg border border-gray-200 bg-white text-xs font-normal" placeholder="Unknown stays blank" /></label>
+                        <label className="text-[10px] font-bold text-gray-600">Child rate (as supplied)<input type="number" min="0" value={a.pChild ?? ''} onChange={e => handleUpdateActivity(idx, { pChild: e.target.value === '' ? undefined : Number(e.target.value) })} className="mt-1 w-full p-2 rounded-lg border border-gray-200 bg-white text-xs font-normal" placeholder="Unknown stays blank" /></label>
+                        <label className="text-[10px] font-bold text-gray-600 sm:col-span-2 lg:col-span-4">Description<input value={a.desc || ''} onChange={e => handleUpdateActivity(idx, { desc: e.target.value })} className="mt-1 w-full p-2 rounded-lg border border-gray-200 bg-white text-xs font-normal" placeholder="Experience details" /></label>
+                        <label className="text-[10px] font-bold text-gray-600 sm:col-span-2 lg:col-span-4">Inclusions (comma-separated)<input value={(a.inc || []).join(', ')} onChange={e => handleUpdateActivity(idx, { inc: e.target.value.split(',').map(v => v.trim()).filter(Boolean) })} className="mt-1 w-full p-2 rounded-lg border border-gray-200 bg-white text-xs font-normal" placeholder="Entry tickets, guide, transport..." /></label>
+                        <label className="text-[10px] font-bold text-gray-600 sm:col-span-2 lg:col-span-4">Notes<input value={a.notes || ''} onChange={e => handleUpdateActivity(idx, { notes: e.target.value })} className="mt-1 w-full p-2 rounded-lg border border-gray-200 bg-white text-xs font-normal" placeholder="Requirements / source notes" /></label>
+                      </div>
+                    </div>
+                  ))}
+                </section>
               </div>
-
             </div>
           )}
 
