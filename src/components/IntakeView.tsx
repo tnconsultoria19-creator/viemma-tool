@@ -1351,6 +1351,7 @@ export const IntakeView: React.FC<IntakeViewProps> = ({
           bookingRef={state.ref || 'draft'}
           title="Upload booking documents"
           description="Drop a PDF, JPG, PNG or WebP file here (up to 15 MB)."
+          onExtractToAI={() => onOpenAIImport?.()}
         />
       </section>
 
