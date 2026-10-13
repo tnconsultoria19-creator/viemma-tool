@@ -342,7 +342,7 @@ export const AIItineraryImportModal: React.FC<AIItineraryImportModalProps> = ({
         },
         travellers: parsed.travellers.map((g, idx) => ({
           ...g,
-          isLead: g.isLead ?? (idx === 0),
+          isLead: g.isLead ?? false,
           age: g.age,
           nationality: g.nationality || parsed.client.country || '',
           needsReview: !g.last || !g.first || !g.age || (!g.nationality && !parsed.client.country) || g.needsReview,
@@ -396,7 +396,13 @@ export const AIItineraryImportModal: React.FC<AIItineraryImportModalProps> = ({
   const handleUpdateTraveller = (idx: number, updates: Partial<AIImportGuest>) => {
     if (!payload) return;
     const updated = [...payload.travellers];
-    updated[idx] = { ...updated[idx], ...updates };
+    if (updates.isLead === true) {
+      updated.forEach((traveller, index) => {
+        updated[index] = { ...traveller, isLead: index === idx };
+      });
+    } else {
+      updated[idx] = { ...updated[idx], ...updates };
+    }
     setPayload({ ...payload, travellers: updated });
   };
 
@@ -712,12 +718,11 @@ export const AIItineraryImportModal: React.FC<AIItineraryImportModalProps> = ({
     const mergedGuests = mergeRecordsById(currentState.guests, importedGuests);
     const designatedLeadId =
       importedGuests.find(g => g.isLead)?.id ??
-      currentState.guests.find(g => g.isLead)?.id ??
-      mergedGuests[0]?.id;
+      currentState.guests.find(g => g.isLead)?.id;
     const normalizedMergedGuests = mergedGuests.map(g => ({
       ...g,
-      isLead: g.id === designatedLeadId,
-      leadContactId: g.id === designatedLeadId ? undefined : designatedLeadId
+      isLead: designatedLeadId ? g.id === designatedLeadId : Boolean(g.isLead),
+      leadContactId: designatedLeadId && g.id !== designatedLeadId ? designatedLeadId : undefined
     }));
     const mergedFlights = mergeRecordsById(currentState.flights, importedFlights);
     const mergedRooms = mergeRecordsById(currentState.rooms, importedRooms);
@@ -1061,11 +1066,12 @@ export const AIItineraryImportModal: React.FC<AIItineraryImportModalProps> = ({
                             className="p-1.5 rounded-lg border bg-white font-bold text-xs w-28"
                           />
                           <select
-                            value={tg.age || 'Adult'}
-                            onChange={(e) => handleUpdateTraveller(idx, { age: e.target.value as any })}
+                            value={tg.age || ''}
+                            onChange={(e) => handleUpdateTraveller(idx, { age: (e.target.value || undefined) as AIImportGuest['age'], needsReview: true, isReviewed: false })}
                             className="p-1.5 rounded-lg border bg-white text-xs"
                           >
-                            <option value="Adult">Adult</option>
+                            <option value="">Age TBC</option>
+<option value="Adult">Adult</option>
                             <option value="Elderly">Elderly</option>
                             <option value="Teen">Teen</option>
                             <option value="Child">Child</option>
