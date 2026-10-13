@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { AppState, Room, AllocatedRoom } from '../types';
 import { DB_DEFAULT, ROOM_TYPE_OPTIONS, MEAL_PLAN_OPTIONS, ROOM_REQUEST_OPTIONS } from '../dbDefaults';
 import { fetchHotelsCatalogue, addCustomHotelToCatalogue } from '../lib/catalogueService';
+import { AttachmentManager } from './AttachmentManager';
 import { 
   Hotel, 
   Plus, 
@@ -212,6 +213,9 @@ export const RoomingView: React.FC<RoomingViewProps> = ({
 
       // Expanded Operational Properties
       allocatedRooms: rForm.allocatedRooms || [],
+      address: rForm.address || '',
+      googleMapsUrl: rForm.googleMapsUrl || '',
+      attachments: rForm.attachments || [],
       gpsLocation: rForm.gpsLocation || '',
       checkInTime: rForm.checkInTime || '',
       checkOutTime: rForm.checkOutTime || '',
@@ -782,6 +786,20 @@ export const RoomingView: React.FC<RoomingViewProps> = ({
                 </div>
 
               </div>
+            </div>
+
+            <div className="bg-white rounded-[20px] p-6 border border-gray-100 shadow-sm space-y-4">
+              <h3 className="text-xs uppercase font-bold text-[#1A3326] tracking-wider border-b border-gray-100 pb-2">Property Documents</h3>
+              <AttachmentManager
+                attachments={rForm.attachments || []}
+                onAddAttachment={item => setRForm({ ...rForm, attachments: [...(rForm.attachments || []), item] })}
+                onRemoveAttachment={id => setRForm({ ...rForm, attachments: (rForm.attachments || []).filter(item => item.id !== id) })}
+                recordType="hotel"
+                recordId={rForm.id || `draft-${state.ref || 'booking'}`}
+                bookingRef={state.ref || 'draft'}
+                title="Upload hotel quotation or property images"
+                description="Attach PDF quotations, confirmations or property images (up to 15 MB)."
+              />
             </div>
 
             {/* GROUP 2: Booking Schedule */}
