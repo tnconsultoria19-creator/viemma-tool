@@ -153,12 +153,227 @@ export const PrintHubView: React.FC<PrintHubViewProps> = ({
   const selectedRate = f.currency === 'ZAR' ? 1 : f.rates[f.currency as keyof typeof f.rates] || 1;
   const retailTotalCurr = retailTotalZAR * selectedRate;
 
-  const generatePDF = (mode: 'client' | 'internal' | 'job' | 'airport') => {
+  const generatePDF = (mode: 'client' | 'internal' | 'job' | 'airport' | 'manifest' | 'flightSchedule' | 'rooming' | 'daily') => {
     const doc = new jsPDF(mode === 'airport' ? 'l' : 'p', 'mm', 'a4');
     const cleanStr = (str: string) => {
       if (!str) return '';
       return str.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^\x00-\x7F]/g, " ").trim();
     };
+
+    if (mode === 'manifest' || mode === 'flightSchedule' || mode === 'rooming' || mode === 'daily') {
+      const documentTitle =
+        mode === 'manifest' ? 'PASSENGER MANIFEST' :
+        mode === 'flightSchedule' ? 'FLIGHT SCHEDULE' :
+        mode === 'rooming' ? 'HOTEL ROOMING LIST' :
+        'DAILY OPERATIONS SCHEDULE';
+      const pageWidth = 210;
+      const left = 16;
+      let y = 44;
+
+      const drawHeader = () => {
+        doc.setFillColor(26, 51, 38);
+        doc.rect(0, 0, pageWidth, 29, 'F');
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(14);
+        doc.setTextColor(255, 255, 255);
+        doc.text(documentTitle, left, 13);
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(8);
+        doc.setTextColor(236, 239, 232);
+        doc.text('Viemma Tours  |  ' + cleanStr(state.ref || 'Reference not assigned'), left, 21);
+        doc.setTextColor(65, 75, 67);
+        const clientLine = 'Client/group: ' + cleanStr(state.client.name || 'Not yet named') + '  |  Trip: ' +
+          (state.client.startDate || 'Start date TBC') + ' to ' + (state.client.endDate || 'End date TBC');
+        doc.text(doc.splitTextToSize(clientLine, 176), left, 36);
+        y = 45;
+      };
+      const nextPage = () => {
+        doc.addPage('p', 'a4');
+        drawHeader();
+      };
+      const writeLine = (value: string, indent = 0, style: 'normal' | 'bold' = 'normal', size = 9) => {
+        const lines = doc.splitTextToSize(cleanStr(value || ''), 178 - indent);
+        const height = Math.max(1, lines.length) * (size >= 11 ? 5.4 : 4.6);
+        if (y + height > 276) nextPage();
+        doc.setFont('helvetica', style);
+        doc.setFontSize(size);
+        doc.setTextColor(35, 44, 38);
+        doc.text(lines, left + indent, y);
+        y += height;
+      };
+      const writeRecord = (heading: string, details: string[]) => {
+        if (y > 260) nextPage();
+        writeLine(heading, 0, 'bold', 10);
+        details.filter(Boolean).forEach(detail => writeLine(detail, 3, 'normal', 9));
+        y += 2;
+        doc.setDrawColor(222, 226, 222);
+        doc.line(left, y, 194, y);
+        y += 5;
+      };
+      const guestName = (guest: any) => {
+        const full = [guest && guest.first, guest && guest.last].filter(Boolean).join(' ').trim();
+        return full || (guest && guest.provisionalLabel) || ('Traveller ' + ((guest && guest.id) ?? ''));
+      };
+      const namesFor = (ids?: number[]) => {
+        const selected = (state.guests || []).filter(g => (ids || []).includes(g.id));
+        return selected.length ? selected.map(guestName).join(', ') : 'No travellers assigned';
+      };
+      const dateForActivity = (day?: number) => {
+        if (!state.client.startDate || !day || day < 1) return '';
+        const start = new Date(state.client.startDate + 'T00:00:00');
+        if (Number.isNaN(start.getTime())) return '';
+        start.setDate(start.getDate() + day - 1);
+        return start.getFullYear() + '-' + String(start.getMonth() + 1).padStart(2, '0') + '-' + String(start.getDate()).padStart(2, '0');
+      };
+
+      drawHeader();
+
+      if (mode === 'manifest') {
+        const guests = state.guests || [];
+        writeLine('Passenger count: ' + guests.length, 0, 'bold', 10);
+        y += 3;
+        if (!guests.length) {
+          writeLine('No travellers have been added to this booking yet.');
+        } else {
+          guests.forEach((guest, index) => {
+            const dietary = [
+              ...(guest.dietaryReligious || []),
+              ...(guest.dietaryLifestyle || []),
+              ...(guest.dietaryMedical || []),
+              ...(guest.customFoodRequirements || [])
+            ];
+            const access = [
+              ...(guest.accessibilityMobility || []),
+              ...(guest.accessibilityVision || []),
+              ...(guest.accessibilityHearing || []),
+              ...(guest.customAccessibilityRequirements || [])
+            ];
+            writeRecord((index + 1) + '. ' + guestName(guest) + (guest.isLead ? ' — LEAD CONTACT' : '') + (guest.isProvisional ? ' — PROVISIONAL' : ''), [
+              'Age category: ' + (guest.age || 'Not supplied') + '  |  Nationality: ' + (guest.nationality || guest.country || 'Not supplied'),
+              'Contact: ' + (guest.individualPhone || 'Not supplied') + (guest.individualEmail ? '  |  ' + guest.individualEmail : ''),
+              dietary.length ? 'Dietary / food requirements: ' + dietary.join(', ') : '',
+              access.length ? 'Accessibility / mobility: ' + access.join(', ') : '',
+              guest.notes ? 'Operational notes: ' + guest.notes : ''
+            ]);
+          });
+        }
+      } else if (mode === 'flightSchedule') {
+        const flights = [...(state.flights || [])].sort((a, b) => (a.date || '') + (a.depTime || '') > (b.date || '') + (b.depTime || '') ? 1 : -1);
+        if (!flights.length) writeLine('No flight sectors have been saved.');
+        flights.forEach((flight, index) => {
+          writeRecord((index + 1) + '. ' + (flight.date || 'Date TBC') + ' ' + (flight.depTime || 'Departure time TBC') + ' — ' + (flight.airline || 'Airline TBC') + ' ' + (flight.flightNo || 'Flight number TBC'), [
+            'Route: ' + (flight.from || 'Origin TBC') + ' to ' + (flight.to || 'Destination TBC'),
+            'Departure / arrival: ' + (flight.depTime || 'TBC') + ' / ' + (flight.arrTime || 'TBC') + '  |  Direction: ' + (flight.direction || 'Not specified'),
+            'Cabin / status: ' + (flight.cabin || 'Not specified') + ' / ' + (flight.status || 'Not specified'),
+            'Assigned passengers: ' + namesFor(flight.paxIds),
+            flight.pnr ? 'Booking reference: ' + flight.pnr : '',
+            flight.notes ? 'Notes: ' + flight.notes : ''
+          ]);
+        });
+      } else if (mode === 'rooming') {
+        const rooms = [...(state.rooms || [])].sort((a, b) => (a.cin || '') + (a.hotel || '') > (b.cin || '') + (b.hotel || '') ? 1 : -1);
+        if (!rooms.length) writeLine('No accommodation stays have been saved.');
+        rooms.forEach((room, index) => {
+          const details = [
+            'Address: ' + (room.address || 'Not supplied') + (room.googleMapsUrl ? '  |  Map link: ' + room.googleMapsUrl : ''),
+            'Stay: ' + (room.cin || 'Check-in TBC') + ' to ' + (room.cout || 'Check-out TBC') + '  |  Nights: ' + (room.nights ?? 'TBC'),
+            'Room / bed: ' + (room.roomType || 'Not specified') + (room.bed ? ' / ' + room.bed : '') + '  |  Meal plan: ' + (room.meal || 'Not specified'),
+            'Booking confirmation: ' + (room.conf || 'Not supplied') + '  |  Settlement: ' + (room.pay || 'Unpaid'),
+            'Assigned travellers: ' + namesFor(room.guestIds),
+            ...(room.allocatedRooms || []).map((allocation, roomIndex) => 'Allocated room ' + (roomIndex + 1) + ': ' + (allocation.roomName || allocation.roomType || 'Room name TBC') + ' — ' + namesFor(allocation.guestIds)),
+            room.notes ? 'Notes: ' + room.notes : '',
+            room.internalNotesHotel ? 'Internal note: ' + room.internalNotesHotel : ''
+          ];
+          writeRecord((index + 1) + '. ' + (room.hotel || 'Property name not supplied'), details);
+        });
+      } else {
+        type OpsItem = { date: string; time: string; type: string; heading: string; details: string[] };
+        const items: OpsItem[] = [];
+        (state.transfers || []).forEach(transfer => {
+          if (!transfer.date) return;
+          items.push({
+            date: transfer.date, time: transfer.time || '',
+            type: 'TRANSFER', heading: transfer.type || 'Ground transfer',
+            details: [
+              'Route: ' + (transfer.from || 'Origin TBC') + ' to ' + (transfer.to || 'Destination TBC'),
+              'Pickup / meeting point: ' + (transfer.meet || 'Not supplied') + '  |  Flight: ' + (transfer.flight || 'Not linked'),
+              'Driver: ' + (transfer.driver || 'Unassigned') + (transfer.driverPhone ? ' (' + transfer.driverPhone + ')' : '') + '  |  Vehicle: ' + (transfer.vehicle || 'Unassigned'),
+              'Passengers: ' + namesFor(transfer.paxIds),
+              transfer.notes ? 'Notes: ' + transfer.notes : ''
+            ]
+          });
+        });
+        (state.flights || []).forEach(flight => {
+          if (!flight.date) return;
+          items.push({
+            date: flight.date, time: flight.depTime || '',
+            type: 'FLIGHT', heading: (flight.airline || 'Airline TBC') + ' ' + (flight.flightNo || ''),
+            details: [
+              'Route: ' + (flight.from || 'Origin TBC') + ' to ' + (flight.to || 'Destination TBC'),
+              'Departure / arrival: ' + (flight.depTime || 'TBC') + ' / ' + (flight.arrTime || 'TBC') + '  |  Direction: ' + (flight.direction || 'Not specified'),
+              'Passengers: ' + namesFor(flight.paxIds),
+              flight.status ? 'Status: ' + flight.status : ''
+            ]
+          });
+        });
+        (state.activities || []).forEach(activity => {
+          const date = dateForActivity(activity.day);
+          if (!date) return;
+          items.push({
+            date, time: activity.start || '',
+            type: 'ACTIVITY', heading: activity.name || 'Activity not named',
+            details: [
+              'Day ' + (activity.day ?? 'TBC') + '  |  Time: ' + (activity.start || 'TBC') + '  |  Duration: ' + (activity.dur || 'TBC'),
+              'Pickup: ' + (activity.pickup || activity.pickupLoc || 'Not supplied') + '  |  Supplier: ' + (activity.supplier || 'Not supplied'),
+              'Passengers: ' + namesFor(activity.paxIds),
+              activity.notes ? 'Notes: ' + activity.notes : ''
+            ]
+          });
+        });
+        (state.rooms || []).forEach(room => {
+          if (room.cin) items.push({
+            date: room.cin, time: room.checkInTime || '',
+            type: 'HOTEL', heading: 'Check-in — ' + (room.hotel || 'Property not named'),
+            details: ['Address: ' + (room.address || 'Not supplied'), 'Assigned travellers: ' + namesFor(room.guestIds), 'Room: ' + (room.roomType || 'Not specified') + '  |  Confirmation: ' + (room.conf || 'Not supplied')]
+          });
+          if (room.cout) items.push({
+            date: room.cout, time: room.checkOutTime || '',
+            type: 'HOTEL', heading: 'Check-out — ' + (room.hotel || 'Property not named'),
+            details: ['Assigned travellers: ' + namesFor(room.guestIds), 'Room: ' + (room.roomType || 'Not specified')]
+          });
+        });
+        items.sort((a, b) => (a.date + ' ' + (a.time || '99:99')).localeCompare(b.date + ' ' + (b.time || '99:99')));
+        if (!items.length) {
+          writeLine('No dated operations found. Add actual dates to transfers/flights, set activity day numbers relative to the trip start date, or enter hotel check-in/check-out dates.');
+        } else {
+          let currentDate = '';
+          items.forEach(item => {
+            if (item.date !== currentDate) {
+              currentDate = item.date;
+              y += 2;
+              writeLine(currentDate, 0, 'bold', 11);
+              y += 1;
+            }
+            writeRecord((item.time || 'Time TBC') + ' — ' + item.type + ': ' + item.heading, item.details);
+          });
+        }
+      }
+
+      const totalPages = doc.getNumberOfPages();
+      for (let page = 1; page <= totalPages; page++) {
+        doc.setPage(page);
+        doc.setDrawColor(222, 226, 222);
+        doc.line(left, 282, 194, 282);
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(7);
+        doc.setTextColor(105, 114, 107);
+        doc.text('Viemma Tours  |  ' + cleanStr(state.ref || 'Reference not assigned'), left, 288);
+        doc.text('Page ' + page + ' of ' + totalPages, 194, 288, { align: 'right' });
+      }
+
+      doc.save('Viemma_' + mode + '_' + cleanStr(state.ref || 'booking') + '.pdf');
+      return;
+    }
 
     if (mode === 'client') {
       // Luxury Editorial Travel Magazine PDF Layout (A4 Portrait)
@@ -1185,6 +1400,28 @@ export const PrintHubView: React.FC<PrintHubViewProps> = ({
             >
               <RotateCw size={13} /> Regenerate Live Access Token
             </button>
+          </div>
+
+          {/* Printable operational documents — separate from client-facing publishing PDFs */}
+          <div className="bg-white rounded-[24px] border border-gray-100 p-6 md:p-8 shadow-xs space-y-4">
+            <div className="border-b border-gray-100 pb-3">
+              <h3 className="text-sm font-bold text-gray-900 flex items-center gap-2"><Printer size={16} className="text-[#D4AF37]" /> Operational Print Documents</h3>
+              <p className="text-xs text-gray-500 mt-1">Generate clean A4 PDFs from saved records. Missing details remain labelled as not supplied or TBC.</p>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <button type="button" onClick={() => generatePDF('manifest')} className="flex items-center gap-3 rounded-xl border border-gray-200 p-4 text-left hover:border-[#D4AF37] hover:bg-amber-50/30 transition">
+                <Users size={18} className="text-[#1A3326]" /><span><strong className="block text-xs text-gray-900">Passenger Manifest</strong><span className="block text-[10px] text-gray-500 mt-1">Guest names, contact, dietary and accessibility notes</span></span>
+              </button>
+              <button type="button" onClick={() => generatePDF('flightSchedule')} className="flex items-center gap-3 rounded-xl border border-gray-200 p-4 text-left hover:border-[#D4AF37] hover:bg-amber-50/30 transition">
+                <Plane size={18} className="text-[#1A3326]" /><span><strong className="block text-xs text-gray-900">Flight Schedule</strong><span className="block text-[10px] text-gray-500 mt-1">Routes, flight times, cabin, passenger assignments</span></span>
+              </button>
+              <button type="button" onClick={() => generatePDF('rooming')} className="flex items-center gap-3 rounded-xl border border-gray-200 p-4 text-left hover:border-[#D4AF37] hover:bg-amber-50/30 transition">
+                <Hotel size={18} className="text-[#1A3326]" /><span><strong className="block text-xs text-gray-900">Hotel Rooming List</strong><span className="block text-[10px] text-gray-500 mt-1">Property, stay dates, room allocations and settlement</span></span>
+              </button>
+              <button type="button" onClick={() => generatePDF('daily')} className="flex items-center gap-3 rounded-xl border border-gray-200 p-4 text-left hover:border-[#D4AF37] hover:bg-amber-50/30 transition">
+                <Calendar size={18} className="text-[#1A3326]" /><span><strong className="block text-xs text-gray-900">Daily Operations Schedule</strong><span className="block text-[10px] text-gray-500 mt-1">Only dated transfers, flights, activities and hotel events</span></span>
+              </button>
+            </div>
           </div>
 
           {/* Metadata timeline details */}
