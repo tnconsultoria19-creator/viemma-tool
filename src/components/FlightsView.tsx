@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { AppState, Flight, Stop } from '../types';
 import { 
   Plane, 
@@ -44,7 +44,16 @@ export const FlightsView: React.FC<FlightsViewProps> = ({
   const [stopDur, setStopDur] = useState('');
   const [stopChangeNo, setStopChangeNo] = useState('');
 
-  const AIRLINES = ["Emirates", "South African Airways", "TAAG Angola", "Airlink", "Qatar Airways", "Lufthansa", "Ethiopian Airlines"];
+  const [airlines, setAirlines] = useState<string[]>([]);
+  useEffect(() => {
+    let cancelled = false;
+    fetch('/data/airlines.txt')
+      .then(response => { if (!response.ok) throw new Error('Airline catalogue unavailable'); return response.text(); })
+      .then(text => { if (!cancelled) setAirlines([...new Set(text.split(/\\r?\\n/).map(value => value.trim()).filter(value => value && !value.startsWith('#') && !value.startsWith('Custom airline'))].sort((a, b) => a.localeCompare(b))); })
+      .catch(error => console.warn('Using fallback airline suggestions:', error));
+    return () => { cancelled = true; };
+  }, []);
+  const AIRLINES = airlines.length ? airlines : ["Airlink", "Emirates", "Ethiopian Airlines", "Qatar Airways", "South African Airways", "TAAG Angola Airlines"];
 
   const handleOpenAddForm = () => {
     setFForm({
@@ -178,6 +187,20 @@ export const FlightsView: React.FC<FlightsViewProps> = ({
             <Plus size={14} /> Link New Flight Sector
           </button>
         )}
+      </div>
+
+      <section className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 flex flex-col md:flex-row md:items-center justify-between gap-4" aria-labelledby="cpt-live-flights-title">
+        <div className="min-w-0">
+          <div className="flex items-center gap-2 text-[#1A3326]"><span className="inline-flex h-2 w-2 rounded-full bg-emerald-500" /><h2 id="cpt-live-flights-title" className="font-bold text-sm">Cape Town Airport — Live Flight Information</h2></div>
+          <p className="text-xs text-gray-500 mt-1">Open the live CPT arrivals and departures board from FlightRadar24. If the provider blocks embedding, use the direct live board.</p>
+        </div>
+        <div className="flex flex-wrap gap-2 shrink-0">
+          <a href="https://www.flightradar24.com/data/airports/cpt" target="_blank" rel="noreferrer" className="inline-flex items-center justify-center px-4 py-2.5 rounded-xl bg-[#1A3326] text-white text-xs font-bold hover:bg-[#234433]">Open Live CPT Board ↗</a>
+        </div>
+      </section>
+      <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
+        <iframe title="FlightRadar24 Cape Town Airport live flights" src="https://www.flightradar24.com/data/airports/cpt" loading="lazy" referrerPolicy="no-referrer" className="w-full h-[360px] md:h-[420px] border-0" />
+        <p className="px-4 py-3 text-[11px] text-gray-500">FlightRadar24 may restrict embedded pages. If the panel does not load, select “Open Live CPT Board”.</p>
       </div>
 
       {/* FLIGHT EDIT/ADD SIDE-OVER WORKSPACE OR CARD */}
