@@ -478,10 +478,21 @@ export const AIItineraryImportModal: React.FC<AIItineraryImportModalProps> = ({
 
     // 1. Resolve traveller names to existing people first, then create new IDs only when needed.
     const guestIdMap = new Map<string, number>();
-    let nextGuestId = Math.max(0, ...currentState.guests.map(g => Number(g.id) || 0), ...payload.travellers.map(g => Number(g.id) || 0)) + 1;
+    const seenImportIdentities = new Set<string>();
+    const importTravellerRows = payload.travellers.filter(tg => {
+      const suppliedId = tg.id !== undefined ? 'id:' + tg.id : '';
+      const fullName = normalizeIdentity((tg.first || '') + ' ' + (tg.last || ''));
+      const provisionalLabel = normalizeIdentity(tg.provisionalLabel || '');
+      const identity = suppliedId || (fullName ? 'name:' + fullName : provisionalLabel ? 'label:' + provisionalLabel : '');
+      if (!identity) return true;
+      if (seenImportIdentities.has(identity)) return false;
+      seenImportIdentities.add(identity);
+      return true;
+    });
+    let nextGuestId = Math.max(0, ...currentState.guests.map(g => Number(g.id) || 0), ...importTravellerRows.map(g => Number(g.id) || 0)) + 1;
     const assignedImportIds = new Set<number>();
     const anonymousLabelCounts = new Map<string, number>();
-    const importedGuests: Guest[] = payload.travellers.map((tg, idx) => {
+    const importedGuests: Guest[] = importTravellerRows.map((tg, idx) => {
       const first = (tg.first || '').trim();
       const last = (tg.last || '').trim();
       const suppliedLabel = (tg.provisionalLabel || '').trim();
