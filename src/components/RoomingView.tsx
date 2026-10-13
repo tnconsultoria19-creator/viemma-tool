@@ -145,10 +145,10 @@ export const RoomingView: React.FC<RoomingViewProps> = ({
   };
 
   const calcNights = (cin: string, cout: string) => {
-    if (!cin || !cout) return 1;
-    const d1 = new Date(cin);
-    const d2 = new Date(cout);
-    if (d2 <= d1) return 1;
+    if (!cin || !cout) return 0;
+    const d1 = new Date(cin + 'T00:00:00');
+    const d2 = new Date(cout + 'T00:00:00');
+    if (Number.isNaN(d1.getTime()) || Number.isNaN(d2.getTime()) || d2 <= d1) return 0;
     return Math.round((d2.getTime() - d1.getTime()) / 86400000);
   };
 
