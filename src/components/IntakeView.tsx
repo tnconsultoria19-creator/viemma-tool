@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { AppState, Guest, GroupManagement, TripStatus } from '../types';
 import { InfoTooltip } from './InfoTooltip';
+import { AttachmentManager } from './AttachmentManager';
 import { COUNTRIES, DB_DEFAULT } from '../dbDefaults';
 import { 
   Users, 
@@ -1331,6 +1332,21 @@ export const IntakeView: React.FC<IntakeViewProps> = ({
           </button>
 
         </div>
+      </section>
+
+      {/* BOOKING SOURCE DOCUMENTS: PDFs and reference images */}
+      <section className="bg-white rounded-2xl border border-gray-200 p-5 md:p-6 shadow-xs space-y-3">
+        <div><h2 className="text-xs font-bold uppercase tracking-wider text-[#1A3326]">Booking Attachments</h2><p className="text-xs text-gray-500 mt-1">Keep client emails, supplier quotations, PDFs and reference images with this booking. Use AI Import separately to convert copied details into reviewed JSON.</p></div>
+        <AttachmentManager
+          attachments={state.attachments || []}
+          onAddAttachment={item => onUpdateState({ attachments: [...(state.attachments || []), item] })}
+          onRemoveAttachment={id => onUpdateState({ attachments: (state.attachments || []).filter(item => item.id !== id) })}
+          recordType="booking"
+          recordId={state.ref || 'draft'}
+          bookingRef={state.ref || 'draft'}
+          title="Upload booking documents"
+          description="Drop a PDF, JPG, PNG or WebP file here (up to 15 MB)."
+        />
       </section>
 
       {/* QUICK ADD GROUP MODAL */}
