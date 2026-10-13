@@ -82,9 +82,12 @@ export const AttachmentManager: React.FC<AttachmentManagerProps> = ({
       }, 500);
     } catch (err: any) {
       console.error('Upload failed:', err);
-      setErrorMessage(err.message || 'File upload failed. Please try again.');
+      setErrorMessage(err.message || 'File upload failed. Cloud storage might be disconnected or misconfigured.');
       setIsUploading(false);
       setUploadProgress(0);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = ''; // Reset input so same file can be retried
+      }
     }
   };
 
