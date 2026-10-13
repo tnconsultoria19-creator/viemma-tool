@@ -730,7 +730,7 @@ export const AIItineraryImportModal: React.FC<AIItineraryImportModalProps> = ({
     }
 
     onApplyItinerary({
-      ref: payload.tripRef || currentState.ref,
+      ref: currentState.ref,
       title: payload.tripTitle || `${payload.client.name} Luxury Itinerary`,
       client: {
         ...currentState.client,
