@@ -1904,7 +1904,7 @@ export default function App() {
         onClose={() => setIsAIImportOpen(false)}
         currentState={state}
         onApplyItinerary={(updatedState) => {
-          updateFullState({ ...state, ...updatedState });
+          handleUpdateState(updatedState);
           setSaveMessage('AI Itinerary Imported Successfully!');
           setTimeout(() => setSaveMessage(''), 3000);
         }}
