@@ -294,10 +294,11 @@ export interface Room {
   id: number;
   hotel: string;
   conf: string;
-  pay: 'Unpaid' | 'Deposit Paid' | 'Paid' | 'Negotiation / Pending Confirmation' | 'Fully Paid';
+  pay: 'Unpaid' | 'Deposit Paid' | 'Paid' | 'Negotiation / Pending Confirmation' | 'Fully Paid' | 'Legacy Status — Review Required';
   depositAmount?: number;
   balanceDue?: number;
   paymentNotes?: string;
+  legacyPayStatus?: string;
   status?: 'Requested' | 'Held' | 'Confirmed' | 'Cancelled';
   serviceStatus?: ServiceStatus;
   roomType: string;
