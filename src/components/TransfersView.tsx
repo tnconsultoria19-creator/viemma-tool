@@ -54,7 +54,7 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
       flight: '',
       dist: '',
       dur: '',
-      vehicle: 'Mercedes V-Class — 7 Seater',
+      vehicle: '',
       driver: '',
       driverPhone: '',
       driverId: undefined,
