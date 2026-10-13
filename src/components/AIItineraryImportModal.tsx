@@ -341,8 +341,8 @@ export const AIItineraryImportModal: React.FC<AIItineraryImportModalProps> = ({
         travellers: parsed.travellers.map((g, idx) => ({
           ...g,
           isLead: g.isLead ?? (idx === 0),
-          age: g.age || 'Adult',
-          nationality: g.nationality || parsed.client.country || '🇿🇦 South Africa',
+          age: g.age,
+          nationality: g.nationality || parsed.client.country || '',
           needsReview: !g.last || !g.first || !g.age || (!g.nationality && !parsed.client.country) || g.needsReview,
           reviewReason: !g.last ? 'Missing traveller surname' : !g.first ? 'Missing traveller first name' : !g.age ? 'Missing traveller age category' : (!g.nationality && !parsed.client.country) ? 'Missing traveller nationality' : g.reviewReason
         })),
