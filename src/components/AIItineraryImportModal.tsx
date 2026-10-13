@@ -922,7 +922,7 @@ export const AIItineraryImportModal: React.FC<AIItineraryImportModalProps> = ({
                 </span>
               </div>
               <p className="text-xs text-gray-300 mt-0.5">
-                Paste structured AI JSON from ChatGPT, Claude, or Gemini to populate travellers, flights, accommodations, and ground logistics.
+                Paste source text or JSON from ChatGPT, Claude, or Gemini to populate supported booking, traveller, flight, hotel, driver and ground-operation records.
               </p>
             </div>
           </div>
@@ -1372,6 +1372,67 @@ export const AIItineraryImportModal: React.FC<AIItineraryImportModalProps> = ({
                     ))}
                   </div>
                 </div>
+              )}
+
+              {/* SECTION: DRIVER DIRECTORY & COMPLIANCE */}
+              {payload.drivers && payload.drivers.length > 0 && (
+                <section className="space-y-3 bg-white p-5 rounded-2xl border border-gray-100 shadow-xs">
+                  <div className="flex items-center justify-between border-b border-gray-100 pb-2">
+                    <h4 className="text-xs font-bold text-[#1A3326] uppercase tracking-wider flex items-center gap-2"><Users size={14} className="text-emerald-700" /> Drivers & Compliance ({payload.drivers.length})</h4>
+                    <span className="text-[10px] text-gray-500">Only source-supplied contact and expiry details are imported.</span>
+                  </div>
+                  {payload.drivers.map((d, idx) => (
+                    <div key={d.id || idx} className={`p-3 rounded-xl border space-y-3 ${d.needsReview ? 'bg-amber-50/50 border-amber-300' : 'bg-gray-50/60 border-gray-200'}`}>
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                        <div>
+                          <p className="text-[11px] font-bold text-gray-800">{d.name || 'Driver name to be confirmed'}</p>
+                          <p className="text-[10px] text-gray-500">{d.prdpExpiryDate ? 'PrDP/PDP expiry: ' + d.prdpExpiryDate : 'PrDP/PDP expiry not supplied'}</p>
+                        </div>
+                        {d.needsReview ? (
+                          <button type="button" onClick={() => handleMarkDriverReviewed(idx)} className="px-2.5 py-1 rounded-lg bg-amber-200 text-amber-900 font-bold text-[11px] w-fit"><Check size={11} className="inline mr-1" />Mark Reviewed</button>
+                        ) : (
+                          <span className="text-[10px] text-emerald-700 font-bold"><CheckCircle size={12} className="inline mr-1" />Reviewed</span>
+                        )}
+                      </div>
+                      {d.needsReview && d.reviewReason && <p className="text-[10px] text-amber-800 font-semibold"><AlertTriangle size={11} className="inline mr-1" />{d.reviewReason}</p>}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
+                        <label className="text-[10px] font-bold text-gray-600">Driver name
+                          <input value={d.name || ''} onChange={e => handleUpdateDriver(idx, { name: e.target.value, needsReview: true, isReviewed: false })} className="mt-1 w-full p-2 rounded-lg border border-gray-200 bg-white text-xs font-normal" placeholder="Full name" />
+                        </label>
+                        <label className="text-[10px] font-bold text-gray-600">Preferred name
+                          <input value={d.preferredName || ''} onChange={e => handleUpdateDriver(idx, { preferredName: e.target.value, needsReview: true, isReviewed: false })} className="mt-1 w-full p-2 rounded-lg border border-gray-200 bg-white text-xs font-normal" placeholder="Optional" />
+                        </label>
+                        <label className="text-[10px] font-bold text-gray-600">Phone / WhatsApp
+                          <input value={d.phone || ''} onChange={e => handleUpdateDriver(idx, { phone: e.target.value, needsReview: true, isReviewed: false })} className="mt-1 w-full p-2 rounded-lg border border-gray-200 bg-white text-xs font-normal" placeholder="Contact number" />
+                        </label>
+                        <label className="text-[10px] font-bold text-gray-600">Email
+                          <input type="email" value={d.email || ''} onChange={e => handleUpdateDriver(idx, { email: e.target.value, needsReview: true, isReviewed: false })} className="mt-1 w-full p-2 rounded-lg border border-gray-200 bg-white text-xs font-normal" placeholder="Optional" />
+                        </label>
+                        <label className="text-[10px] font-bold text-gray-600">PrDP / PDP expiry date
+                          <input type="date" value={d.prdpExpiryDate || ''} onChange={e => handleUpdateDriver(idx, { prdpExpiryDate: e.target.value, needsReview: true, isReviewed: false })} className="mt-1 w-full p-2 rounded-lg border border-gray-200 bg-white text-xs font-normal" />
+                        </label>
+                        <label className="text-[10px] font-bold text-gray-600">Operational availability
+                          <select value={d.operationalAvailability || ''} onChange={e => handleUpdateDriver(idx, { operationalAvailability: (e.target.value || undefined) as AIImportDriver['operationalAvailability'], needsReview: true, isReviewed: false })} className="mt-1 w-full p-2 rounded-lg border border-gray-200 bg-white text-xs font-normal">
+                            <option value="">Not supplied</option><option value="Full-time">Full-time</option><option value="Part-time">Part-time</option><option value="On-Call">On-Call</option><option value="Weekend Only">Weekend Only</option>
+                          </select>
+                        </label>
+                        <label className="text-[10px] font-bold text-gray-600">Operational status
+                          <select value={d.status || ''} onChange={e => handleUpdateDriver(idx, { status: (e.target.value || undefined) as AIImportDriver['status'], needsReview: true, isReviewed: false })} className="mt-1 w-full p-2 rounded-lg border border-gray-200 bg-white text-xs font-normal">
+                            <option value="">Not supplied — review</option><option value="Available">Available</option><option value="Assigned">Assigned</option><option value="Off Duty">Off Duty</option><option value="Unavailable">Unavailable</option>
+                          </select>
+                        </label>
+                        <label className="text-[10px] font-bold text-gray-600">Profile status
+                          <select value={d.profileStatus || ''} onChange={e => handleUpdateDriver(idx, { profileStatus: (e.target.value || undefined) as AIImportDriver['profileStatus'], needsReview: true, isReviewed: false })} className="mt-1 w-full p-2 rounded-lg border border-gray-200 bg-white text-xs font-normal">
+                            <option value="">Not supplied — review</option><option value="Active">Active</option><option value="Suspended">Suspended</option><option value="Pending Verification">Pending Verification</option>
+                          </select>
+                        </label>
+                        <label className="text-[10px] font-bold text-gray-600 sm:col-span-2 lg:col-span-3">Driver notes
+                          <input value={d.notes || ''} onChange={e => handleUpdateDriver(idx, { notes: e.target.value, needsReview: true, isReviewed: false })} className="mt-1 w-full p-2 rounded-lg border border-gray-200 bg-white text-xs font-normal" placeholder="Only facts supplied in the source" />
+                        </label>
+                      </div>
+                    </div>
+                  ))}
+                </section>
               )}
 
               {/* SECTION: TRANSFERS & ACTIVITIES — REVIEW AND EDIT BEFORE APPLY */}
