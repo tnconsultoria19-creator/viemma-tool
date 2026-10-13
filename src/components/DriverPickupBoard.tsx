@@ -35,7 +35,10 @@ export const DriverPickupBoard: React.FC<DriverPickupBoardProps> = ({ state, onB
   ) || arrivalTransfers[0];
 
   const leadGuest = state.guests.find(g => g.isLead) || state.guests[0];
-  const passengerCount = state.guests.length || (matchedTransfer ? matchedTransfer.paxCount : 1);
+  const initialDriver = state.drivers?.find(d => d.id === matchedTransfer?.driverId || d.name === matchedTransfer?.driver);
+  const [selectedDriverId, setSelectedDriverId] = useState<string>(initialDriver?.id || (matchedTransfer?.driver ? 'legacy:' + matchedTransfer.driver : ''));
+  const selectedDriver = state.drivers?.find(d => d.id === selectedDriverId);
+  const passengerCount = selectedFlight?.paxIds?.length || matchedTransfer?.paxIds?.length || state.guests.length || (matchedTransfer ? matchedTransfer.paxCount : 1);
 
   // Editable display name on placard
   const defaultPlacardName = matchedTransfer?.sign || 
@@ -60,13 +63,13 @@ export const DriverPickupBoard: React.FC<DriverPickupBoardProps> = ({ state, onB
   const flightNumber = selectedFlight?.flightNo || matchedTransfer?.flight || 'PRIVATE ARRIVAL';
   const arrivalDate = selectedFlight?.date || matchedTransfer?.date || state.client.startDate || 'Arrival Date';
   const arrivalTime = selectedFlight?.arrTime || matchedTransfer?.time || 'Scheduled Time';
-  const driverName = matchedTransfer?.driver || state.drivers?.[0]?.name || 'Viemma Chauffeur';
+  const driverName = selectedDriver?.name || (selectedDriverId.startsWith('legacy:') ? selectedDriverId.slice(7) : '') || matchedTransfer?.driver || 'Driver to be assigned';
   const vehicleName = matchedTransfer?.vehicle || state.vehicles?.[0]?.name || 'Luxury VIP Vehicle';
 
   return (
-    <div className="space-y-6">
+    <div className="driver-pickup-board space-y-6">
       {/* ON-SCREEN CONTROLS (Hidden during printing) */}
-      <div className="print:hidden bg-white rounded-2xl p-5 border border-gray-200 shadow-xs space-y-4">
+      <div className="driver-pickup-board-controls print:hidden bg-white rounded-2xl p-5 border border-gray-200 shadow-xs space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-gray-100 pb-4">
           <div className="flex items-center gap-3">
             {onBack && (
@@ -98,7 +101,7 @@ export const DriverPickupBoard: React.FC<DriverPickupBoardProps> = ({ state, onB
         </div>
 
         {/* Configuration Row */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 text-xs">
           <div>
             <label className="font-bold text-gray-600 block mb-1">Select Inbound Arrival Flight</label>
             <select
@@ -115,6 +118,20 @@ export const DriverPickupBoard: React.FC<DriverPickupBoardProps> = ({ state, onB
             </select>
           </div>
 
+          <div>
+            <label className="font-bold text-gray-600 block mb-1">Assigned Driver</label>
+            <select value={selectedDriverId} onChange={e => setSelectedDriverId(e.target.value)} className="w-full p-2.5 rounded-xl border border-gray-200 bg-gray-50 font-medium">
+              <option value="">Driver to be assigned</option>
+              {matchedTransfer?.driver && !state.drivers?.some(d => d.name === matchedTransfer.driver) && <option value={'legacy:' + matchedTransfer.driver}>{matchedTransfer.driver} — saved assignment</option>}
+              {(state.drivers || []).map(driver => {
+                const expiry = driver.prdpExpiryDate ? new Date(driver.prdpExpiryDate + 'T00:00:00') : null;
+                const today = new Date(); today.setHours(0, 0, 0, 0);
+                const daysLeft = expiry ? Math.ceil((expiry.getTime() - today.getTime()) / 86400000) : null;
+                const status = daysLeft === null ? ' · expiry not recorded' : daysLeft < 0 ? ' · expired' : daysLeft <= 45 ? ' · expiring soon' : '';
+                return <option key={driver.id} value={driver.id}>{driver.name}{status}</option>;
+              })}
+            </select>
+          </div>
           <div>
             <label className="font-bold text-gray-600 block mb-1">Placard Lead Name (Printed Large)</label>
             <input
@@ -140,10 +157,10 @@ export const DriverPickupBoard: React.FC<DriverPickupBoardProps> = ({ state, onB
       </div>
 
       {/* THE ACTUAL A4 PRINTABLE PLACARD CONTAINER */}
-      <div className="bg-white p-2 md:p-8 rounded-3xl shadow-lg border border-gray-200 max-w-[210mm] mx-auto print:p-0 print:border-none print:shadow-none print:m-0 print:max-w-none">
+      <div className="driver-pickup-sheet-wrap bg-white p-2 md:p-8 rounded-3xl shadow-lg border border-gray-200 max-w-[210mm] mx-auto print:p-0 print:border-none print:shadow-none print:m-0 print:max-w-none">
         
         {/* A4 Sheet Dimensions Frame */}
-        <div className="w-full min-h-[297mm] p-8 md:p-12 border-4 border-[#1A3326] rounded-2xl flex flex-col justify-between bg-white text-black relative print:border-4 print:p-10 print:min-h-screen">
+        <div className="driver-pickup-sheet w-full min-h-[297mm] p-8 md:p-12 border-4 border-[#1A3326] rounded-2xl flex flex-col justify-between bg-white text-black relative print:border-4 print:p-10 print:min-h-screen">
           
           {/* HEADER: VIEMMA TOURS EMBLEM */}
           <div className="text-center border-b-2 border-[#1A3326]/20 pb-8 space-y-2">
