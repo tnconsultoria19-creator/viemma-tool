@@ -871,8 +871,45 @@ export default function App() {
   };
 
   const handleRemoveGuest = (id: number) => {
-    const list = state.guests.filter(g => g.id !== id);
-    handleUpdateState({ guests: list });
+    const removed = state.guests.find(g => g.id === id);
+    const list = state.guests
+      .filter(g => g.id !== id)
+      .map(g => removed?.isLead && g.leadContactId === id
+        ? { ...g, leadContactId: undefined, isLead: false }
+        : g);
+
+    // Remove deleted traveller IDs from related manifests and room allocations.
+    const flights = state.flights.map(flight => {
+      const hadGuest = (flight.paxIds || []).includes(id);
+      const paxIds = (flight.paxIds || []).filter(guestId => guestId !== id);
+      return {
+        ...flight,
+        paxIds,
+        qty: hadGuest ? paxIds.length : flight.qty
+      };
+    });
+    const transfers = state.transfers.map(transfer => {
+      const hadGuest = (transfer.paxIds || []).includes(id);
+      const paxIds = (transfer.paxIds || []).filter(guestId => guestId !== id);
+      return {
+        ...transfer,
+        paxIds,
+        paxCount: hadGuest ? paxIds.length : transfer.paxCount
+      };
+    });
+    const rooms = state.rooms.map(room => ({
+      ...room,
+      guestIds: (room.guestIds || []).filter(guestId => guestId !== id),
+      allocatedRooms: room.allocatedRooms?.map(allocation => ({
+        ...allocation,
+        guestIds: (allocation.guestIds || []).filter(guestId => guestId !== id)
+      }))
+    }));
+    const activities = state.activities.map(activity => ({
+      ...activity,
+      paxIds: (activity.paxIds || []).filter(guestId => guestId !== id)
+    }));
+    handleUpdateState({ guests: list, flights, transfers, rooms, activities });
   };
 
   const handleSetLeadGuest = (id: number) => {
