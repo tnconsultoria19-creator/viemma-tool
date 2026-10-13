@@ -1555,6 +1555,7 @@ export default function App() {
                   onAddRoom={handleAddRoom}
                   onRemoveRoom={handleRemoveRoom}
                   onUpdateRoom={handleUpdateRoom}
+                  onOpenAIImport={() => setIsAIImportOpen(true)}
                 />
               )}
 
