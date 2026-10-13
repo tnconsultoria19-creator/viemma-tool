@@ -427,197 +427,265 @@ export const AIItineraryImportModal: React.FC<AIItineraryImportModalProps> = ({
     const hasExistingData = Boolean(currentState.client.name.trim()) || currentState.guests.length > 0 || currentState.flights.length > 0 || currentState.rooms.length > 0 || currentState.transfers.length > 0 || currentState.activities.length > 0;
     if (hasExistingData && !window.confirm('This booking already contains data. The import will merge into existing records, update matching records with supplied information, and keep records that are not in the import. Missing imported fields will not intentionally clear existing values. Continue?')) return;
 
-    // 1. Build Guests with stable IDs
+    // 1. Resolve traveller names to existing people first, then create new IDs only when needed.
     const guestIdMap = new Map<string, number>();
-    const newGuests: Guest[] = payload.travellers.map((tg, idx) => {
-      const gId = Date.now() + idx + 1;
-      const fullName = `${tg.first} ${tg.last}`.trim().toLowerCase();
-      guestIdMap.set(fullName, gId);
-      guestIdMap.set(tg.first.trim().toLowerCase(), gId);
+    let nextGuestId = Math.max(0, ...currentState.guests.map(g => Number(g.id) || 0)) + 1;
+    const importedGuests: Guest[] = payload.travellers.map((tg, idx) => {
+      const first = (tg.first || '').trim();
+      const last = (tg.last || '').trim();
+      const fullName = normalizeIdentity(`${first} ${last}`);
+      const existingGuest = currentState.guests.find(g =>
+        Boolean(fullName) && normalizeIdentity(`${g.first} ${g.last}`) === fullName
+      );
+      const id = existingGuest?.id ?? nextGuestId++;
+      if (fullName) guestIdMap.set(fullName, id);
+      if (normalizeIdentity(first)) guestIdMap.set(normalizeIdentity(first), id);
 
       return {
-        id: gId,
-        first: tg.first,
-        last: tg.last,
-        preferredName: tg.preferredName || '',
-        nationality: tg.nationality || payload.client.country || '🇿🇦 South Africa',
-        country: tg.country || payload.client.country || '🇿🇦 South Africa',
-        age: tg.age || 'Adult',
-        exactAge: tg.exactAge,
-        dob: tg.dob || '',
-        passportNo: tg.passportNo || '',
-        passportExpiry: tg.passportExpiry || '',
-        relationshipToLead: tg.relationshipToLead || (tg.isLead ? 'Primary Contact' : 'Family Member'),
-        individualEmail: tg.individualEmail || '',
-        individualPhone: tg.individualPhone || '',
-        languagesSpoken: ['English'],
-        isLead: tg.isLead ?? (idx === 0),
-        notes: tg.notes || '',
-        diet: tg.dietary || [],
-        customFoodRequirements: tg.customFoodRequirements || [],
-        customAccessibilityRequirements: tg.customAccessibilityRequirements || [],
-        customAccommodationRequirements: tg.customAccommodationRequirements || [],
-        accessibilityMobility: [],
-        accessibilityVision: [],
-        accessibilityHearing: [],
-        medicalOperationalNotes: '',
-        dietaryReligious: [],
-        dietaryLifestyle: tg.dietary || [],
-        dietaryMedical: [],
-        dietaryPreferences: [],
-        preferencesAccommodation: [],
-        preferencesTransport: [],
-        preferencesInterests: []
+        ...(existingGuest || {} as Guest),
+        id,
+        first: first || existingGuest?.first || '',
+        last: last || existingGuest?.last || '',
+        preferredName: tg.preferredName || existingGuest?.preferredName || '',
+        nationality: tg.nationality || existingGuest?.nationality || payload.client.country || '',
+        country: tg.country || existingGuest?.country || payload.client.country || '',
+        age: tg.age || existingGuest?.age || 'Adult',
+        exactAge: tg.exactAge ?? existingGuest?.exactAge,
+        dob: tg.dob || existingGuest?.dob || '',
+        passportNo: tg.passportNo || existingGuest?.passportNo || '',
+        passportExpiry: tg.passportExpiry || existingGuest?.passportExpiry || '',
+        relationshipToLead: tg.relationshipToLead || existingGuest?.relationshipToLead || (tg.isLead ? 'Primary Contact' : 'Family Member'),
+        individualEmail: tg.individualEmail || existingGuest?.individualEmail || '',
+        individualPhone: tg.individualPhone || existingGuest?.individualPhone || '',
+        languagesSpoken: existingGuest?.languagesSpoken || ['English'],
+        isLead: tg.isLead ?? existingGuest?.isLead ?? (idx === 0),
+        notes: tg.notes || existingGuest?.notes || '',
+        diet: tg.dietary || existingGuest?.diet || [],
+        attachments: existingGuest?.attachments || [],
+        customFoodRequirements: tg.customFoodRequirements || existingGuest?.customFoodRequirements || [],
+        customAccessibilityRequirements: tg.customAccessibilityRequirements || existingGuest?.customAccessibilityRequirements || [],
+        customAccommodationRequirements: tg.customAccommodationRequirements || existingGuest?.customAccommodationRequirements || [],
+        accessibilityMobility: tg.accessibility || existingGuest?.accessibilityMobility || [],
+        accessibilityVision: existingGuest?.accessibilityVision || [],
+        accessibilityHearing: existingGuest?.accessibilityHearing || [],
+        medicalOperationalNotes: existingGuest?.medicalOperationalNotes || '',
+        dietaryReligious: existingGuest?.dietaryReligious || [],
+        dietaryLifestyle: tg.dietary || existingGuest?.dietaryLifestyle || [],
+        dietaryMedical: existingGuest?.dietaryMedical || [],
+        dietaryPreferences: existingGuest?.dietaryPreferences || [],
+        preferencesAccommodation: existingGuest?.preferencesAccommodation || [],
+        preferencesTransport: existingGuest?.preferencesTransport || [],
+        preferencesInterests: existingGuest?.preferencesInterests || [],
+        isProvisional: false,
+        provisionalLabel: undefined,
+        leadContactId: existingGuest?.leadContactId
       };
     });
 
-    const leadGuest = newGuests.find(g => g.isLead) || newGuests[0];
-    const allGuestIds = newGuests.map(g => g.id);
+    const allGuestIds = importedGuests.map(g => g.id);
 
-    // 2. Build Flights
-    const newFlights: Flight[] = (payload.flights || []).map((f, idx) => {
-      // Match passenger names to guest IDs
-      let paxIds: number[] = [];
-      if (f.paxNames && f.paxNames.length > 0) {
-        f.paxNames.forEach(pName => {
-          const matchId = guestIdMap.get(pName.trim().toLowerCase());
-          if (matchId) paxIds.push(matchId);
-        });
-      }
-      if (paxIds.length === 0) paxIds = allGuestIds;
+    // 2. Match flights to existing records. Never invent missing routes, dates, times or prices.
+    const importedFlights: Flight[] = (payload.flights || []).map((f, idx) => {
+      const existingFlight = currentState.flights.find(item =>
+        Boolean(f.flightNo && item.flightNo) &&
+        normalizeIdentity(item.flightNo) === normalizeIdentity(f.flightNo) &&
+        (!f.date || item.date === f.date) &&
+        (!f.airline || normalizeIdentity(item.airline) === normalizeIdentity(f.airline))
+      );
+      const namedPaxIds: number[] = [];
+      (f.paxNames || []).forEach(name => {
+        const id = guestIdMap.get(normalizeIdentity(name));
+        if (id && !namedPaxIds.includes(id)) namedPaxIds.push(id);
+      });
+      const paxIds = namedPaxIds.length ? namedPaxIds : (existingFlight?.paxIds || []);
+      const missingFields = [
+        !f.airline && 'Airline',
+        !f.flightNo && 'Flight number',
+        !f.from && 'Origin airport',
+        !f.to && 'Destination airport',
+        !f.date && 'Flight date',
+        !f.depTime && 'Departure time',
+        !f.arrTime && 'Arrival time',
+        !f.pnr && !existingFlight?.pnr && 'PNR / booking reference'
+      ].filter((value): value is string => Boolean(value));
 
       return {
-        id: Date.now() + 100 + idx,
-        direction: f.direction || 'Inbound',
-        airline: f.airline,
-        flightNo: f.flightNo,
-        pnr: f.pnr || '',
-        from: f.from || 'CPT',
-        to: f.to || 'JNB',
-        date: f.date || payload.client.startDate || new Date().toISOString().split('T')[0],
-        depTime: f.depTime || '10:00',
-        arrTime: f.arrTime || '12:00',
-        duration: '2h',
-        cabin: f.cabin || 'Business',
-        status: 'Booked',
+        ...(existingFlight || {} as Flight),
+        id: existingFlight?.id ?? (Date.now() + 100 + idx),
+        direction: f.direction || existingFlight?.direction || 'Inbound',
+        airline: f.airline || existingFlight?.airline || '',
+        flightNo: f.flightNo || existingFlight?.flightNo || '',
+        pnr: f.pnr || existingFlight?.pnr || '',
+        from: f.from || existingFlight?.from || '',
+        to: f.to || existingFlight?.to || '',
+        date: f.date || existingFlight?.date || '',
+        depTime: f.depTime || existingFlight?.depTime || '',
+        arrTime: f.arrTime || existingFlight?.arrTime || '',
+        duration: existingFlight?.duration || '',
+        cabin: f.cabin || existingFlight?.cabin || 'Economy',
+        status: existingFlight?.status || 'Pending',
         paxIds,
-        cost: f.cost || 4500,
-        markup: 500,
-        qty: paxIds.length,
-        notes: f.notes || '',
-        stops: []
+        bagHand: existingFlight?.bagHand || 0,
+        bagCheck: existingFlight?.bagCheck || 0,
+        bagOver: existingFlight?.bagOver || 0,
+        cost: f.cost ?? existingFlight?.cost ?? 0,
+        markup: existingFlight?.markup || 0,
+        qty: paxIds.length || existingFlight?.qty || 0,
+        notes: f.notes || existingFlight?.notes || '',
+        supplierContact: existingFlight?.supplierContact || '',
+        confirmationRef: existingFlight?.confirmationRef || '',
+        bookingUrl: existingFlight?.bookingUrl || '',
+        referenceLinks: existingFlight?.referenceLinks || [],
+        attachments: existingFlight?.attachments || [],
+        stops: existingFlight?.stops || [],
+        isIncomplete: missingFields.length > 0,
+        missingFields: missingFields.length ? missingFields : undefined
       };
     });
 
-    // 3. Build Rooms / Stays
-    const newRooms: Room[] = (payload.accommodations || []).map((s, idx) => {
-      let guestIds: number[] = [];
-      if (s.assignedPaxNames && s.assignedPaxNames.length > 0) {
-        s.assignedPaxNames.forEach(pName => {
-          const matchId = guestIdMap.get(pName.trim().toLowerCase());
-          if (matchId) guestIds.push(matchId);
-        });
-      }
-      if (guestIds.length === 0) guestIds = allGuestIds;
+    // 3. Match accommodation by property, dates and room type. Unknown commercial values stay blank.
+    const importedRooms: Room[] = (payload.accommodations || []).map((s, idx) => {
+      const existingRoom = currentState.rooms.find(item =>
+        normalizeIdentity(item.hotel) === normalizeIdentity(s.hotel) &&
+        (!s.cin || item.cin === s.cin) &&
+        (!s.cout || item.cout === s.cout) &&
+        (!s.roomType || normalizeIdentity(item.roomType) === normalizeIdentity(s.roomType))
+      );
+      const resolvedGuestIds: number[] = [];
+      (s.assignedPaxNames || []).forEach(name => {
+        const id = guestIdMap.get(normalizeIdentity(name));
+        if (id && !resolvedGuestIds.includes(id)) resolvedGuestIds.push(id);
+      });
+      const guestIds = resolvedGuestIds.length ? resolvedGuestIds : (existingRoom?.guestIds || []);
+      const derivedNights = s.cin && s.cout
+        ? Math.max(0, Math.round((new Date(s.cout).getTime() - new Date(s.cin).getTime()) / 86400000))
+        : 0;
 
       return {
-        id: Date.now() + 200 + idx,
-        hotel: s.hotel,
-        conf: `BK-${Math.floor(1000 + Math.random() * 9000)}`,
-        pay: 'Deposit Paid',
-        roomType: s.roomType || 'Standard',
-        bed: 'King',
-        meal: s.meal || 'B&B',
-        cin: s.cin || payload.client.startDate || new Date().toISOString().split('T')[0],
-        cout: s.cout || payload.client.endDate || new Date().toISOString().split('T')[0],
-        nights: s.nights || 1,
+        ...(existingRoom || {} as Room),
+        id: existingRoom?.id ?? (Date.now() + 200 + idx),
+        hotel: s.hotel || existingRoom?.hotel || '',
+        conf: existingRoom?.conf || '',
+        pay: existingRoom?.pay || 'Unpaid',
+        roomType: s.roomType || existingRoom?.roomType || '',
+        bed: existingRoom?.bed || '',
+        meal: s.meal || existingRoom?.meal || '',
+        cin: s.cin || existingRoom?.cin || '',
+        cout: s.cout || existingRoom?.cout || '',
+        nights: s.nights ?? existingRoom?.nights ?? derivedNights,
         guestIds,
-        rate: s.rate || 6500,
-        supp: 0,
-        reqs: [],
-        notes: s.notes || ''
+        rate: s.rate ?? existingRoom?.rate ?? 0,
+        supp: existingRoom?.supp || 0,
+        reqs: existingRoom?.reqs || [],
+        notes: s.notes || existingRoom?.notes || '',
+        address: existingRoom?.address || '',
+        googleMapsUrl: existingRoom?.googleMapsUrl || '',
+        attachments: existingRoom?.attachments || [],
+        allocatedRooms: existingRoom?.allocatedRooms || []
       };
     });
 
-    // 4. Build Transfers
-    const newTransfers: Transfer[] = (payload.transfers || []).map((t, idx) => {
+    // 4. Match transfers without assigning fictional drivers, times, vehicles or prices.
+    const validTransferTypes: Transfer['type'][] = ['Airport Arrival', 'Airport Departure', 'Inter-Hotel', 'Activity Transfer', 'Full-Day Vehicle', 'Point-to-Point'];
+    const importedTransfers: Transfer[] = (payload.transfers || []).map((t, idx) => {
+      const transferType = validTransferTypes.includes(t.type as Transfer['type']) ? t.type as Transfer['type'] : undefined;
+      const existingTransfer = currentState.transfers.find(item =>
+        (!t.date || item.date === t.date) &&
+        (!transferType || item.type === transferType) &&
+        Boolean(t.from && t.to) &&
+        normalizeIdentity(item.from) === normalizeIdentity(t.from) &&
+        normalizeIdentity(item.to) === normalizeIdentity(t.to)
+      );
+      const paxIds = existingTransfer?.paxIds || [];
       return {
-        id: Date.now() + 300 + idx,
-        type: t.type || 'Airport Arrival',
-        date: t.date || payload.client.startDate || new Date().toISOString().split('T')[0],
-        time: t.time || '10:00',
-        status: 'Confirmed',
-        from: t.from,
-        to: t.to,
-        meet: 'Main Arrivals Hall',
-        sign: payload.client.name.toUpperCase(),
-        flight: t.flight || '',
-        dist: '25 km',
-        dur: '30 min',
-        vehicle: t.vehicle || 'Mercedes V-Class — 7 Seater',
-        driver: 'Assigned Driver',
-        driverPhone: '+27 82 555 0100',
-        paxCount: newGuests.length,
-        paxIds: allGuestIds,
-        bagHand: newGuests.length,
-        bagCheck: newGuests.length * 2,
-        bagOver: 0,
-        seats: [],
-        special: ['Water & Refreshments', 'Wi-Fi'],
-        cost: 1500,
-        tolls: 0,
-        parking: 0,
-        notes: t.notes || '',
-        waypoints: []
+        ...(existingTransfer || {} as Transfer),
+        id: existingTransfer?.id ?? (Date.now() + 300 + idx),
+        type: transferType || existingTransfer?.type || 'Point-to-Point',
+        date: t.date || existingTransfer?.date || '',
+        time: t.time || existingTransfer?.time || '',
+        status: existingTransfer?.status || 'Pending',
+        from: t.from || existingTransfer?.from || '',
+        to: t.to || existingTransfer?.to || '',
+        meet: existingTransfer?.meet || '',
+        sign: existingTransfer?.sign || '',
+        flight: t.flight || existingTransfer?.flight || '',
+        dist: existingTransfer?.dist || '',
+        dur: existingTransfer?.dur || '',
+        vehicle: t.vehicle || existingTransfer?.vehicle || '',
+        driver: existingTransfer?.driver || '',
+        driverPhone: existingTransfer?.driverPhone || '',
+        paxCount: paxIds.length || existingTransfer?.paxCount || 0,
+        paxIds,
+        bagHand: existingTransfer?.bagHand || 0,
+        bagCheck: existingTransfer?.bagCheck || 0,
+        bagOver: existingTransfer?.bagOver || 0,
+        seats: existingTransfer?.seats || [],
+        special: existingTransfer?.special || [],
+        cost: existingTransfer?.cost || 0,
+        tolls: existingTransfer?.tolls || 0,
+        parking: existingTransfer?.parking || 0,
+        notes: t.notes || existingTransfer?.notes || '',
+        waypoints: existingTransfer?.waypoints || []
       };
     });
 
-    // 5. Build Activities
-    const newActivities: Activity[] = (payload.activities || []).map((a, idx) => {
+    // 5. Match activities by day and name. Unprovided prices and operational times remain blank.
+    const importedActivities: Activity[] = (payload.activities || []).map((a, idx) => {
+      const day = a.day ?? 1;
+      const existingActivity = currentState.activities.find(item =>
+        item.day === day && normalizeIdentity(item.name) === normalizeIdentity(a.name)
+      );
+      const paxIds = existingActivity?.paxIds || [];
       return {
-        id: Date.now() + 400 + idx,
-        day: a.day || 1,
-        slot: a.slot || 'Morning',
+        ...(existingActivity || {} as Activity),
+        id: existingActivity?.id ?? (Date.now() + 400 + idx),
+        day,
+        slot: a.slot || existingActivity?.slot || 'Morning',
         name: a.name,
-        desc: a.desc || '',
-        pickup: '09:00',
-        start: '09:30',
-        dur: a.dur || '3 hours',
-        pickupLoc: 'Hotel Lobby',
-        status: 'Confirmed',
-        conf: `ACT-${Math.floor(1000 + Math.random() * 9000)}`,
-        supplier: 'Viemma Experiences',
-        supPhone: '+27 21 555 8820',
-        paxIds: allGuestIds,
-        pAdult: a.pAdult || 500,
-        pChild: 250,
-        nAdult: newGuests.length,
-        nChild: 0,
-        flat: 0,
-        total: (a.pAdult || 500) * newGuests.length,
-        inc: ['Transport', 'Guide', 'Entrance Fees'],
-        backup: 'Indoor Gallery Experience',
-        notes: a.notes || '',
-        isFree: false
+        desc: a.desc || existingActivity?.desc || '',
+        pickup: a.pickup || existingActivity?.pickup || '',
+        start: a.start || existingActivity?.start || '',
+        dur: a.dur || existingActivity?.dur || '',
+        pickupLoc: existingActivity?.pickupLoc || '',
+        status: existingActivity?.status || 'Planned',
+        conf: existingActivity?.conf || '',
+        supplier: existingActivity?.supplier || '',
+        supPhone: existingActivity?.supPhone || '',
+        paxIds,
+        pAdult: a.pAdult ?? existingActivity?.pAdult ?? 0,
+        pChild: existingActivity?.pChild ?? 0,
+        nAdult: existingActivity?.nAdult ?? 0,
+        nChild: existingActivity?.nChild ?? 0,
+        flat: existingActivity?.flat || 0,
+        total: existingActivity?.total || 0,
+        inc: existingActivity?.inc || [],
+        backup: existingActivity?.backup || '',
+        notes: a.notes || existingActivity?.notes || '',
+        isFree: existingActivity?.isFree ?? false
       };
     });
 
-    // 6. Calculate Duration Text
+    // Keep records that weren't mentioned by the import. Matched records reuse their IDs.
+    const mergedGuests = mergeRecordsById(currentState.guests, importedGuests);
+    const mergedFlights = mergeRecordsById(currentState.flights, importedFlights);
+    const mergedRooms = mergeRecordsById(currentState.rooms, importedRooms);
+    const mergedTransfers = mergeRecordsById(currentState.transfers, importedTransfers);
+    const mergedActivities = mergeRecordsById(currentState.activities, importedActivities);
+
     let durationText = currentState.client.durationText;
     if (payload.client.startDate && payload.client.endDate) {
-      const s = new Date(payload.client.startDate);
-      const e = new Date(payload.client.endDate);
-      const diffDays = Math.max(1, Math.round((e.getTime() - s.getTime()) / (1000 * 60 * 60 * 24)) + 1);
+      const startDate = new Date(payload.client.startDate);
+      const endDate = new Date(payload.client.endDate);
+      const diffDays = Math.max(1, Math.round((endDate.getTime() - startDate.getTime()) / 86400000) + 1);
       durationText = `${diffDays} Days / ${Math.max(0, diffDays - 1)} Nights`;
     }
 
-    // Apply partial update
     onApplyItinerary({
       ref: payload.tripRef || currentState.ref,
       title: payload.tripTitle || `${payload.client.name} Luxury Itinerary`,
       client: {
         ...currentState.client,
-        name: payload.client.name,
+        name: payload.client.name || currentState.client.name,
         email: payload.client.email || currentState.client.email,
         phone: payload.client.phone || currentState.client.phone,
         country: payload.client.country || currentState.client.country,
@@ -626,11 +694,11 @@ export const AIItineraryImportModal: React.FC<AIItineraryImportModalProps> = ({
         durationText,
         occasion: payload.client.occasion || currentState.client.occasion
       },
-      guests: newGuests,
-      flights: newFlights,
-      rooms: newRooms,
-      transfers: newTransfers,
-      activities: newActivities
+      guests: mergedGuests,
+      flights: mergedFlights,
+      rooms: mergedRooms,
+      transfers: mergedTransfers,
+      activities: mergedActivities
     });
 
     onClose();
