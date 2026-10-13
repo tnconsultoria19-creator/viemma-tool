@@ -84,7 +84,7 @@ body {
   body:has(.driver-pickup-board) .driver-pickup-board * { visibility: visible !important; }
   body:has(.driver-pickup-board) .driver-pickup-board-controls { display: none !important; }
   body:has(.driver-pickup-board) .driver-pickup-board {
-    position: absolute !important;
+    position: fixed !important;
     inset: 0 auto auto 0 !important;
     width: 100% !important;
     margin: 0 !important;
