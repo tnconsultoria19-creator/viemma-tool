@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { AppState, ExperienceLibraryItem } from '../types';
 import { ClientView } from './ClientView';
 import { DriverPickupBoard } from './DriverPickupBoard';
+import { jsPDF } from 'jspdf';
 import { 
   generateSecureToken, 
   regenerateShareToken, 
@@ -153,12 +154,6 @@ export const PrintHubView: React.FC<PrintHubViewProps> = ({
   const retailTotalCurr = retailTotalZAR * selectedRate;
 
   const generatePDF = (mode: 'client' | 'internal' | 'job' | 'airport') => {
-    const { jsPDF } = (window as any).jspdf || {};
-    if (!jsPDF) {
-      alert("jsPDF library not detected in runtime context. Please ensure you are connected to the network.");
-      return;
-    }
-
     const doc = new jsPDF(mode === 'airport' ? 'l' : 'p', 'mm', 'a4');
     const cleanStr = (str: string) => {
       if (!str) return '';
