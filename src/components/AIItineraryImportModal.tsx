@@ -257,7 +257,7 @@ Transform the provided travel itinerary, email inquiry, or client brief into a v
   ],
   "transfers": [
     {
-      "type": "Airport Arrival" | "Airport Departure" | "Inter-Hotel" | "Day Excursion",
+      "type": "Airport Arrival" | "Airport Departure" | "Inter-Hotel" | "Activity Transfer" | "Full-Day Vehicle" | "Point-to-Point",
       "date": "YYYY-MM-DD",
       "time": "HH:MM",
       "from": "Origin",
@@ -348,10 +348,10 @@ export const AIItineraryImportModal: React.FC<AIItineraryImportModalProps> = ({
         })),
         flights: (parsed.flights || []).map(f => ({
           ...f,
-          cabin: f.cabin || 'Business',
-          direction: f.direction || 'Inbound',
-          needsReview: !f.airline || !f.flightNo || !f.from || !f.to || !f.date || !f.depTime || !f.arrTime || f.needsReview,
-          reviewReason: !f.airline ? 'Missing airline' : !f.flightNo ? 'Missing flight number' : !f.from ? 'Missing origin airport' : !f.to ? 'Missing destination airport' : !f.date ? 'Missing flight date' : !f.depTime ? 'Missing departure time' : !f.arrTime ? 'Missing arrival time' : f.reviewReason
+          cabin: f.cabin,
+          direction: f.direction,
+          needsReview: !f.airline || !f.flightNo || !f.from || !f.to || !f.date || !f.depTime || !f.arrTime || !f.cabin || !f.direction || f.needsReview,
+          reviewReason: !f.airline ? 'Missing airline' : !f.flightNo ? 'Missing flight number' : !f.from ? 'Missing origin airport' : !f.to ? 'Missing destination airport' : !f.date ? 'Missing flight date' : !f.depTime ? 'Missing departure time' : !f.arrTime ? 'Missing arrival time' : !f.cabin ? 'Missing cabin class' : !f.direction ? 'Missing flight direction' : f.reviewReason
         })),
         accommodations: (parsed.accommodations || []).map(s => ({
           ...s,
@@ -545,6 +545,8 @@ export const AIItineraryImportModal: React.FC<AIItineraryImportModalProps> = ({
         !f.date && 'Flight date',
         !f.depTime && 'Departure time',
         !f.arrTime && 'Arrival time',
+        !f.cabin && 'Cabin class',
+        !f.direction && 'Flight direction',
         !f.pnr && !existingFlight?.pnr && 'PNR / booking reference'
       ].filter((value): value is string => Boolean(value));
 
@@ -685,22 +687,22 @@ export const AIItineraryImportModal: React.FC<AIItineraryImportModalProps> = ({
         pickup: a.pickup || existingActivity?.pickup || '',
         start: a.start || existingActivity?.start || '',
         dur: a.dur || existingActivity?.dur || '',
-        pickupLoc: existingActivity?.pickupLoc || '',
+        pickupLoc: a.pickupLoc || existingActivity?.pickupLoc || '',
         status: existingActivity?.status || 'Planned',
         conf: existingActivity?.conf || '',
-        supplier: existingActivity?.supplier || '',
-        supPhone: existingActivity?.supPhone || '',
+        supplier: a.supplier || existingActivity?.supplier || '',
+        supPhone: a.supPhone || existingActivity?.supPhone || '',
         paxIds,
         pAdult: a.pAdult ?? existingActivity?.pAdult ?? 0,
-        pChild: existingActivity?.pChild ?? 0,
-        nAdult: existingActivity?.nAdult ?? 0,
-        nChild: existingActivity?.nChild ?? 0,
-        flat: existingActivity?.flat || 0,
+        pChild: a.pChild ?? existingActivity?.pChild ?? 0,
+        nAdult: a.nAdult ?? existingActivity?.nAdult ?? 0,
+        nChild: a.nChild ?? existingActivity?.nChild ?? 0,
+        flat: a.flat ?? existingActivity?.flat ?? 0,
         total: existingActivity?.total || 0,
-        inc: existingActivity?.inc || [],
-        backup: existingActivity?.backup || '',
+        inc: a.inc || existingActivity?.inc || [],
+        backup: a.backup || existingActivity?.backup || '',
         notes: a.notes || existingActivity?.notes || '',
-        isFree: existingActivity?.isFree ?? false
+        isFree: a.isFree ?? existingActivity?.isFree ?? false
       };
     });
 
