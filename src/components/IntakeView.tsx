@@ -397,6 +397,9 @@ export const IntakeView: React.FC<IntakeViewProps> = ({
     }
 
     const isMarkedLead = modalGuest.isLead || (state.guests.length === 0 && !modalGuest.isProvisional);
+    const guestFirst = (modalGuest.first || '').trim();
+    const guestLast = (modalGuest.last || '').trim();
+    const remainsProvisional = Boolean(modalGuest.isProvisional && (!guestFirst || guestFirst === modalGuest.provisionalLabel) && !guestLast);
 
     const savedGuest: Guest = {
       id: modalGuest.id || Math.max(0, ...state.guests.map(g => Number(g.id) || 0)) + 1,
@@ -415,8 +418,8 @@ export const IntakeView: React.FC<IntakeViewProps> = ({
       individualPhone: (modalGuest.individualPhone || '').trim(),
       languagesSpoken: modalGuest.languagesSpoken || ['English'],
       isLead: isMarkedLead,
-      isProvisional: Boolean(modalGuest.isProvisional && !(modalGuest.first || '').trim() && !(modalGuest.last || '').trim()),
-      provisionalLabel: modalGuest.isProvisional && !(modalGuest.first || '').trim() && !(modalGuest.last || '').trim() ? modalGuest.provisionalLabel : undefined,
+      isProvisional: remainsProvisional,
+      provisionalLabel: remainsProvisional ? modalGuest.provisionalLabel : undefined,
       leadContactId: isMarkedLead ? undefined : (modalGuest.leadContactId || state.guests.find(g => g.isLead)?.id),
       notes: modalGuest.notes || '',
       customFoodRequirements: modalGuest.customFoodRequirements || [],
@@ -451,12 +454,12 @@ export const IntakeView: React.FC<IntakeViewProps> = ({
     if (modalGuest.id) {
       updatedRoster = state.guests.map(g => {
         if (g.id === savedGuest.id) return savedGuest;
-        if (isMarkedLead) return { ...g, isLead: false };
+        if (isMarkedLead) return { ...g, isLead: false, leadContactId: savedGuest.id };
         return g;
       });
     } else {
-      const current = isMarkedLead 
-        ? state.guests.map(g => ({ ...g, isLead: false })) 
+      const current = isMarkedLead
+        ? state.guests.map(g => ({ ...g, isLead: false, leadContactId: savedGuest.id }))
         : state.guests;
       updatedRoster = [...current, savedGuest];
     }
