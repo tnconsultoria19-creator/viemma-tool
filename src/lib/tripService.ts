@@ -200,7 +200,7 @@ export async function listAllTrips(): Promise<AppState[]> {
     }
   }
 
-  // Fallback to local storage or INITIAL_TRIPS
+  // Fallback to local storage only; empty workspace stays empty
   const localListStr = localStorage.getItem('viemma_trips_list');
   if (localListStr) {
     try {
