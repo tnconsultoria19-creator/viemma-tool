@@ -250,18 +250,18 @@ export const OperatorGroundSheetView: React.FC<OperatorGroundSheetViewProps> = (
                   <div className="bg-slate-950/60 p-4 rounded-2xl border border-slate-700/50 flex flex-col sm:flex-row sm:items-center justify-between gap-4 text-xs">
                     <div className="space-y-1">
                       <span className="text-slate-400 block">Vehicle Specification:</span>
-                      <span className="text-sm font-bold text-white">{tr.vehicle || 'Mercedes V-Class — Luxury Chauffeur'}</span>
+                      <span className="text-sm font-bold text-white">{tr.vehicle || 'Vehicle to be assigned'}</span>
                     </div>
 
                     <div className="space-y-1">
                       <span className="text-slate-400 block">Assigned Driver:</span>
-                      <span className="text-sm font-bold text-amber-400">{tr.driver || 'Sipho Khumalo'} ({tr.driverPhone || '+27 60 555 1234'})</span>
+                      <span className="text-sm font-bold text-amber-400">{tr.driver || 'Driver to be assigned'}{tr.driverPhone ? ` (${tr.driverPhone})` : ''}</span>
                     </div>
 
                     <div className="space-y-1">
                       <span className="text-slate-400 block">Signboard Text:</span>
                       <span className="text-sm font-black text-white bg-slate-800 px-3 py-1 rounded-lg border border-slate-700 block">
-                        "{tr.sign || 'HARRISON EXPEDITION'}"
+                        "{tr.sign || 'Signboard name to be confirmed'}"
                       </span>
                     </div>
                   </div>
