@@ -11,7 +11,9 @@ import {
   AIImportFlight, 
   AIImportStay, 
   AIImportTransfer, 
-  AIImportActivity 
+  AIImportActivity,
+  AIImportDriver,
+  Driver
 } from '../types';
 import { 
   Sparkles, 
@@ -192,7 +194,7 @@ const SAMPLE_AI_PAYLOAD: AIItineraryPayload = {
 };
 
 const LLM_SYSTEM_PROMPT = `You are a specialist Travel Operations parser for Viemma Tours (Bespoke Southern Africa Luxury Travel OS).
-Transform the provided travel itinerary, email inquiry, or client brief into a valid, strict JSON payload matching the "viemma-itinerary-v1" schema below.
+Transform the provided travel itinerary, email inquiry, client brief, driver roster, or operations note into a valid, strict JSON payload matching "viemma-itinerary-v1". This is a reusable partial importer: include only the sections supported by the source. For a driver-only import, include a "drivers" array and do not fabricate a client, travellers, or trip details. For any other partial import, do not invent unrelated sections.
 
 ### Output JSON Requirements:
 1. MUST output ONLY valid JSON without markdown wrapping or commentary.
@@ -278,8 +280,24 @@ Transform the provided travel itinerary, email inquiry, or client brief into a v
       "dur": "3 hours",
       "pAdult": 450
     }
+  ],
+  "drivers": [
+    {
+      "id": "Existing stable driver ID only if supplied",
+      "name": "Driver name",
+      "preferredName": "Optional preferred name",
+      "phone": "Contact number if supplied",
+      "email": "Email if supplied",
+      "prdpExpiryDate": "YYYY-MM-DD if supplied; never infer",
+      "assignedVehicleId": "Existing vehicle ID only if supplied",
+      "operationalAvailability": "Full-time" | "Part-time" | "On-Call" | "Weekend Only",
+      "status": "Available" | "Assigned" | "Off Duty" | "Unavailable",
+      "profileStatus": "Active" | "Suspended" | "Pending Verification",
+      "notes": "Only source-supported notes"
+    }
   ]
-}`;
+}
+Never create driver licence numbers, licence categories or PrDP/PDP numbers. If a driver's expiry date is not present, leave prdpExpiryDate blank and flag it for review. Unknown driver status is not the same as Available.`;
 
 export const AIItineraryImportModal: React.FC<AIItineraryImportModalProps> = ({
   isOpen,
