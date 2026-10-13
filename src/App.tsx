@@ -855,9 +855,11 @@ export default function App() {
   };
 
   const handleSetLeadGuest = (id: number) => {
+    // A booking has one designated lead contact. Keep all group-member links in sync.
     const list = state.guests.map(g => ({
       ...g,
-      isLead: g.id === id
+      isLead: g.id === id,
+      leadContactId: g.id === id ? undefined : id
     }));
     handleUpdateState({ guests: list });
   };
