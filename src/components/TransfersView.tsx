@@ -55,8 +55,9 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
       dist: '',
       dur: '',
       vehicle: 'Mercedes V-Class — 7 Seater',
-      driver: 'Sipho Khumalo',
-      driverPhone: '+27 60 555 1234',
+      driver: '',
+      driverPhone: '',
+      driverId: undefined,
       paxCount: state.guests.length || 0,
       paxIds: state.guests.map(g => g.id), // Default all guests
       bagHand: state.guests.length || 0,
@@ -101,6 +102,7 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
       vehicle: tForm.vehicle || '',
       driver: tForm.driver || '',
       driverPhone: tForm.driverPhone || '',
+      driverId: tForm.driverId || state.drivers.find(d => d.name === tForm.driver)?.id,
       paxCount: tForm.paxIds?.length || 0,
       paxIds: tForm.paxIds || [],
       bagHand: Number(tForm.bagHand) || 0,
@@ -168,11 +170,20 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
 
   const handleDriverChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const val = e.target.value;
-    const dObj = DB_DEFAULT.drivers.find(d => d.name === val);
+    if (!val) {
+      setTForm({ ...tForm, driverId: undefined, driver: '', driverPhone: '' });
+      return;
+    }
+    if (val.startsWith('legacy:')) {
+      setTForm({ ...tForm, driverId: undefined, driver: val.slice('legacy:'.length) });
+      return;
+    }
+    const driverRecord = (state.drivers || []).find(d => d.id === val);
     setTForm({
       ...tForm,
-      driver: val,
-      driverPhone: dObj?.phone || ''
+      driverId: driverRecord?.id,
+      driver: driverRecord?.name || '',
+      driverPhone: driverRecord?.phone || ''
     });
   };
 
@@ -441,14 +452,19 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
                 <div className="space-y-1.5">
                   <label className="text-[11px] text-gray-500 font-bold uppercase tracking-wider block">Chauffeur Driver</label>
                   <select 
-                    value={tForm.driver || ''} 
+                    value={tForm.driverId || (state.drivers || []).find(d => d.name === tForm.driver)?.id || (tForm.driver ? `legacy:${tForm.driver}` : '')}
                     onChange={handleDriverChange}
                     className="w-full h-11 px-4 rounded-xl border border-gray-200 text-xs font-semibold text-gray-700 bg-white hover:border-[#D4AF37] focus:border-[#D4AF37] transition duration-200"
                   >
                     <option value="">Choose Driver...</option>
-                    {DB_DEFAULT.drivers.map(d => (
-                      <option key={d.name} value={d.name}>{d.name} — {d.phone}</option>
-                    ))}
+                    {tForm.driver && !(state.drivers || []).some(d => d.id === tForm.driverId || d.name === tForm.driver) && <option value={`legacy:${tForm.driver}`}>{tForm.driver} — saved assignment</option>}
+                    {(state.drivers || []).map(d => {
+                      const expiry = d.prdpExpiryDate ? new Date(`${d.prdpExpiryDate}T00:00:00`) : null;
+                      const today = new Date(); today.setHours(0, 0, 0, 0);
+                      const daysLeft = expiry ? Math.ceil((expiry.getTime() - today.getTime()) / 86400000) : null;
+                      const compliance = daysLeft === null ? ' · Expiry not recorded' : daysLeft < 0 ? ' · PrDP expired' : daysLeft <= 45 ? ' · PrDP expiring soon' : '';
+                      return <option key={d.id} value={d.id}>{d.name} — {d.phone || 'No phone'}{compliance}</option>;
+                    })}
                   </select>
                 </div>
 
