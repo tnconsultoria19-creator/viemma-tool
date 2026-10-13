@@ -120,16 +120,16 @@ export async function uploadAttachment(
         );
       });
     } catch (firebaseErr) {
-      console.warn('Firebase Storage upload unavailable or failed, switching to local Data URL fallback:', firebaseErr);
-      if (onProgress) onProgress(50);
-      downloadUrl = await readFileAsDataUrl(file);
-      if (onProgress) onProgress(100);
+      console.warn('Firebase Storage upload failed:', firebaseErr);
+      throw new Error('Upload to Firebase Storage failed. Please check your connection and try again.');
     }
   } else {
     // Standalone / offline mode
-    if (onProgress) onProgress(50);
-    downloadUrl = await readFileAsDataUrl(file);
-    if (onProgress) onProgress(100);
+    throw new Error('File uploads require an active cloud connection. Please configure Firebase to enable attachments.');
+  }
+
+  if (!downloadUrl || downloadUrl === '') {
+    throw new Error('File uploaded but failed to retrieve a secure download URL. Please try again.');
   }
 
   const attachment: AttachmentItem = {

@@ -14,7 +14,7 @@ service cloud.firestore {
     // NEVER publicly readable or listable.
     // ========================================================
     match /trips/{tripId} {
-      allow read, write: if request.auth != null && isValidId(tripId);
+      allow read, write: if request.auth != null && request.auth.token.email != null && isValidId(tripId);
     }
 
     // ========================================================
@@ -26,7 +26,7 @@ service cloud.firestore {
     match /clientShares/{token} {
       allow get: if isValidId(token);
       allow list: if false;
-      allow write: if request.auth != null && isValidId(token);
+      allow write: if request.auth != null && request.auth.token.email != null && isValidId(token);
     }
 
     // ========================================================
@@ -38,7 +38,7 @@ service cloud.firestore {
     match /agentShares/{token} {
       allow get: if isValidId(token);
       allow list: if false;
-      allow write: if request.auth != null && isValidId(token);
+      allow write: if request.auth != null && request.auth.token.email != null && isValidId(token);
     }
 
     // ========================================================
@@ -50,7 +50,7 @@ service cloud.firestore {
     match /opsShares/{token} {
       allow get: if isValidId(token);
       allow list: if false;
-      allow write: if request.auth != null && isValidId(token);
+      allow write: if request.auth != null && request.auth.token.email != null && isValidId(token);
     }
   }
 }

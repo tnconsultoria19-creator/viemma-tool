@@ -26,6 +26,9 @@ import {
 } from './lib/shareService';
 import { isCloudConnected } from './lib/firebase';
 import { LandingPageView } from './components/LandingPageView';
+import { LoginView } from './components/LoginView';
+import { onAuthStateChanged } from 'firebase/auth';
+import { auth } from './lib/firebase';
 import { JourneyPlannerView } from './components/JourneyPlannerView';
 import { ClientPortalView } from './components/ClientPortalView';
 import { TransportFleetView } from './components/TransportFleetView';
@@ -72,9 +75,9 @@ import {
 } from 'lucide-react';
 
 export const INITIAL_STATE: AppState = {
-  ref: 'VT-2026-1048',
-  consultant: 'Sarah Jenkins',
-  priority: 'confirmed',
+  ref: '',
+  consultant: '',
+  priority: 'pending',
   source: 'direct',
   agent: { id: '', contact: '', email: '', comm: '' },
   client: {
@@ -153,37 +156,32 @@ export const INITIAL_STATE: AppState = {
 // Modernized template data matching all requirements
 const SAMPLE_TEMPLATE: AppState = {
   ref: "VT-2026-9999",
-  consultant: "Sarah Jenkins",
-  priority: "confirmed",
-  source: "agent",
-  agent: { id: "safari_dreams", contact: "Emma Williams", email: "emma@safaridreams.co.uk", comm: "12%" },
+  consultant: '',
+  priority: 'pending',
+  source: 'direct',
+  agent: { id: '', contact: '', email: '', comm: '' },
   client: {
-    name: "The Harrison Group",
-    email: "lead@harrisonfamily.com",
-    phone: "+1 415 888 2234",
-    country: "🇺🇸 United States",
-    contactMethod: "whatsapp",
-    tripType: "multi",
-    startDate: "2026-05-20",
-    endDate: "2026-05-25",
-    durationText: "6 Days / 5 Nights",
-    occasion: "Anniversary",
-    otherOccasion: "",
-    tags: ["Family", "Adventure & Safari"]
+    name: '',
+    email: '',
+    phone: '',
+    country: '',
+    contactMethod: 'whatsapp',
+    tripType: 'multi',
+    startDate: '',
+    endDate: '',
+    durationText: 'Select dates',
+    occasion: '',
+    otherOccasion: '',
+    tags: []
   },
   groupConditions: {
-    dietary: ["Vegetarian"],
+    dietary: [],
     mobility: [],
     medical: [],
-    prefs: ["Front of Vehicle"],
-    notes: "The family prefers quiet drives and no early morning activities where possible."
+    prefs: [],
+    notes: ''
   },
-  guests: [
-    { id: 1, first: "James", last: "Harrison", age: "Adult", country: "🇺🇸 United States", diet: [], mob: [], med: [], pref: ["Aisle Seat"], notes: "", isLead: true },
-    { id: 2, first: "Sarah", last: "Harrison", age: "Adult", country: "🇺🇸 United States", diet: ["Vegetarian"], mob: [], med: [], pref: ["Window Seat"], notes: "Celebrates her 40th birthday during the trip.", isLead: false },
-    { id: 3, first: "Emily", last: "Harrison", age: "Child", country: "🇺🇸 United States", diet: ["Nut Allergy"], mob: [], med: [], pref: ["Child Seat Needed"], notes: "Requires booster seat in transfers.", isLead: false },
-    { id: 4, first: "Grandma", last: "Harrison", age: "Elderly", country: "🇺🇸 United States", diet: [], mob: ["Walking Difficulty"], med: ["Heart Condition"], pref: ["Front of Vehicle"], notes: "Requires wheelchair assistance at airports.", isLead: false }
-  ],
+  guests: [],
   flights: [
     {
       id: 1,
@@ -383,7 +381,7 @@ const SAMPLE_TEMPLATE: AppState = {
     buffer: 1000,
     bufferNotes: "Winter season fluctuation buffer"
   },
-  internalNotes: "VVIP Harrison Group. Highly influential repeat clients. Sarah has a birthday on May 22.",
+  internalNotes: "",
   publishing: {
     tripId: 'VT-2026-9999',
     publicUrl: 'https://portal.viemmatours.com/trip/VT-2026-9999',
@@ -511,12 +509,27 @@ export default function App() {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isAIImportOpen, setIsAIImportOpen] = useState(false);
   const [windowWidth, setWindowWidth] = useState(typeof window !== 'undefined' ? window.innerWidth : 1200);
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
+  const [isAuthChecking, setIsAuthChecking] = useState<boolean>(true);
 
   // Resize listener to adapt menu
   useEffect(() => {
     const handleResize = () => setWindowWidth(window.innerWidth);
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  // Auth listener effect
+  useEffect(() => {
+    if (!auth) {
+      setIsAuthChecking(false);
+      return;
+    }
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      setIsAuthenticated(!!user);
+      setIsAuthChecking(false);
+    });
+    return () => unsubscribe();
   }, []);
 
   // Scroll height reduction effect (72px -> 60px)
