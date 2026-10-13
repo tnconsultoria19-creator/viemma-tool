@@ -17,6 +17,7 @@ export const DriversView: React.FC<DriversViewProps> = ({ state, onUpdateState }
   const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
   const [licenseNo, setLicenseNo] = useState('');
+  const [pdpExpiryDate, setPdpExpiryDate] = useState('');
   const [assignedVehicleId, setAssignedVehicleId] = useState('');
   const [status, setStatus] = useState<Driver['status']>('Available');
   const [emergencyContactName, setEmergencyContactName] = useState('');
@@ -34,6 +35,7 @@ export const DriversView: React.FC<DriversViewProps> = ({ state, onUpdateState }
       phone,
       email,
       licenseNo,
+      pdpExpiryDate,
       assignedVehicleId: assignedVehicleId || undefined,
       status,
       emergencyContactName,
@@ -57,6 +59,7 @@ export const DriversView: React.FC<DriversViewProps> = ({ state, onUpdateState }
     setPhone('');
     setEmail('');
     setLicenseNo('');
+    setPdpExpiryDate('');
     setAssignedVehicleId('');
     setStatus('Available');
     setEmergencyContactName('');
@@ -72,6 +75,7 @@ export const DriversView: React.FC<DriversViewProps> = ({ state, onUpdateState }
     setPhone(d.phone);
     setEmail(d.email);
     setLicenseNo(d.licenseNo);
+    setPdpExpiryDate(d.pdpExpiryDate || '');
     setAssignedVehicleId(d.assignedVehicleId || '');
     setStatus(d.status);
     setEmergencyContactName(d.emergencyContactName || '');
@@ -160,7 +164,7 @@ export const DriversView: React.FC<DriversViewProps> = ({ state, onUpdateState }
                     />
                     <div>
                       <h3 className="text-base font-bold text-gray-900">{d.name}</h3>
-                      <p className="text-xs text-gray-500 font-mono">Lic: {d.licenseNo || 'PDP Certified'}</p>
+                      <p className="text-xs text-gray-500 font-mono">Lic: {d.licenseNo || 'Not recorded'}{d.pdpExpiryDate ? ` · PrDP expires ${d.pdpExpiryDate}` : ' · PrDP expiry not recorded'}</p>
                     </div>
                   </div>
                   <div>
@@ -272,6 +276,16 @@ export const DriversView: React.FC<DriversViewProps> = ({ state, onUpdateState }
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <label className="font-bold text-gray-700">PrDP / PDP Expiration Date</label>
+                  <input
+                    type="date"
+                    value={pdpExpiryDate}
+                    onChange={(e) => setPdpExpiryDate(e.target.value)}
+                    className="w-full p-2.5 rounded-xl border border-gray-200 focus:outline-none focus:border-emerald-600 bg-gray-50/50"
+                  />
+                  <p className="text-[11px] text-gray-500">Record the permit expiry date and review it before assigning driving work.</p>
+                </div>
                 <div className="space-y-1.5">
                   <label className="font-bold text-gray-700">Duty Status</label>
                   <select
