@@ -818,7 +818,7 @@ export const FlightsView: React.FC<FlightsViewProps> = ({
 
             {/* Flight e-ticket and supplier quotation attachments */}
             <div className="bg-white rounded-[20px] p-6 border border-gray-100 shadow-sm space-y-3">
-              <h3 className="text-xs uppercase font-bold text-[#1A3326] tracking-wider border-b border-gray-100 pb-2 flex items-center gap-2"><FileText size={14} className="text-[#D4AF37]" /> E-Tickets & Flight Documents</h3>
+              <h3 className="text-xs uppercase font-bold text-[#1A3326] tracking-wider border-b border-gray-100 pb-2 flex items-center gap-2"><ExternalLink size={14} className="text-[#D4AF37]" /> E-Tickets & Flight Documents</h3>
               <AttachmentManager
                 attachments={fForm.attachments || []}
                 onAddAttachment={item => setFForm({ ...fForm, attachments: [...(fForm.attachments || []), item] })}
