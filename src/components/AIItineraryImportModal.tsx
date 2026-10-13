@@ -1002,6 +1002,12 @@ export const AIItineraryImportModal: React.FC<AIItineraryImportModalProps> = ({
                     />
                   </div>
                 </div>
+                {payload.client.needsReview && (
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2">
+                    <p className="text-[11px] text-amber-900 font-semibold"><AlertTriangle size={12} className="inline mr-1" />Review client details: {payload.client.reviewReason || 'Some client contact or trip information is missing.'}</p>
+                    <button type="button" onClick={() => setPayload({ ...payload, client: { ...payload.client, needsReview: false, isReviewed: true } })} className="px-3 py-1.5 rounded-lg bg-amber-200 text-amber-950 text-[11px] font-bold">Mark as Reviewed</button>
+                  </div>
+                )}
               </div>
 
               {/* SECTION: TRAVELLERS MANIFEST */}
@@ -1088,6 +1094,20 @@ export const AIItineraryImportModal: React.FC<AIItineraryImportModalProps> = ({
                           <AlertTriangle size={11} /> Note: {tg.reviewReason}
                         </p>
                       )}
+                      <div className="mt-3 pt-3 border-t border-gray-200 grid grid-cols-1 md:grid-cols-2 gap-2.5">
+                        <label className="text-[10px] font-bold text-gray-600">Preferred name
+                          <input value={tg.preferredName || ''} onChange={e => handleUpdateTraveller(idx, { preferredName: e.target.value })} className="mt-1 w-full p-2 rounded-lg border border-gray-200 bg-white text-xs font-normal" placeholder="Name to use" />
+                        </label>
+                        <label className="text-[10px] font-bold text-gray-600">Dietary requirements (comma-separated)
+                          <input value={(tg.dietary || []).join(', ')} onChange={e => handleUpdateTraveller(idx, { dietary: e.target.value.split(',').map(v => v.trim()).filter(Boolean) })} className="mt-1 w-full p-2 rounded-lg border border-gray-200 bg-white text-xs font-normal" placeholder="Vegetarian, nut allergy..." />
+                        </label>
+                        <label className="text-[10px] font-bold text-gray-600">Accessibility / mobility requirements
+                          <input value={(tg.accessibility || []).join(', ')} onChange={e => handleUpdateTraveller(idx, { accessibility: e.target.value.split(',').map(v => v.trim()).filter(Boolean) })} className="mt-1 w-full p-2 rounded-lg border border-gray-200 bg-white text-xs font-normal" placeholder="Wheelchair, step-free access..." />
+                        </label>
+                        <label className="text-[10px] font-bold text-gray-600">Traveller notes
+                          <input value={tg.notes || ''} onChange={e => handleUpdateTraveller(idx, { notes: e.target.value })} className="mt-1 w-full p-2 rounded-lg border border-gray-200 bg-white text-xs font-normal" placeholder="Requirements, room sharing, other notes" />
+                        </label>
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -1107,21 +1127,19 @@ export const AIItineraryImportModal: React.FC<AIItineraryImportModalProps> = ({
                           f.needsReview ? 'bg-amber-50/50 border-amber-300' : 'bg-gray-50/60 border-gray-200'
                         }`}
                       >
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <span className="font-bold text-gray-800">{f.airline}</span>
-                          <span className="font-mono bg-blue-50 text-blue-900 px-1.5 py-0.5 rounded text-[11px] font-bold">
-                            {f.flightNo}
-                          </span>
-                          <span className="text-gray-500 font-mono text-[11px]">
-                            {f.from} → {f.to}
-                          </span>
-                          <span className="text-gray-500 text-[11px]">({f.date} {f.depTime})</span>
-                          <span className="text-[10px] bg-purple-50 text-purple-900 px-1.5 py-0.5 rounded font-bold">
-                            {f.cabin}
-                          </span>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 w-full">
+                          <label className="text-[10px] font-bold text-gray-600">Airline<input value={f.airline || ''} onChange={e => handleUpdateFlight(idx, { airline: e.target.value, needsReview: true, isReviewed: false })} className="mt-1 w-full p-2 rounded-lg border border-gray-200 bg-white text-xs font-normal" placeholder="Airline" /></label>
+                          <label className="text-[10px] font-bold text-gray-600">Flight number<input value={f.flightNo || ''} onChange={e => handleUpdateFlight(idx, { flightNo: e.target.value.toUpperCase(), needsReview: true, isReviewed: false })} className="mt-1 w-full p-2 rounded-lg border border-gray-200 bg-white text-xs font-mono font-normal" placeholder="e.g. EK772" /></label>
+                          <label className="text-[10px] font-bold text-gray-600">From<input value={f.from || ''} onChange={e => handleUpdateFlight(idx, { from: e.target.value.toUpperCase(), needsReview: true, isReviewed: false })} className="mt-1 w-full p-2 rounded-lg border border-gray-200 bg-white text-xs font-mono font-normal" placeholder="Airport / code" /></label>
+                          <label className="text-[10px] font-bold text-gray-600">To<input value={f.to || ''} onChange={e => handleUpdateFlight(idx, { to: e.target.value.toUpperCase(), needsReview: true, isReviewed: false })} className="mt-1 w-full p-2 rounded-lg border border-gray-200 bg-white text-xs font-mono font-normal" placeholder="Airport / code" /></label>
+                          <label className="text-[10px] font-bold text-gray-600">Flight date<input type="date" value={f.date || ''} onChange={e => handleUpdateFlight(idx, { date: e.target.value, needsReview: true, isReviewed: false })} className="mt-1 w-full p-2 rounded-lg border border-gray-200 bg-white text-xs font-normal" /></label>
+                          <label className="text-[10px] font-bold text-gray-600">Departure time<input type="time" value={f.depTime || ''} onChange={e => handleUpdateFlight(idx, { depTime: e.target.value, needsReview: true, isReviewed: false })} className="mt-1 w-full p-2 rounded-lg border border-gray-200 bg-white text-xs font-normal" /></label>
+                          <label className="text-[10px] font-bold text-gray-600">Arrival time<input type="time" value={f.arrTime || ''} onChange={e => handleUpdateFlight(idx, { arrTime: e.target.value, needsReview: true, isReviewed: false })} className="mt-1 w-full p-2 rounded-lg border border-gray-200 bg-white text-xs font-normal" /></label>
+                          <label className="text-[10px] font-bold text-gray-600">PNR / booking reference<input value={f.pnr || ''} onChange={e => handleUpdateFlight(idx, { pnr: e.target.value.toUpperCase(), needsReview: true, isReviewed: false })} className="mt-1 w-full p-2 rounded-lg border border-gray-200 bg-white text-xs font-mono font-normal" placeholder="Optional" /></label>
+                          <label className="text-[10px] font-bold text-gray-600">Cabin class<select value={f.cabin || 'Economy'} onChange={e => handleUpdateFlight(idx, { cabin: e.target.value as AIImportFlight['cabin'] })} className="mt-1 w-full p-2 rounded-lg border border-gray-200 bg-white text-xs font-normal"><option>Economy</option><option>Premium Economy</option><option>Business</option><option>First</option></select></label>
+                          <label className="text-[10px] font-bold text-gray-600">Direction<select value={f.direction || 'Inbound'} onChange={e => handleUpdateFlight(idx, { direction: e.target.value as AIImportFlight['direction'] })} className="mt-1 w-full p-2 rounded-lg border border-gray-200 bg-white text-xs font-normal"><option>Inbound</option><option>Outbound</option><option>Internal</option></select></label>
+                          <label className="text-[10px] font-bold text-gray-600 sm:col-span-2">Notes<input value={f.notes || ''} onChange={e => handleUpdateFlight(idx, { notes: e.target.value })} className="mt-1 w-full p-2 rounded-lg border border-gray-200 bg-white text-xs font-normal" placeholder="Optional flight notes" /></label>
                         </div>
-
-                        <div className="flex items-center gap-2">
                           {f.needsReview ? (
                             <button
                               type="button"
@@ -1156,18 +1174,17 @@ export const AIItineraryImportModal: React.FC<AIItineraryImportModalProps> = ({
                           s.needsReview ? 'bg-amber-50/50 border-amber-300' : 'bg-gray-50/60 border-gray-200'
                         }`}
                       >
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <span className="font-bold text-gray-800">{s.hotel}</span>
-                          <span className="text-gray-500 text-[11px] font-medium">{s.roomType}</span>
-                          <span className="text-[11px] font-mono bg-emerald-50 text-emerald-800 px-1.5 py-0.5 rounded">
-                            {s.cin} to {s.cout} ({s.nights}N)
-                          </span>
-                          <span className="text-[10px] bg-amber-50 text-amber-900 px-1.5 py-0.5 rounded font-bold">
-                            {s.meal}
-                          </span>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 w-full">
+                          <label className="text-[10px] font-bold text-gray-600">Property / accommodation name<input value={s.hotel || ''} onChange={e => handleUpdateStay(idx, { hotel: e.target.value, needsReview: true, isReviewed: false })} className="mt-1 w-full p-2 rounded-lg border border-gray-200 bg-white text-xs font-normal" placeholder="Hotel / property name" /></label>
+                          <label className="text-[10px] font-bold text-gray-600">Room type<input value={s.roomType || ''} onChange={e => handleUpdateStay(idx, { roomType: e.target.value, needsReview: true, isReviewed: false })} className="mt-1 w-full p-2 rounded-lg border border-gray-200 bg-white text-xs font-normal" placeholder="Suite, twin room..." /></label>
+                          <label className="text-[10px] font-bold text-gray-600">Check-in<input type="date" value={s.cin || ''} onChange={e => handleUpdateStay(idx, { cin: e.target.value, needsReview: true, isReviewed: false })} className="mt-1 w-full p-2 rounded-lg border border-gray-200 bg-white text-xs font-normal" /></label>
+                          <label className="text-[10px] font-bold text-gray-600">Check-out<input type="date" value={s.cout || ''} onChange={e => handleUpdateStay(idx, { cout: e.target.value, needsReview: true, isReviewed: false })} className="mt-1 w-full p-2 rounded-lg border border-gray-200 bg-white text-xs font-normal" /></label>
+                          <label className="text-[10px] font-bold text-gray-600">Nights<input type="number" min="0" value={s.nights ?? ''} onChange={e => handleUpdateStay(idx, { nights: e.target.value === '' ? undefined : Number(e.target.value) })} className="mt-1 w-full p-2 rounded-lg border border-gray-200 bg-white text-xs font-normal" /></label>
+                          <label className="text-[10px] font-bold text-gray-600">Meal plan<input value={s.meal || ''} onChange={e => handleUpdateStay(idx, { meal: e.target.value })} className="mt-1 w-full p-2 rounded-lg border border-gray-200 bg-white text-xs font-normal" placeholder="B&B, Half board..." /></label>
+                          <label className="text-[10px] font-bold text-gray-600">Rate (as supplied)<input type="number" min="0" value={s.rate ?? ''} onChange={e => handleUpdateStay(idx, { rate: e.target.value === '' ? undefined : Number(e.target.value) })} className="mt-1 w-full p-2 rounded-lg border border-gray-200 bg-white text-xs font-normal" placeholder="Do not guess" /></label>
+                          <label className="text-[10px] font-bold text-gray-600">Assigned passenger names<input value={(s.assignedPaxNames || []).join(', ')} onChange={e => handleUpdateStay(idx, { assignedPaxNames: e.target.value.split(',').map(v => v.trim()).filter(Boolean) })} className="mt-1 w-full p-2 rounded-lg border border-gray-200 bg-white text-xs font-normal" placeholder="Names separated by commas" /></label>
+                          <label className="text-[10px] font-bold text-gray-600 sm:col-span-2 lg:col-span-4">Property notes / requirements<input value={s.notes || ''} onChange={e => handleUpdateStay(idx, { notes: e.target.value })} className="mt-1 w-full p-2 rounded-lg border border-gray-200 bg-white text-xs font-normal" placeholder="Room sharing, dietary or property requirements" /></label>
                         </div>
-
-                        <div className="flex items-center gap-2">
                           {s.needsReview ? (
                             <button
                               type="button"
