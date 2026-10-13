@@ -46,7 +46,7 @@ export const DriverPickupBoard: React.FC<DriverPickupBoardProps> = ({ state, onB
 
   const [placardName, setPlacardName] = useState(defaultPlacardName);
   const [pickupAirport, setPickupAirport] = useState(
-    matchedTransfer?.from || (selectedFlight ? `${selectedFlight.to} International Airport` : 'Cape Town International Airport')
+    matchedTransfer?.from || (selectedFlight?.to ? `${selectedFlight.to} airport — confirm terminal` : 'Airport / pickup location to be confirmed')
   );
   const [pickupPoint, setPickupPoint] = useState(
     matchedTransfer?.meet || 'Meeting point to be confirmed'
