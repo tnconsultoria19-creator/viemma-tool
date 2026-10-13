@@ -42,6 +42,19 @@ interface AIItineraryImportModalProps {
   onApplyItinerary: (updatedState: Partial<AppState>) => void;
 }
 
+const normalizeIdentity = (value?: string) => (value || '').trim().toLocaleLowerCase();
+
+/** Merge by stable record ID, preserving records not mentioned by an import. */
+const mergeRecordsById = <T extends { id: number | string },>(existing: T[], incoming: T[]): T[] => {
+  const merged = [...existing];
+  incoming.forEach(item => {
+    const index = merged.findIndex(record => String(record.id) === String(item.id));
+    if (index < 0) merged.push(item);
+    else merged[index] = { ...merged[index], ...item };
+  });
+  return merged;
+};
+
 const SAMPLE_AI_PAYLOAD: AIItineraryPayload = {
   schemaVersion: "viemma-itinerary-v1",
   tripRef: "VT-2026-8821",
@@ -317,7 +330,7 @@ export const AIItineraryImportModal: React.FC<AIItineraryImportModalProps> = ({
       const processed: AIItineraryPayload = {
         ...parsed,
         schemaVersion: parsed.schemaVersion || 'viemma-itinerary-v1',
-        tripRef: parsed.tripRef || `VT-2026-${Math.floor(1000 + Math.random() * 9000)}`,
+        tripRef: parsed.tripRef || currentState.ref,
         travellers: parsed.travellers.map((g, idx) => ({
           ...g,
           isLead: g.isLead ?? (idx === 0),
@@ -330,15 +343,15 @@ export const AIItineraryImportModal: React.FC<AIItineraryImportModalProps> = ({
           ...f,
           cabin: f.cabin || 'Business',
           direction: f.direction || 'Inbound',
-          needsReview: !f.flightNo || !f.date || f.needsReview,
-          reviewReason: !f.flightNo ? 'Missing flight number' : !f.date ? 'Missing flight departure date' : f.reviewReason
+          needsReview: !f.airline || !f.flightNo || !f.from || !f.to || !f.date || !f.depTime || !f.arrTime || f.needsReview,
+          reviewReason: !f.airline ? 'Missing airline' : !f.flightNo ? 'Missing flight number' : !f.from ? 'Missing origin airport' : !f.to ? 'Missing destination airport' : !f.date ? 'Missing flight date' : !f.depTime ? 'Missing departure time' : !f.arrTime ? 'Missing arrival time' : f.reviewReason
         })),
         accommodations: (parsed.accommodations || []).map(s => ({
           ...s,
           meal: s.meal || 'B&B',
           nights: s.nights || 1,
-          needsReview: !s.hotel || !s.cin || s.needsReview,
-          reviewReason: !s.cin ? 'Missing check-in date' : s.reviewReason
+          needsReview: !s.hotel || !s.roomType || !s.cin || !s.cout || s.needsReview,
+          reviewReason: !s.hotel ? 'Missing property name' : !s.roomType ? 'Missing room type' : !s.cin ? 'Missing check-in date' : !s.cout ? 'Missing check-out date' : s.reviewReason
         })),
         transfers: parsed.transfers || [],
         activities: parsed.activities || []
@@ -410,6 +423,9 @@ export const AIItineraryImportModal: React.FC<AIItineraryImportModalProps> = ({
   // Apply to Master Workspace State
   const handleConfirmAndApply = () => {
     if (!payload) return;
+
+    const hasExistingData = Boolean(currentState.client.name.trim()) || currentState.guests.length > 0 || currentState.flights.length > 0 || currentState.rooms.length > 0 || currentState.transfers.length > 0 || currentState.activities.length > 0;
+    if (hasExistingData && !window.confirm('This booking already contains data. The import will merge into existing records, update matching records with supplied information, and keep records that are not in the import. Missing imported fields will not intentionally clear existing values. Continue?')) return;
 
     // 1. Build Guests with stable IDs
     const guestIdMap = new Map<string, number>();
