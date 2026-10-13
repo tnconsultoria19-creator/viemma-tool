@@ -499,6 +499,17 @@ export const AIItineraryImportModal: React.FC<AIItineraryImportModalProps> = ({
     handleUpdateActivity(idx, { needsReview: false, isReviewed: true });
   };
 
+  const handleUpdateDriver = (idx: number, updates: Partial<AIImportDriver>) => {
+    if (!payload?.drivers) return;
+    const updated = [...payload.drivers];
+    updated[idx] = { ...updated[idx], ...updates };
+    setPayload({ ...payload, drivers: updated });
+  };
+
+  const handleMarkDriverReviewed = (idx: number) => {
+    handleUpdateDriver(idx, { needsReview: false, isReviewed: true });
+  };
+
   const handleMarkAllReviewed = () => {
     if (!payload) return;
     setPayload({
@@ -508,7 +519,8 @@ export const AIItineraryImportModal: React.FC<AIItineraryImportModalProps> = ({
       flights: (payload.flights || []).map(f => ({ ...f, needsReview: false, isReviewed: true })),
       accommodations: (payload.accommodations || []).map(s => ({ ...s, needsReview: false, isReviewed: true })),
       transfers: (payload.transfers || []).map(t => ({ ...t, needsReview: false, isReviewed: true })),
-      activities: (payload.activities || []).map(a => ({ ...a, needsReview: false, isReviewed: true }))
+      activities: (payload.activities || []).map(a => ({ ...a, needsReview: false, isReviewed: true })),
+      drivers: (payload.drivers || []).map(d => ({ ...d, needsReview: false, isReviewed: true }))
     });
   };
 
@@ -848,7 +860,8 @@ export const AIItineraryImportModal: React.FC<AIItineraryImportModalProps> = ({
     (payload.flights || []).filter(f => f.needsReview).length +
     (payload.accommodations || []).filter(s => s.needsReview).length +
     (payload.transfers || []).filter(t => t.needsReview).length +
-    (payload.activities || []).filter(a => a.needsReview).length
+    (payload.activities || []).filter(a => a.needsReview).length +
+    (payload.drivers || []).filter(d => d.needsReview).length
   ) : 0;
 
   return (
