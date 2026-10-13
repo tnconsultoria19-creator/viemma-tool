@@ -215,6 +215,8 @@ Transform the provided travel itinerary, email inquiry, or client brief into a v
   },
   "travellers": [
     {
+      "id": 123,
+      "provisionalLabel": "Optional stable label such as Adult 1 for an unnamed person",
       "first": "First Name",
       "last": "Last Name",
       "preferredName": "Preferred First Name",
@@ -476,22 +478,34 @@ export const AIItineraryImportModal: React.FC<AIItineraryImportModalProps> = ({
 
     // 1. Resolve traveller names to existing people first, then create new IDs only when needed.
     const guestIdMap = new Map<string, number>();
-    let nextGuestId = Math.max(0, ...currentState.guests.map(g => Number(g.id) || 0)) + 1;
+    let nextGuestId = Math.max(0, ...currentState.guests.map(g => Number(g.id) || 0), ...payload.travellers.map(g => Number(g.id) || 0)) + 1;
     const importedGuests: Guest[] = payload.travellers.map((tg, idx) => {
       const first = (tg.first || '').trim();
       const last = (tg.last || '').trim();
+      const suppliedLabel = (tg.provisionalLabel || '').trim();
       const fullName = normalizeIdentity(`${first} ${last}`);
-      const existingGuest = currentState.guests.find(g =>
+      const existingById = tg.id ? currentState.guests.find(g => g.id === tg.id) : undefined;
+      const existingByName = currentState.guests.find(g =>
         Boolean(fullName) && normalizeIdentity(`${g.first} ${g.last}`) === fullName
       );
-      const id = existingGuest?.id ?? nextGuestId++;
+      const existingByLabel = suppliedLabel
+        ? currentState.guests.find(g => g.isProvisional && normalizeIdentity(g.provisionalLabel || g.first) === normalizeIdentity(suppliedLabel))
+        : undefined;
+      const existingGuest = existingById || existingByName || existingByLabel;
+      const suppliedIdAvailable = Boolean(tg.id && !currentState.guests.some(g => g.id === tg.id));
+      const id = existingGuest?.id ?? (suppliedIdAvailable ? tg.id as number : nextGuestId++);
+      const mergedFirst = first || existingGuest?.first || '';
+      const mergedLast = last || existingGuest?.last || '';
+      const mergedIsAnonymous = !mergedFirst && !mergedLast;
+      const resolvedLabel = mergedIsAnonymous ? (suppliedLabel || existingGuest?.provisionalLabel || 'Traveller details pending') : undefined;
       if (fullName) guestIdMap.set(fullName, id);
+      if (resolvedLabel) guestIdMap.set(normalizeIdentity(resolvedLabel), id);
 
       return {
         ...(existingGuest || {} as Guest),
         id,
-        first: first || existingGuest?.first || '',
-        last: last || existingGuest?.last || '',
+        first: mergedFirst,
+        last: mergedLast,
         preferredName: tg.preferredName || existingGuest?.preferredName || '',
         nationality: tg.nationality || existingGuest?.nationality || payload.client.country || '',
         country: tg.country || existingGuest?.country || payload.client.country || '',
@@ -504,7 +518,7 @@ export const AIItineraryImportModal: React.FC<AIItineraryImportModalProps> = ({
         individualEmail: tg.individualEmail || existingGuest?.individualEmail || '',
         individualPhone: tg.individualPhone || existingGuest?.individualPhone || '',
         languagesSpoken: existingGuest?.languagesSpoken || ['English'],
-        isLead: tg.isLead ?? existingGuest?.isLead ?? (idx === 0),
+        isLead: tg.isLead ?? existingGuest?.isLead ?? false,
         notes: tg.notes || existingGuest?.notes || '',
         diet: tg.dietary || existingGuest?.diet || [],
         attachments: existingGuest?.attachments || [],
@@ -523,8 +537,8 @@ export const AIItineraryImportModal: React.FC<AIItineraryImportModalProps> = ({
         roomTypePref: tg.roomPreference || existingGuest?.roomTypePref || '',
         preferencesTransport: existingGuest?.preferencesTransport || [],
         preferencesInterests: existingGuest?.preferencesInterests || [],
-        isProvisional: Boolean(existingGuest?.isProvisional || (!first && !last)),
-        provisionalLabel: (!first && !last) ? (existingGuest?.provisionalLabel || 'Traveller details pending') : undefined,
+        isProvisional: mergedIsAnonymous,
+        provisionalLabel: resolvedLabel,
         leadContactId: existingGuest?.leadContactId
       };
     });
