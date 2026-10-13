@@ -1002,6 +1002,7 @@ export default function App() {
     if (publicShare.role === 'client') {
       return (
         <div className="min-h-screen relative flex flex-col font-sans bg-[#FDFBF7]">
+          <a href={window.location.origin + '/?mode=landing'} className="fixed top-3 left-3 z-[160] px-3.5 py-2 rounded-xl bg-[#1A3326] text-white hover:bg-[#234433] shadow-md text-xs font-bold">← Viemma Tours Home</a>
           <ClientView state={clientDocToAppState(shareDocData)} />
         </div>
       );
@@ -1010,6 +1011,7 @@ export default function App() {
     if (publicShare.role === 'agent') {
       return (
         <div className="min-h-screen relative flex flex-col font-sans bg-slate-950 p-4 md:p-8">
+          <a href={window.location.origin + '/?mode=landing'} className="fixed top-3 left-3 z-[160] px-3.5 py-2 rounded-xl bg-[#1A3326] text-white hover:bg-[#234433] shadow-md text-xs font-bold">← Viemma Tours Home</a>
           <AgentPortalView state={agentDocToAppState(shareDocData)} />
         </div>
       );
@@ -1018,6 +1020,7 @@ export default function App() {
     if (publicShare.role === 'ops') {
       return (
         <div className="min-h-screen relative flex flex-col font-sans bg-slate-100 p-4 md:p-8">
+          <a href={window.location.origin + '/?mode=landing'} className="fixed top-3 left-3 z-[160] px-3.5 py-2 rounded-xl bg-[#1A3326] text-white hover:bg-[#234433] shadow-md text-xs font-bold">← Viemma Tours Home</a>
           <OperatorGroundSheetView state={opsDocToAppState(shareDocData)} />
         </div>
       );
@@ -1123,6 +1126,7 @@ export default function App() {
   if (activeRoleView === 'client') {
     return (
       <div className="min-h-screen relative flex flex-col font-sans bg-[#FDFBF7]">
+        <button type="button" onClick={() => setActiveRoleView('owner')} className="fixed top-3 left-3 z-[160] px-3.5 py-2 rounded-xl bg-[#1A3326] text-white hover:bg-[#234433] shadow-md text-xs font-bold inline-flex items-center gap-2"><ArrowLeft size={14} /> Back to Operations</button>
         <ClientView state={state} onBackToAdmin={() => setActiveRoleView('owner')} />
       </div>
     );
@@ -1131,6 +1135,7 @@ export default function App() {
   if (activeRoleView === 'agent') {
     return (
       <div className="min-h-screen relative flex flex-col font-sans bg-slate-950 p-4 md:p-8">
+        <button type="button" onClick={() => setActiveRoleView('owner')} className="fixed top-3 left-3 z-[160] px-3.5 py-2 rounded-xl bg-[#1A3326] text-white hover:bg-[#234433] shadow-md text-xs font-bold inline-flex items-center gap-2"><ArrowLeft size={14} /> Back to Operations</button>
         <AgentPortalView state={state} onBackToAdmin={() => setActiveRoleView('owner')} />
       </div>
     );
@@ -1139,6 +1144,7 @@ export default function App() {
   if (activeRoleView === 'operator') {
     return (
       <div className="min-h-screen relative flex flex-col font-sans bg-slate-100 p-4 md:p-8">
+        <button type="button" onClick={() => setActiveRoleView('owner')} className="fixed top-3 left-3 z-[160] px-3.5 py-2 rounded-xl bg-[#1A3326] text-white hover:bg-[#234433] shadow-md text-xs font-bold inline-flex items-center gap-2"><ArrowLeft size={14} /> Back to Operations</button>
         <OperatorGroundSheetView state={state} onBackToAdmin={() => setActiveRoleView('owner')} />
       </div>
     );
