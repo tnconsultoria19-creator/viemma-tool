@@ -331,6 +331,11 @@ export const AIItineraryImportModal: React.FC<AIItineraryImportModalProps> = ({
         ...parsed,
         schemaVersion: parsed.schemaVersion || 'viemma-itinerary-v1',
         tripRef: parsed.tripRef || currentState.ref,
+        client: {
+          ...parsed.client,
+          needsReview: Boolean(!parsed.client.email || !parsed.client.phone || !parsed.client.country || !parsed.client.startDate || !parsed.client.endDate || parsed.client.needsReview),
+          reviewReason: !parsed.client.email ? 'Missing client email' : !parsed.client.phone ? 'Missing client phone' : !parsed.client.country ? 'Missing client country' : !parsed.client.startDate ? 'Missing trip start date' : !parsed.client.endDate ? 'Missing trip end date' : parsed.client.reviewReason
+        },
         travellers: parsed.travellers.map((g, idx) => ({
           ...g,
           isLead: g.isLead ?? (idx === 0),
@@ -353,8 +358,16 @@ export const AIItineraryImportModal: React.FC<AIItineraryImportModalProps> = ({
           needsReview: !s.hotel || !s.roomType || !s.cin || !s.cout || s.needsReview,
           reviewReason: !s.hotel ? 'Missing property name' : !s.roomType ? 'Missing room type' : !s.cin ? 'Missing check-in date' : !s.cout ? 'Missing check-out date' : s.reviewReason
         })),
-        transfers: parsed.transfers || [],
-        activities: parsed.activities || []
+        transfers: (parsed.transfers || []).map(t => ({
+          ...t,
+          needsReview: !t.type || !t.from || !t.to || !t.date || !t.time || t.needsReview,
+          reviewReason: !t.from ? 'Missing pickup/origin location' : !t.to ? 'Missing drop-off/destination location' : !t.date ? 'Missing transfer date' : !t.time ? 'Missing transfer time' : !t.type ? 'Missing transfer type' : t.reviewReason
+        })),
+        activities: (parsed.activities || []).map(a => ({
+          ...a,
+          needsReview: !a.name || !a.day || !a.start || !a.dur || a.needsReview,
+          reviewReason: !a.name ? 'Missing activity name' : !a.day ? 'Missing itinerary day' : !a.start ? 'Missing activity start time' : !a.dur ? 'Missing activity duration' : a.reviewReason
+        }))
       };
 
       setPayload(processed);
@@ -409,14 +422,38 @@ export const AIItineraryImportModal: React.FC<AIItineraryImportModalProps> = ({
     handleUpdateStay(idx, { needsReview: false, isReviewed: true });
   };
 
+  const handleUpdateTransfer = (idx: number, updates: Partial<AIImportTransfer>) => {
+    if (!payload?.transfers) return;
+    const updated = [...payload.transfers];
+    updated[idx] = { ...updated[idx], ...updates };
+    setPayload({ ...payload, transfers: updated });
+  };
+
+  const handleMarkTransferReviewed = (idx: number) => {
+    handleUpdateTransfer(idx, { needsReview: false, isReviewed: true });
+  };
+
+  const handleUpdateActivity = (idx: number, updates: Partial<AIImportActivity>) => {
+    if (!payload?.activities) return;
+    const updated = [...payload.activities];
+    updated[idx] = { ...updated[idx], ...updates };
+    setPayload({ ...payload, activities: updated });
+  };
+
+  const handleMarkActivityReviewed = (idx: number) => {
+    handleUpdateActivity(idx, { needsReview: false, isReviewed: true });
+  };
+
   const handleMarkAllReviewed = () => {
     if (!payload) return;
     setPayload({
       ...payload,
-      client: { ...payload.client, needsReview: false },
+      client: { ...payload.client, needsReview: false, isReviewed: true },
       travellers: payload.travellers.map(t => ({ ...t, needsReview: false, isReviewed: true })),
       flights: (payload.flights || []).map(f => ({ ...f, needsReview: false, isReviewed: true })),
-      accommodations: (payload.accommodations || []).map(s => ({ ...s, needsReview: false, isReviewed: true }))
+      accommodations: (payload.accommodations || []).map(s => ({ ...s, needsReview: false, isReviewed: true })),
+      transfers: (payload.transfers || []).map(t => ({ ...t, needsReview: false, isReviewed: true })),
+      activities: (payload.activities || []).map(a => ({ ...a, needsReview: false, isReviewed: true }))
     });
   };
 
@@ -709,7 +746,9 @@ export const AIItineraryImportModal: React.FC<AIItineraryImportModalProps> = ({
     (payload.client.needsReview ? 1 : 0) +
     payload.travellers.filter(t => t.needsReview).length +
     (payload.flights || []).filter(f => f.needsReview).length +
-    (payload.accommodations || []).filter(s => s.needsReview).length
+    (payload.accommodations || []).filter(s => s.needsReview).length +
+    (payload.transfers || []).filter(t => t.needsReview).length +
+    (payload.activities || []).filter(a => a.needsReview).length
   ) : 0;
 
   return (
