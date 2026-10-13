@@ -806,6 +806,44 @@ export const AIItineraryImportModal: React.FC<AIItineraryImportModalProps> = ({
       };
     });
 
+    const assignedDriverIds = new Set<string>();
+    const importedDrivers: Driver[] = (payload.drivers || []).map((d, idx) => {
+      const suppliedId = (d.id || '').trim();
+      const name = (d.name || '').trim();
+      const phone = (d.phone || '').trim();
+      const normalizedName = normalizeIdentity(name);
+      const rawById = suppliedId ? (currentState.drivers || []).find(driver => driver.id === suppliedId) : undefined;
+      const idNameConflicts = Boolean(rawById && normalizedName && normalizeIdentity(rawById.name) !== normalizedName);
+      const existingById = !idNameConflicts && rawById && !assignedDriverIds.has(rawById.id) ? rawById : undefined;
+      const existingByName = normalizedName
+        ? (currentState.drivers || []).find(driver =>
+            normalizeIdentity(driver.name) === normalizedName &&
+            (!phone || !driver.phone || normalizeIdentity(driver.phone) === normalizeIdentity(phone))
+          )
+        : undefined;
+      const existingByPhone = phone
+        ? (currentState.drivers || []).find(driver => normalizeIdentity(driver.phone) === normalizeIdentity(phone))
+        : undefined;
+      const existingDriver = existingById || existingByName || existingByPhone;
+      let id = existingDriver?.id || (suppliedId && !(currentState.drivers || []).some(driver => driver.id === suppliedId) ? suppliedId : 'drv_import_' + Date.now().toString(36) + '_' + idx);
+      if (assignedDriverIds.has(id)) id = 'drv_import_' + Date.now().toString(36) + '_' + idx;
+      assignedDriverIds.add(id);
+      return {
+        ...(existingDriver || {} as Driver),
+        id,
+        name: name || existingDriver?.name || '',
+        preferredName: d.preferredName || existingDriver?.preferredName,
+        phone: phone || existingDriver?.phone || '',
+        email: (d.email || '').trim() || existingDriver?.email || '',
+        prdpExpiryDate: d.prdpExpiryDate || existingDriver?.prdpExpiryDate || undefined,
+        assignedVehicleId: d.assignedVehicleId || existingDriver?.assignedVehicleId || undefined,
+        operationalAvailability: d.operationalAvailability || existingDriver?.operationalAvailability,
+        status: d.status || existingDriver?.status || 'Unavailable',
+        profileStatus: d.profileStatus || existingDriver?.profileStatus || 'Pending Verification',
+        notes: d.notes || existingDriver?.notes || ''
+      };
+    });
+
     // Keep records that weren't mentioned by the import. Matched records reuse their IDs.
     const mergedGuests = mergeRecordsById(currentState.guests, importedGuests);
     const designatedLeadId =
@@ -820,6 +858,7 @@ export const AIItineraryImportModal: React.FC<AIItineraryImportModalProps> = ({
     const mergedRooms = mergeRecordsById(currentState.rooms, importedRooms);
     const mergedTransfers = mergeRecordsById(currentState.transfers, importedTransfers);
     const mergedActivities = mergeRecordsById(currentState.activities, importedActivities);
+    const mergedDrivers = mergeRecordsById(currentState.drivers || [], importedDrivers);
 
     let durationText = currentState.client.durationText;
     if (payload.client.startDate && payload.client.endDate) {
@@ -831,7 +870,7 @@ export const AIItineraryImportModal: React.FC<AIItineraryImportModalProps> = ({
 
     onApplyItinerary({
       ref: currentState.ref,
-      title: payload.tripTitle || `${payload.client.name} Luxury Itinerary`,
+      title: payload.tripTitle || (payload.client.name ? `${payload.client.name} Luxury Itinerary` : currentState.title || 'New Itinerary'),
       client: {
         ...currentState.client,
         name: payload.client.name || currentState.client.name,
@@ -847,7 +886,8 @@ export const AIItineraryImportModal: React.FC<AIItineraryImportModalProps> = ({
       flights: mergedFlights,
       rooms: mergedRooms,
       transfers: mergedTransfers,
-      activities: mergedActivities
+      activities: mergedActivities,
+      drivers: mergedDrivers
     });
 
     onClose();
