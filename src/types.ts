@@ -747,6 +747,16 @@ export interface AIImportActivity {
   start?: string;
   dur?: string;
   pAdult?: number;
+  pChild?: number;
+  nAdult?: number;
+  nChild?: number;
+  flat?: number;
+  pickupLoc?: string;
+  supplier?: string;
+  supPhone?: string;
+  inc?: string[];
+  backup?: string;
+  isFree?: boolean;
   notes?: string;
   needsReview?: boolean;
   reviewReason?: string;
