@@ -17,9 +17,6 @@ export const DriversView: React.FC<DriversViewProps> = ({ state, onUpdateState }
   const [preferredName, setPreferredName] = useState('');
   const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
-  const [licenseNo, setLicenseNo] = useState('');
-  const [licenseCategory, setLicenseCategory] = useState('Code 8 (B) — Light Motor Vehicle');
-  const [prdpNumber, setPrdpNumber] = useState('');
   const [prdpExpiryDate, setPrdpExpiryDate] = useState('');
   const [assignedVehicleId, setAssignedVehicleId] = useState('');
   const [status, setStatus] = useState<Driver['status']>('Available');
@@ -41,7 +38,7 @@ export const DriversView: React.FC<DriversViewProps> = ({ state, onUpdateState }
     }
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    const exp = new Date(expiryDate);
+    const exp = new Date(expiryDate + 'T00:00:00');
     const diffTime = exp.getTime() - today.getTime();
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 
@@ -79,9 +76,6 @@ export const DriversView: React.FC<DriversViewProps> = ({ state, onUpdateState }
       preferredName: preferredName.trim() || undefined,
       phone: phone.trim(),
       email: email.trim(),
-      licenseNo: licenseNo.trim(),
-      licenseCategory: licenseCategory.trim() || undefined,
-      prdpNumber: prdpNumber.trim() || undefined,
       prdpExpiryDate: prdpExpiryDate || undefined,
       assignedVehicleId: assignedVehicleId || undefined,
       operationalAvailability: operationalAvailability || 'Full-time',
@@ -108,9 +102,6 @@ export const DriversView: React.FC<DriversViewProps> = ({ state, onUpdateState }
     setPreferredName('');
     setPhone('');
     setEmail('');
-    setLicenseNo('');
-    setLicenseCategory('Code 8 (B) — Light Motor Vehicle');
-    setPrdpNumber('');
     setPrdpExpiryDate('');
     setAssignedVehicleId('');
     setStatus('Available');
@@ -129,9 +120,6 @@ export const DriversView: React.FC<DriversViewProps> = ({ state, onUpdateState }
     setPreferredName(d.preferredName || '');
     setPhone(d.phone);
     setEmail(d.email);
-    setLicenseNo(d.licenseNo);
-    setLicenseCategory(d.licenseCategory || 'Code 8 (B) — Light Motor Vehicle');
-    setPrdpNumber(d.prdpNumber || '');
     setPrdpExpiryDate(d.prdpExpiryDate || '');
     setAssignedVehicleId(d.assignedVehicleId || '');
     setStatus(d.status);
@@ -234,7 +222,7 @@ export const DriversView: React.FC<DriversViewProps> = ({ state, onUpdateState }
                           <span className="text-[10px] text-gray-400 font-medium italic">({d.preferredName})</span>
                         )}
                       </div>
-                      <p className="text-xs text-gray-500 font-mono">Lic: {d.licenseNo || 'PDP Certified'}</p>
+                      <p className="text-xs text-gray-500">Driver profile</p>
                     </div>
                   </div>
                   <div className="flex flex-col items-end gap-1">
@@ -252,7 +240,7 @@ export const DriversView: React.FC<DriversViewProps> = ({ state, onUpdateState }
                   <div className="flex items-center gap-1.5 min-w-0">
                     <Shield size={13} className="shrink-0" />
                     <span className="truncate">
-                      {d.prdpNumber ? `PrDP: ${d.prdpNumber}` : 'PrDP Permit'}
+                      {d.prdpExpiryDate ? `PrDP expiry: ${d.prdpExpiryDate}` : 'PrDP expiration date not recorded'}
                     </span>
                   </div>
                   <div className="flex items-center gap-1 shrink-0 text-[10px]">
@@ -262,13 +250,6 @@ export const DriversView: React.FC<DriversViewProps> = ({ state, onUpdateState }
                 </div>
 
                 <div className="space-y-2 text-xs border-t border-gray-50 pt-3">
-                  {d.licenseCategory && (
-                    <div className="flex items-center justify-between text-[11px] text-gray-600 bg-gray-50/70 px-2.5 py-1.5 rounded-lg">
-                      <span className="font-semibold text-gray-700">Licence Code:</span>
-                      <span className="font-mono font-medium">{d.licenseCategory}</span>
-                    </div>
-                  )}
-
                   <div className="flex items-center gap-2 text-gray-700">
                     <Phone size={14} className="text-emerald-700 shrink-0" />
                     <span className="font-medium">{d.phone || 'No phone'}</span>
@@ -402,61 +383,16 @@ export const DriversView: React.FC<DriversViewProps> = ({ state, onUpdateState }
                 </div>
               </div>
 
-              {/* SECTION: Professional Driving Permit (PrDP) & Licencing */}
+              {/* SECTION: PrDP Expiration & Compliance */}
               <div className="space-y-3 bg-emerald-50/40 p-4 rounded-2xl border border-emerald-100">
                 <div className="flex items-center gap-1.5">
                   <Shield size={14} className="text-emerald-800" />
-                  <h4 className="text-[11px] font-bold text-[#1A3326] uppercase tracking-wider">
-                    2. Licencing & Professional Driving Permit (PrDP)
-                  </h4>
+                  <h4 className="text-[11px] font-bold text-[#1A3326] uppercase tracking-wider">2. PrDP Expiration & Compliance</h4>
                 </div>
-                
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div className="space-y-1">
-                    <label className="font-bold text-gray-700">Driver Licence Number</label>
-                    <input
-                      type="text"
-                      value={licenseNo}
-                      onChange={(e) => setLicenseNo(e.target.value)}
-                      placeholder="e.g. 8403125089081"
-                      className="w-full p-2.5 rounded-xl border border-gray-200 focus:outline-none focus:border-emerald-600 bg-white"
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <label className="font-bold text-gray-700">Licence Code / Category</label>
-                    <select
-                      value={licenseCategory}
-                      onChange={(e) => setLicenseCategory(e.target.value)}
-                      className="w-full p-2.5 rounded-xl border border-gray-200 focus:outline-none focus:border-emerald-600 bg-white"
-                    >
-                      <option value="Code 8 (B) — Light Motor Vehicle">Code 8 (B) — Light Motor Vehicle (Sedan / SUV)</option>
-                      <option value="Code 10 (C1) — Heavy Motor Vehicle (&lt;16t)">Code 10 (C1) — Heavy Motor Vehicle (&lt;16t / Quantum / Minibus)</option>
-                      <option value="Code 14 (EC) — Extra Heavy Articulated">Code 14 (EC) — Extra Heavy Coach / Bus</option>
-                      <option value="International Driving Permit (IDP)">International Driving Permit (IDP)</option>
-                    </select>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div className="space-y-1">
-                    <label className="font-bold text-gray-700">PrDP Permit Number (Goods & Passengers)</label>
-                    <input
-                      type="text"
-                      value={prdpNumber}
-                      onChange={(e) => setPrdpNumber(e.target.value)}
-                      placeholder="e.g. PrDP-CPT-92841"
-                      className="w-full p-2.5 rounded-xl border border-gray-200 focus:outline-none focus:border-emerald-600 bg-white"
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <label className="font-bold text-gray-700">PrDP Expiry Date</label>
-                    <input
-                      type="date"
-                      value={prdpExpiryDate}
-                      onChange={(e) => setPrdpExpiryDate(e.target.value)}
-                      className="w-full p-2.5 rounded-xl border border-gray-200 focus:outline-none focus:border-emerald-600 bg-white"
-                    />
-                  </div>
+                <div className="space-y-1 max-w-sm">
+                  <label className="font-bold text-gray-700">PrDP / PDP Expiration Date</label>
+                  <input type="date" value={prdpExpiryDate} onChange={(e) => setPrdpExpiryDate(e.target.value)} className="w-full p-2.5 rounded-xl border border-gray-200 focus:outline-none focus:border-emerald-600 bg-white" />
+                  <p className="text-[10px] text-gray-500">The expiry date powers the valid, expiring-soon and expired status indicators.</p>
                 </div>
               </div>
 

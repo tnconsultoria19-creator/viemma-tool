@@ -89,7 +89,7 @@ export interface AttachmentItem {
   url: string;
   uploadedAt: string;
   uploadedBy?: string;
-  recordType: 'booking' | 'guest' | 'hotel' | 'flight';
+  recordType: 'booking' | 'guest' | 'hotel' | 'flight' | 'transfer' | 'activity' | 'driver';
   recordId?: string | number;
   storagePath?: string;
   notes?: string;
@@ -266,6 +266,7 @@ export interface Transfer {
   vehicleId?: string;
   vehiclePlate?: string;
   driverNotes?: string; // Role-specific notes
+  attachments?: AttachmentItem[];
 }
 
 export interface AllocatedRoom {
@@ -294,10 +295,11 @@ export interface Room {
   id: number;
   hotel: string;
   conf: string;
-  pay: 'Unpaid' | 'Deposit Paid' | 'Paid' | 'Negotiation / Pending Confirmation' | 'Fully Paid';
+  pay: 'Unpaid' | 'Deposit Paid' | 'Paid' | 'Negotiation / Pending Confirmation' | 'Fully Paid' | 'Legacy Status — Review Required';
   depositAmount?: number;
   balanceDue?: number;
   paymentNotes?: string;
+  legacyPayStatus?: string;
   status?: 'Requested' | 'Held' | 'Confirmed' | 'Cancelled';
   serviceStatus?: ServiceStatus;
   roomType: string;
@@ -390,6 +392,7 @@ export interface Activity {
   guidePhone?: string;
   guideSourceAgentId?: string;
   guideSourceAgentName?: string;
+  attachments?: AttachmentItem[];
 }
 
 export interface ExperienceLibraryItem {
@@ -481,9 +484,10 @@ export interface Driver {
   preferredName?: string;
   phone: string;
   email: string;
-  licenseNo: string;
-  licenseCategory?: string; // e.g. Code 8 / B, Code 10 / C1, Code 14 / EC
-  prdpNumber?: string; // Professional Driving Permit number
+  // Legacy driver licence / permit-number fields remain optional for older saved records.
+  licenseNo?: string;
+  licenseCategory?: string;
+  prdpNumber?: string;
   prdpExpiryDate?: string; // Expiration date YYYY-MM-DD
   documentExpiryDates?: { docName: string; expiryDate: string }[];
   assignedVehicleId?: string;
@@ -494,6 +498,7 @@ export interface Driver {
   emergencyContactPhone?: string;
   notes: string;
   photoUrl?: string;
+  attachments?: AttachmentItem[];
 }
 
 export type StaffRole = 'Driver' | 'Agent' | 'Employee' | 'Administrator';
@@ -664,6 +669,8 @@ export interface AIImportReviewableField<T = any> {
 }
 
 export interface AIImportGuest {
+  id?: number;
+  provisionalLabel?: string;
   first: string;
   last: string;
   preferredName?: string;
@@ -683,6 +690,7 @@ export interface AIImportGuest {
   customAccommodationRequirements?: CustomRequirementItem[];
   dietary?: string[];
   accessibility?: string[];
+  roomPreference?: string;
   notes?: string;
   needsReview?: boolean;
   reviewReason?: string;
@@ -710,6 +718,8 @@ export interface AIImportFlight {
 
 export interface AIImportStay {
   hotel: string;
+  address?: string;
+  googleMapsUrl?: string;
   roomType?: string;
   meal?: string;
   cin?: string;
@@ -737,6 +747,23 @@ export interface AIImportTransfer {
   isReviewed?: boolean;
 }
 
+export interface AIImportDriver {
+  id?: string;
+  name: string;
+  preferredName?: string;
+  phone?: string;
+  email?: string;
+  prdpExpiryDate?: string;
+  assignedVehicleId?: string;
+  operationalAvailability?: 'Full-time' | 'Part-time' | 'On-Call' | 'Weekend Only';
+  status?: 'Available' | 'Assigned' | 'Off Duty' | 'Unavailable';
+  profileStatus?: 'Active' | 'Suspended' | 'Pending Verification';
+  notes?: string;
+  needsReview?: boolean;
+  reviewReason?: string;
+  isReviewed?: boolean;
+}
+
 export interface AIImportActivity {
   day?: number;
   slot?: 'Morning' | 'Afternoon' | 'Evening' | 'Full Day';
@@ -746,6 +773,16 @@ export interface AIImportActivity {
   start?: string;
   dur?: string;
   pAdult?: number;
+  pChild?: number;
+  nAdult?: number;
+  nChild?: number;
+  flat?: number;
+  pickupLoc?: string;
+  supplier?: string;
+  supPhone?: string;
+  inc?: string[];
+  backup?: string;
+  isFree?: boolean;
   notes?: string;
   needsReview?: boolean;
   reviewReason?: string;
@@ -775,6 +812,7 @@ export interface AIItineraryPayload {
   accommodations?: AIImportStay[];
   transfers?: AIImportTransfer[];
   activities?: AIImportActivity[];
+  drivers?: AIImportDriver[];
   generalNotes?: string;
   warnings?: string[];
 }

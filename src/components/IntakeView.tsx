@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { AppState, Guest, GroupManagement, TripStatus } from '../types';
 import { InfoTooltip } from './InfoTooltip';
+import { AttachmentManager } from './AttachmentManager';
 import { COUNTRIES, DB_DEFAULT } from '../dbDefaults';
 import { 
   Users, 
@@ -62,6 +63,10 @@ export const IntakeView: React.FC<IntakeViewProps> = ({
 
   // Secondary Quick Presets dropdown toggle
   const [showPresetsMenu, setShowPresetsMenu] = useState(false);
+
+  // Bulk create provisional travellers while retaining one record per person.
+  const [quickAddOpen, setQuickAddOpen] = useState(false);
+  const [quickAddCounts, setQuickAddCounts] = useState<Record<'Adult' | 'Elderly' | 'Teen' | 'Child' | 'Infant', number>>({ Adult: 0, Elderly: 0, Teen: 0, Child: 0, Infant: 0 });
 
   // Optional Group Setup Collapsible Accordion (default false - never mandatory!)
   const [showOptionalGroupSetup, setShowOptionalGroupSetup] = useState(false);
@@ -182,6 +187,36 @@ export const IntakeView: React.FC<IntakeViewProps> = ({
   const [customAccessText, setCustomAccessText] = useState('');
   const [customAccomText, setCustomAccomText] = useState('');
 
+  // Quick Add creates one provisional traveller record per person, linked to the current lead where possible.
+  const handleQuickAddTravellers = () => {
+    const total = quickAddCounts.Adult + quickAddCounts.Elderly + quickAddCounts.Teen + quickAddCounts.Child + quickAddCounts.Infant;
+    if (!total) return;
+    const lead = state.guests.find(g => g.isLead);
+    let nextId = Math.max(0, ...state.guests.map(g => Number(g.id) || 0)) + 1;
+    const ageCategories: Guest['age'][] = ['Adult', 'Elderly', 'Teen', 'Child', 'Infant'];
+    const additions: Guest[] = ageCategories.flatMap(age =>
+      Array.from({ length: Math.max(0, Math.floor(quickAddCounts[age] || 0)) }, (_, index) => {
+        const label = `${age} ${index + 1}`;
+        const guest: Guest = {
+          id: nextId++, first: label, last: '', preferredName: '',
+          nationality: lead?.nationality || state.client.country || '',
+          country: lead?.country || state.client.country || '',
+          age, isLead: false, notes: '', isProvisional: true,
+          provisionalLabel: label, leadContactId: lead?.id,
+          relationshipToLead: lead ? 'Group Member' : 'Family Member',
+          customFoodRequirements: [], customAccessibilityRequirements: [], customAccommodationRequirements: [],
+          dietaryReligious: [], dietaryLifestyle: [], dietaryMedical: [], dietaryPreferences: [],
+          accessibilityMobility: [], accessibilityVision: [], accessibilityHearing: [],
+          preferencesAccommodation: [], preferencesTransport: [], preferencesInterests: []
+        };
+        return guest;
+      })
+    );
+    onUpdateState({ guests: [...state.guests, ...additions] });
+    setQuickAddCounts({ Adult: 0, Elderly: 0, Teen: 0, Child: 0, Infant: 0 });
+    setQuickAddOpen(false);
+  };
+
   // Fast Traveller Modal Handlers
   const handleOpenAddGuest = () => {
     setModalGuest({
@@ -242,6 +277,7 @@ export const IntakeView: React.FC<IntakeViewProps> = ({
       emergencyContactRelation: 'Lead Contact',
       languagesSpoken: lead?.languagesSpoken || ['English'],
       isLead: false,
+      leadContactId: lead?.id,
       notes: '',
       customFoodRequirements: [],
       customAccessibilityRequirements: [],
@@ -356,17 +392,20 @@ export const IntakeView: React.FC<IntakeViewProps> = ({
   };
 
   const handleSaveModalGuest = () => {
-    if (!modalGuest.first?.trim() || !modalGuest.last?.trim()) {
-      alert('First and Last name are required to register a traveller.');
+    if (!modalGuest.first?.trim() && !modalGuest.last?.trim()) {
+      alert('Enter at least a first name or surname. For unnamed group members, use Quick Add Group.');
       return;
     }
 
-    const isMarkedLead = modalGuest.isLead || state.guests.length === 0;
+    const isMarkedLead = modalGuest.isLead || (state.guests.length === 0 && !modalGuest.isProvisional);
+    const guestFirst = (modalGuest.first || '').trim();
+    const guestLast = (modalGuest.last || '').trim();
+    const remainsProvisional = Boolean(modalGuest.isProvisional && (!guestFirst || guestFirst === modalGuest.provisionalLabel) && !guestLast);
 
     const savedGuest: Guest = {
-      id: modalGuest.id || Date.now(),
-      first: modalGuest.first.trim(),
-      last: modalGuest.last.trim(),
+      id: modalGuest.id || Math.max(0, ...state.guests.map(g => Number(g.id) || 0)) + 1,
+      first: (modalGuest.first || '').trim(),
+      last: (modalGuest.last || '').trim(),
       preferredName: modalGuest.preferredName?.trim() || '',
       nationality: modalCountrySearch || state.client.country || '🇿🇦 South Africa',
       country: modalCountrySearch || state.client.country || '🇿🇦 South Africa',
@@ -380,7 +419,11 @@ export const IntakeView: React.FC<IntakeViewProps> = ({
       individualPhone: (modalGuest.individualPhone || '').trim(),
       languagesSpoken: modalGuest.languagesSpoken || ['English'],
       isLead: isMarkedLead,
+      isProvisional: remainsProvisional,
+      provisionalLabel: remainsProvisional ? modalGuest.provisionalLabel : undefined,
+      leadContactId: isMarkedLead ? undefined : (modalGuest.leadContactId || state.guests.find(g => g.isLead)?.id),
       notes: modalGuest.notes || '',
+      attachments: modalGuest.attachments || [],
       customFoodRequirements: modalGuest.customFoodRequirements || [],
       customAccessibilityRequirements: modalGuest.customAccessibilityRequirements || [],
       customAccommodationRequirements: modalGuest.customAccommodationRequirements || [],
@@ -413,12 +456,12 @@ export const IntakeView: React.FC<IntakeViewProps> = ({
     if (modalGuest.id) {
       updatedRoster = state.guests.map(g => {
         if (g.id === savedGuest.id) return savedGuest;
-        if (isMarkedLead) return { ...g, isLead: false };
+        if (isMarkedLead) return { ...g, isLead: false, leadContactId: savedGuest.id };
         return g;
       });
     } else {
-      const current = isMarkedLead 
-        ? state.guests.map(g => ({ ...g, isLead: false })) 
+      const current = isMarkedLead
+        ? state.guests.map(g => ({ ...g, isLead: false, leadContactId: savedGuest.id }))
         : state.guests;
       updatedRoster = [...current, savedGuest];
     }
@@ -556,7 +599,16 @@ export const IntakeView: React.FC<IntakeViewProps> = ({
           </div>
 
           {/* Primary Prominent Action: + ADD TRAVELLER */}
-          <div className="flex items-center gap-2 shrink-0">
+          <div className="flex items-center gap-2 shrink-0 flex-wrap">
+            <button
+              type="button"
+              onClick={() => setQuickAddOpen(true)}
+              className="px-4 py-3 rounded-xl border border-gray-200 bg-white hover:bg-gray-50 text-xs font-bold text-[#1A3326] transition flex items-center gap-2 cursor-pointer"
+              title="Add several unnamed travellers at once"
+            >
+              <Users size={15} />
+              <span>Quick Add Group</span>
+            </button>
             <button
               type="button"
               onClick={handleOpenAddGuest}
@@ -652,9 +704,10 @@ export const IntakeView: React.FC<IntakeViewProps> = ({
                   {/* Special Badges (Lead, Dietary, Accessibility) */}
                   <div className="flex flex-wrap gap-1 mt-2.5">
                     {g.isLead && (
-                      <span className="text-[9px] bg-[#D4AF37]/20 text-[#1A3326] px-1.5 py-0.5 rounded font-bold">
-                        ★ Lead
-                      </span>
+                      <span className="text-[9px] bg-[#D4AF37]/20 text-[#1A3326] px-1.5 py-0.5 rounded font-bold">★ Lead</span>
+                    )}
+                    {g.isProvisional && (
+                      <span className="text-[9px] bg-amber-50 text-amber-800 border border-amber-200 px-1.5 py-0.5 rounded font-semibold">Details pending</span>
                     )}
                     {g.dietaryMedical && g.dietaryMedical.length > 0 && (
                       <span className="text-[9px] bg-rose-50 text-rose-700 border border-rose-200 px-1.5 py-0.5 rounded font-semibold">
@@ -680,7 +733,10 @@ export const IntakeView: React.FC<IntakeViewProps> = ({
                           Make Lead
                         </button>
                       ) : (
-                        <span className="text-[10px] text-[#D4AF37] font-bold uppercase">Lead Contact</span>
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="text-[10px] text-[#D4AF37] font-bold uppercase">Lead Contact</span>
+                          <button type="button" onClick={handleOpenAddGuestFromLead} className="text-[10px] text-emerald-700 hover:text-emerald-900 font-bold underline">+ Add named member</button>
+                        </div>
                       )}
                     </div>
 
@@ -1283,6 +1339,56 @@ export const IntakeView: React.FC<IntakeViewProps> = ({
         </div>
       </section>
 
+      {/* BOOKING SOURCE DOCUMENTS: PDFs and reference images */}
+      <section className="bg-white rounded-2xl border border-gray-200 p-5 md:p-6 shadow-xs space-y-3">
+        <div><h2 className="text-xs font-bold uppercase tracking-wider text-[#1A3326]">Booking Attachments</h2><p className="text-xs text-gray-500 mt-1">Keep client emails, supplier quotations, PDFs and reference images with this booking. Use AI Import separately to convert copied details into reviewed JSON.</p></div>
+        <AttachmentManager
+          attachments={state.attachments || []}
+          onAddAttachment={item => onUpdateState({ attachments: [...(state.attachments || []), item] })}
+          onRemoveAttachment={id => onUpdateState({ attachments: (state.attachments || []).filter(item => item.id !== id) })}
+          recordType="booking"
+          recordId={state.ref || 'draft'}
+          bookingRef={state.ref || 'draft'}
+          title="Upload booking documents"
+          description="Drop a PDF, JPG, PNG or WebP file here (up to 15 MB)."
+          onExtractToAI={() => onOpenAIImport?.()}
+        />
+      </section>
+
+      {/* QUICK ADD GROUP MODAL */}
+      {quickAddOpen && (
+        <div className="fixed inset-0 bg-gray-900/50 backdrop-blur-xs flex items-center justify-center z-[115] p-4">
+          <div className="bg-white rounded-2xl max-w-lg w-full shadow-2xl border border-gray-200 overflow-hidden animate-in zoom-in-95 duration-150">
+            <div className="p-5 border-b border-gray-100 bg-slate-50 flex items-center justify-between gap-3">
+              <div>
+                <span className="text-[10px] uppercase tracking-wider font-bold text-[#D4AF37] block">Traveller Roster</span>
+                <h3 className="font-bold text-[#10233F] text-base">Quick Add Group Members</h3>
+                <p className="text-xs text-gray-500 mt-1">Add people by category. Each person gets an individual record that can be completed later.</p>
+              </div>
+              <button type="button" onClick={() => setQuickAddOpen(false)} className="p-2 rounded-lg text-gray-400 hover:bg-gray-100" aria-label="Close quick add"><X size={18} /></button>
+            </div>
+            <div className="p-5 space-y-3">
+              {(!state.guests.some(g => g.isLead)) && <p className="text-xs p-3 rounded-xl bg-amber-50 border border-amber-200 text-amber-900">No lead contact is designated yet. You can add the group now and assign the lead later.</p>}
+              {(['Adult', 'Elderly', 'Teen', 'Child', 'Infant'] as const).map(age => (
+                <div key={age} className="flex items-center justify-between gap-3 p-3 rounded-xl border border-gray-100 bg-white">
+                  <div><span className="font-semibold text-sm text-gray-800">{age === 'Elderly' ? 'Elderly' : age === 'Teen' ? 'Teenagers' : age === 'Child' ? 'Children' : age === 'Infant' ? 'Infants' : 'Adults'}</span><span className="block text-[11px] text-gray-400">{age === 'Adult' ? '18+' : age === 'Elderly' ? 'Senior travellers' : age === 'Teen' ? '12–17 years' : age === 'Child' ? '2–11 years' : 'Under 2 years'}</span></div>
+                  <div className="flex items-center gap-3">
+                    <button type="button" onClick={() => setQuickAddCounts(prev => ({ ...prev, [age]: Math.max(0, prev[age] - 1) }))} className="w-8 h-8 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 font-bold" aria-label={`Remove one ${age}`}>−</button>
+                    <span className="w-5 text-center font-bold text-[#1A3326] tabular-nums">{quickAddCounts[age]}</span>
+                    <button type="button" onClick={() => setQuickAddCounts(prev => ({ ...prev, [age]: Math.min(100, prev[age] + 1) }))} className="w-8 h-8 rounded-lg bg-[#1A3326] text-white hover:bg-[#234433] font-bold" aria-label={`Add one ${age}`}>+</button>
+                  </div>
+                </div>
+              ))}
+              <div className="flex items-center justify-between border-t border-gray-100 pt-4 text-xs"><span className="text-gray-500">Additional travellers</span><strong className="text-[#1A3326] text-base">{quickAddCounts.Adult + quickAddCounts.Elderly + quickAddCounts.Teen + quickAddCounts.Child + quickAddCounts.Infant}</strong></div>
+            </div>
+            <div className="p-4 bg-slate-50 border-t border-gray-100 flex justify-end gap-2">
+              <button type="button" onClick={() => setQuickAddOpen(false)} className="px-4 py-2 rounded-xl border border-gray-200 text-xs font-bold text-gray-600 hover:bg-white">Cancel</button>
+              <button type="button" disabled={Object.values(quickAddCounts).every(count => count === 0)} onClick={handleQuickAddTravellers} className="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 disabled:bg-gray-300 text-white text-xs font-bold shadow-xs">Add Travellers</button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* 5. FAST ADD TRAVELLER MODAL WITH PROGRESSIVE DISCLOSURE */}
       {modalOpen && (
         <div className="fixed inset-0 bg-gray-900/50 backdrop-blur-xs flex items-center justify-center z-[110] p-4">
@@ -1860,7 +1966,28 @@ export const IntakeView: React.FC<IntakeViewProps> = ({
 
             </div>
 
-            {/* Modal Footer */}
+              {/* TRAVELLER DOCUMENTS */}
+              <div className="px-5 pb-4">
+                <div className="rounded-xl border border-gray-200 p-3 space-y-2">
+                  <div>
+                    <h4 className="text-[10px] uppercase tracking-wider font-bold text-[#1A3326]">Traveller Attachments</h4>
+                    <p className="text-[10px] text-gray-500 mt-1">Attach a PDF or image relevant to this traveller. Sensitive documents stay in the existing protected storage workflow.</p>
+                  </div>
+                  <AttachmentManager
+                    attachments={modalGuest.attachments || []}
+                    onAddAttachment={item => setModalGuest({ ...modalGuest, attachments: [...(modalGuest.attachments || []), item] })}
+                    onRemoveAttachment={id => setModalGuest({ ...modalGuest, attachments: (modalGuest.attachments || []).filter(item => item.id !== id) })}
+                    recordType="guest"
+                    recordId={modalGuest.id || `draft-${state.ref || 'booking'}`}
+                    bookingRef={state.ref || 'draft'}
+                    title="Upload traveller document or image"
+                    description="PDF, JPG, PNG or WebP up to 15 MB."
+                    onExtractToAI={() => onOpenAIImport?.()}
+                  />
+                </div>
+              </div>
+
+              {/* Modal Footer */}
             <div className="p-4 border-t border-gray-100 bg-slate-50 flex justify-end gap-2.5 shrink-0">
               <button
                 type="button"

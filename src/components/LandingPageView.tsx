@@ -12,7 +12,7 @@ export const LandingPageView: React.FC<Props> = ({ onSelectMode }) => {
       {/* Background Graphic elements - Crisp & Vivid Botanical Image */}
       <div className="absolute inset-0 z-0 pointer-events-none">
         <img 
-          src="https://images.pexels.com/photos/7843687/pexels-photo-7843687.jpeg?auto=compress&cs=tinysrgb&w=1920" 
+          src="/hero-bg.jpg" 
           alt="Lush Green Plant Background" 
           className="w-full h-full object-cover" 
         />

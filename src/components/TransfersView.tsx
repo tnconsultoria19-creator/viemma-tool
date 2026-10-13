@@ -54,9 +54,10 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
       flight: '',
       dist: '',
       dur: '',
-      vehicle: 'Mercedes V-Class — 7 Seater',
-      driver: 'Sipho Khumalo',
-      driverPhone: '+27 60 555 1234',
+      vehicle: '',
+      driver: '',
+      driverPhone: '',
+      driverId: undefined,
       paxCount: state.guests.length || 0,
       paxIds: state.guests.map(g => g.id), // Default all guests
       bagHand: state.guests.length || 0,
@@ -85,6 +86,83 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
       return;
     }
 
+    const selectedDriverId = tForm.driverId || (state.drivers || []).find(d => d.name === tForm.driver)?.id ||
+      (tForm.driver ? 'legacy:' + tForm.driver.trim().toLocaleLowerCase() : '');
+    const selectedDriver = (state.drivers || []).find(d => d.id === selectedDriverId);
+    const parseTimeMinutes = (value?: string) => {
+      const match = (value || '').trim().match(/^([01]?\d|2[0-3]):([0-5]\d)$/);
+      return match ? Number(match[1]) * 60 + Number(match[2]) : null;
+    };
+    const parseDurationMinutes = (value?: string) => {
+      const text = (value || '').trim().toLocaleLowerCase();
+      const hour = text.match(/(\d+(?:\.\d+)?)\s*(?:h|hr|hrs|hour|hours)\b/);
+      const minute = text.match(/(\d+(?:\.\d+)?)\s*(?:m|min|mins|minute|minutes)\b/);
+      if (!hour && !minute) return null;
+      return (hour ? Number(hour[1]) * 60 : 0) + (minute ? Number(minute[1]) : 0);
+    };
+    const newStart = parseTimeMinutes(tForm.time);
+    const newDuration = parseDurationMinutes(tForm.dur);
+    const schedulingWarnings: string[] = [];
+    if (tForm.driver && !selectedDriver) {
+      schedulingWarnings.push('Driver "' + tForm.driver + '" is not in the shared driver directory; PrDP/PDP expiry cannot be checked.');
+    }
+
+    if (selectedDriver) {
+      const expiry = selectedDriver.prdpExpiryDate ? new Date(selectedDriver.prdpExpiryDate + 'T00:00:00') : null;
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const daysLeft = expiry && !Number.isNaN(expiry.getTime()) ? Math.ceil((expiry.getTime() - today.getTime()) / 86400000) : null;
+      if (daysLeft === null) schedulingWarnings.push(selectedDriver.name + ': PrDP/PDP expiry date not provided.');
+      else if (daysLeft < 0) schedulingWarnings.push(selectedDriver.name + ': PrDP/PDP expired on ' + selectedDriver.prdpExpiryDate + '.');
+      else if (daysLeft <= 45) schedulingWarnings.push(selectedDriver.name + ': PrDP/PDP expires in ' + daysLeft + ' day(s).');
+      if (selectedDriver.status === 'Off Duty' || selectedDriver.status === 'Unavailable') {
+        schedulingWarnings.push(selectedDriver.name + ': driver status is ' + selectedDriver.status + '.');
+      }
+    }
+
+    (state.transfers || []).forEach(existing => {
+        if (existing.id === tForm.id || existing.date !== (tForm.date || '') || !existing.date) return;
+        const existingDriver = existing.driverId || (state.drivers || []).find(d => d.name === existing.driver)?.id ||
+          (existing.driver ? 'legacy:' + existing.driver.trim().toLocaleLowerCase() : '');
+        const driverMatch = Boolean(selectedDriverId && existingDriver && existingDriver === selectedDriverId);
+        const newVehicle = (tForm.vehicle || '').trim().toLocaleLowerCase();
+        const sameVehicle = Boolean(newVehicle && (existing.vehicle || '').trim().toLocaleLowerCase() === newVehicle);
+        if (!driverMatch && !sameVehicle) return;
+        const existingStart = parseTimeMinutes(existing.time);
+        if (newStart === null || existingStart === null) return;
+        const existingDuration = parseDurationMinutes(existing.dur);
+        let definitelyOverlaps = false;
+        let potentialOverlap = false;
+        if (newDuration !== null && existingDuration !== null) {
+          definitelyOverlaps = newStart < existingStart + existingDuration && existingStart < newStart + newDuration;
+        } else if (newDuration !== null) {
+          definitelyOverlaps = existingStart >= newStart && existingStart < newStart + newDuration;
+          potentialOverlap = !definitelyOverlaps;
+        } else if (existingDuration !== null) {
+          definitelyOverlaps = newStart >= existingStart && newStart < existingStart + existingDuration;
+          potentialOverlap = !definitelyOverlaps;
+        } else {
+          potentialOverlap = newStart === existingStart;
+        }
+        const resourceLabel = driverMatch && sameVehicle ? 'Driver and vehicle conflict' : driverMatch ? 'Driver conflict' : 'Vehicle conflict';
+        const resourceName = driverMatch && sameVehicle
+          ? (selectedDriver?.name || tForm.driver || 'selected driver') + ' / ' + newVehicle
+          : driverMatch
+            ? (selectedDriver?.name || tForm.driver || 'selected driver')
+            : newVehicle;
+        if (definitelyOverlaps) {
+          schedulingWarnings.push(resourceLabel + ': another assignment on ' + existing.date + ' at ' + (existing.time || 'time TBC') + ' already uses ' + resourceName + '.');
+        } else if (potentialOverlap) {
+          schedulingWarnings.push('Potential ' + resourceLabel.toLocaleLowerCase() + ': another same-day assignment for ' + resourceName + ' has missing duration data; verify the schedule.');
+        }
+    });
+
+    if (schedulingWarnings.length && !window.confirm(
+      'Review driver compliance and schedule warnings before saving:\n\n• ' +
+      schedulingWarnings.join('\n• ') +
+      '\n\nCancel to change the driver or schedule. Continue only if the assignment has been checked.'
+    )) return;
+
     const savedTransfer: Transfer = {
       id: tForm.id || Date.now(),
       type: tForm.type || 'Airport Arrival',
@@ -101,6 +179,7 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
       vehicle: tForm.vehicle || '',
       driver: tForm.driver || '',
       driverPhone: tForm.driverPhone || '',
+      driverId: tForm.driverId || state.drivers.find(d => d.name === tForm.driver)?.id,
       paxCount: tForm.paxIds?.length || 0,
       paxIds: tForm.paxIds || [],
       bagHand: Number(tForm.bagHand) || 0,
@@ -168,11 +247,20 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
 
   const handleDriverChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const val = e.target.value;
-    const dObj = DB_DEFAULT.drivers.find(d => d.name === val);
+    if (!val) {
+      setTForm({ ...tForm, driverId: undefined, driver: '', driverPhone: '' });
+      return;
+    }
+    if (val.startsWith('legacy:')) {
+      setTForm({ ...tForm, driverId: undefined, driver: val.slice('legacy:'.length) });
+      return;
+    }
+    const driverRecord = (state.drivers || []).find(d => d.id === val);
     setTForm({
       ...tForm,
-      driver: val,
-      driverPhone: dObj?.phone || ''
+      driverId: driverRecord?.id,
+      driver: driverRecord?.name || '',
+      driverPhone: driverRecord?.phone || ''
     });
   };
 
@@ -441,14 +529,19 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
                 <div className="space-y-1.5">
                   <label className="text-[11px] text-gray-500 font-bold uppercase tracking-wider block">Chauffeur Driver</label>
                   <select 
-                    value={tForm.driver || ''} 
+                    value={tForm.driverId || (state.drivers || []).find(d => d.name === tForm.driver)?.id || (tForm.driver ? `legacy:${tForm.driver}` : '')}
                     onChange={handleDriverChange}
                     className="w-full h-11 px-4 rounded-xl border border-gray-200 text-xs font-semibold text-gray-700 bg-white hover:border-[#D4AF37] focus:border-[#D4AF37] transition duration-200"
                   >
                     <option value="">Choose Driver...</option>
-                    {DB_DEFAULT.drivers.map(d => (
-                      <option key={d.name} value={d.name}>{d.name} — {d.phone}</option>
-                    ))}
+                    {tForm.driver && !(state.drivers || []).some(d => d.id === tForm.driverId || d.name === tForm.driver) && <option value={`legacy:${tForm.driver}`}>{tForm.driver} — saved assignment</option>}
+                    {(state.drivers || []).map(d => {
+                      const expiry = d.prdpExpiryDate ? new Date(`${d.prdpExpiryDate}T00:00:00`) : null;
+                      const today = new Date(); today.setHours(0, 0, 0, 0);
+                      const daysLeft = expiry ? Math.ceil((expiry.getTime() - today.getTime()) / 86400000) : null;
+                      const compliance = daysLeft === null ? ' · Expiry not recorded' : daysLeft < 0 ? ' · PrDP expired' : daysLeft <= 45 ? ' · PrDP expiring soon' : '';
+                      return <option key={d.id} value={d.id}>{d.name} — {d.phone || 'No phone'}{compliance}</option>;
+                    })}
                   </select>
                 </div>
 

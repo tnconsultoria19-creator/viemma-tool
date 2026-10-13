@@ -8,7 +8,7 @@ interface DailyTimelinesViewProps {
 }
 
 export const DailyTimelinesView: React.FC<DailyTimelinesViewProps> = ({ state, onUpdateState }) => {
-  const [selectedDate, setSelectedDate] = useState<string>(new Date().toISOString().split('T')[0]);
+  const [selectedDate, setSelectedDate] = useState<string>(state.client.startDate || new Date().toISOString().split('T')[0]);
   const [filterType, setFilterType] = useState<'ALL' | 'TRANSFERS' | 'FLIGHTS' | 'ACTIVITIES' | 'HOTELS'>('ALL');
   const [selectedDriver, setSelectedDriver] = useState<string>('ALL');
 
@@ -17,18 +17,29 @@ export const DailyTimelinesView: React.FC<DailyTimelinesViewProps> = ({ state, o
   const flights = state.flights || [];
   const activities = state.activities || [];
   const rooms = state.rooms || [];
+  const activityDate = (day?: number) => {
+    if (!state.client.startDate || !day || day < 1) return '';
+    const start = new Date(state.client.startDate + 'T00:00:00');
+    if (Number.isNaN(start.getTime())) return '';
+    start.setDate(start.getDate() + day - 1);
+    return [
+      start.getFullYear(),
+      String(start.getMonth() + 1).padStart(2, '0'),
+      String(start.getDate()).padStart(2, '0')
+    ].join('-');
+  };
 
   // Unified items list
   const timelineItems = [
     ...transfers.map(t => ({
       id: `trf_${t.id}`,
       type: 'TRANSFER' as const,
-      time: t.time || '09:00',
-      date: t.date || selectedDate,
+      time: t.time || 'Time TBC',
+      date: t.date || '',
       title: `${t.type}: ${t.from} → ${t.to}`,
       subtitle: `Meet: ${t.meet} (${t.sign})`,
-      driver: t.driver,
-      vehicle: t.vehicle,
+      driver: t.driver || 'Driver to be assigned',
+      vehicle: t.vehicle || 'Vehicle to be assigned',
       status: t.status,
       paxCount: t.paxCount,
       originalObj: t
@@ -36,46 +47,48 @@ export const DailyTimelinesView: React.FC<DailyTimelinesViewProps> = ({ state, o
     ...flights.map(f => ({
       id: `flt_${f.id}`,
       type: 'FLIGHT' as const,
-      time: f.depTime || '10:00',
-      date: f.date || selectedDate,
+      time: f.depTime || 'Time TBC',
+      date: f.date || '',
       title: `Flight ${f.airline} ${f.flightNo} (${f.from} → ${f.to})`,
       subtitle: `PNR: ${f.pnr} | Cabin: ${f.cabin}`,
       driver: 'N/A',
       vehicle: 'N/A',
       status: f.status,
-      paxCount: f.paxIds?.length || 1,
+      paxCount: f.paxIds?.length || 0,
       originalObj: f
     })),
     ...activities.map(a => ({
       id: `act_${a.id}`,
       type: 'ACTIVITY' as const,
-      time: a.start || '14:00',
-      date: selectedDate, // Default or day match
+      time: a.start || 'Time TBC',
+      date: activityDate(a.day),
       title: a.name,
       subtitle: `Pickup: ${a.pickup} | Conf: ${a.conf}`,
-      driver: 'Assigned Guide',
-      vehicle: 'Transfer Fleet',
+      driver: 'N/A',
+      vehicle: 'N/A',
       status: a.status,
-      paxCount: a.paxIds?.length || 2,
+      paxCount: a.paxIds?.length || 0,
       originalObj: a
     })),
     ...rooms.map(r => ({
       id: `room_${r.id}`,
       type: 'HOTEL' as const,
-      time: '14:00 (Check-in)',
-      date: r.cin || selectedDate,
+      time: r.checkInTime ? `${r.checkInTime} (Check-in)` : 'Check-in time TBC',
+      date: r.cin || '',
       title: `Hotel Stay: ${r.hotel}`,
       subtitle: `Room: ${r.roomType} | Basis: ${r.meal}`,
       driver: 'N/A',
       vehicle: 'N/A',
-      status: r.status || 'Confirmed',
-      paxCount: r.guestIds?.length || 2,
+      status: r.status || 'Pending Confirmation',
+      paxCount: r.guestIds?.length || 0,
       originalObj: r
     }))
   ];
 
   // Filter items
   const filteredItems = timelineItems.filter(item => {
+    // Date filter is based on actual scheduled dates; undated items remain unassigned.
+    if (item.date !== selectedDate) return false;
     if (filterType === 'TRANSFERS' && item.type !== 'TRANSFER') return false;
     if (filterType === 'FLIGHTS' && item.type !== 'FLIGHT') return false;
     if (filterType === 'ACTIVITIES' && item.type !== 'ACTIVITY') return false;

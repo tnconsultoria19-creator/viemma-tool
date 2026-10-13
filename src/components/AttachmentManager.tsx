@@ -224,7 +224,7 @@ export const AttachmentManager: React.FC<AttachmentManagerProps> = ({
                     <button
                       type="button"
                       onClick={() => onExtractToAI(att)}
-                      title="Send to AI Importer for data extraction"
+                      title="Open AI importer after copying details from this file"
                       className="p-1.5 rounded-lg hover:bg-emerald-50 text-emerald-800 transition cursor-pointer"
                     >
                       <Sparkles size={14} />

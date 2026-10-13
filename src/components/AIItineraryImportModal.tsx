@@ -11,7 +11,9 @@ import {
   AIImportFlight, 
   AIImportStay, 
   AIImportTransfer, 
-  AIImportActivity 
+  AIImportActivity,
+  AIImportDriver,
+  Driver
 } from '../types';
 import { 
   Sparkles, 
@@ -41,6 +43,19 @@ interface AIItineraryImportModalProps {
   currentState: AppState;
   onApplyItinerary: (updatedState: Partial<AppState>) => void;
 }
+
+const normalizeIdentity = (value?: string) => (value || '').trim().toLocaleLowerCase();
+
+/** Merge by stable record ID, preserving records not mentioned by an import. */
+const mergeRecordsById = <T extends { id: number | string },>(existing: T[], incoming: T[]): T[] => {
+  const merged = [...existing];
+  incoming.forEach(item => {
+    const index = merged.findIndex(record => String(record.id) === String(item.id));
+    if (index < 0) merged.push(item);
+    else merged[index] = { ...merged[index], ...item };
+  });
+  return merged;
+};
 
 const SAMPLE_AI_PAYLOAD: AIItineraryPayload = {
   schemaVersion: "viemma-itinerary-v1",
@@ -179,7 +194,7 @@ const SAMPLE_AI_PAYLOAD: AIItineraryPayload = {
 };
 
 const LLM_SYSTEM_PROMPT = `You are a specialist Travel Operations parser for Viemma Tours (Bespoke Southern Africa Luxury Travel OS).
-Transform the provided travel itinerary, email inquiry, or client brief into a valid, strict JSON payload matching the "viemma-itinerary-v1" schema below.
+Transform the provided travel itinerary, email inquiry, client brief, driver roster, or operations note into a valid, strict JSON payload matching "viemma-itinerary-v1". This is a reusable partial importer: include only the sections supported by the source. For a driver-only import, include a "drivers" array and do not fabricate a client, travellers, or trip details. For any other partial import, do not invent unrelated sections.
 
 ### Output JSON Requirements:
 1. MUST output ONLY valid JSON without markdown wrapping or commentary.
@@ -202,6 +217,8 @@ Transform the provided travel itinerary, email inquiry, or client brief into a v
   },
   "travellers": [
     {
+      "id": 123,
+      "provisionalLabel": "Optional stable label such as Adult 1 for an unnamed person",
       "first": "First Name",
       "last": "Last Name",
       "preferredName": "Preferred First Name",
@@ -210,6 +227,8 @@ Transform the provided travel itinerary, email inquiry, or client brief into a v
       "relationshipToLead": "Primary Contact" | "Spouse" | "Child" | "Friend",
       "isLead": true | false,
       "dietary": ["Vegetarian", "Gluten-Free", ...],
+      "accessibility": ["Wheelchair", "Step-free access", ...],
+      "roomPreference": "Room type / sharing preference if supplied",
       "notes": "..."
     }
   ],
@@ -231,6 +250,8 @@ Transform the provided travel itinerary, email inquiry, or client brief into a v
   "accommodations": [
     {
       "hotel": "Hotel Name (Area)",
+      "address": "Full street address if provided",
+      "googleMapsUrl": "Google Maps share URL if provided",
       "roomType": "Deluxe / Superior / Suite",
       "meal": "B&B" | "HB" | "FB" | "AI",
       "cin": "YYYY-MM-DD",
@@ -242,7 +263,7 @@ Transform the provided travel itinerary, email inquiry, or client brief into a v
   ],
   "transfers": [
     {
-      "type": "Airport Arrival" | "Airport Departure" | "Inter-Hotel" | "Day Excursion",
+      "type": "Airport Arrival" | "Airport Departure" | "Inter-Hotel" | "Activity Transfer" | "Full-Day Vehicle" | "Point-to-Point",
       "date": "YYYY-MM-DD",
       "time": "HH:MM",
       "from": "Origin",
@@ -259,8 +280,24 @@ Transform the provided travel itinerary, email inquiry, or client brief into a v
       "dur": "3 hours",
       "pAdult": 450
     }
+  ],
+  "drivers": [
+    {
+      "id": "Existing stable driver ID only if supplied",
+      "name": "Driver name",
+      "preferredName": "Optional preferred name",
+      "phone": "Contact number if supplied",
+      "email": "Email if supplied",
+      "prdpExpiryDate": "YYYY-MM-DD if supplied; never infer",
+      "assignedVehicleId": "Existing vehicle ID only if supplied",
+      "operationalAvailability": "Full-time" | "Part-time" | "On-Call" | "Weekend Only",
+      "status": "Available" | "Assigned" | "Off Duty" | "Unavailable",
+      "profileStatus": "Active" | "Suspended" | "Pending Verification",
+      "notes": "Only source-supported notes"
+    }
   ]
-}`;
+}
+Never create driver licence numbers, licence categories or PrDP/PDP numbers. If a driver's expiry date is not present, leave prdpExpiryDate blank and flag it for review. Unknown driver status is not the same as Available.`;
 
 export const AIItineraryImportModal: React.FC<AIItineraryImportModalProps> = ({
   isOpen,
@@ -306,42 +343,80 @@ export const AIItineraryImportModal: React.FC<AIItineraryImportModalProps> = ({
       const parsed = JSON.parse(clean) as AIItineraryPayload;
 
       // Validation
-      if (!parsed.client || !parsed.client.name) {
-        throw new Error('Missing client object or client.name in payload.');
+      const hasImportableData =
+        Boolean(parsed.client?.name) ||
+        Boolean(parsed.travellers?.length) ||
+        Boolean(parsed.flights?.length) ||
+        Boolean(parsed.accommodations?.length) ||
+        Boolean(parsed.transfers?.length) ||
+        Boolean(parsed.activities?.length) ||
+        Boolean(parsed.drivers?.length);
+      if (!hasImportableData) {
+        throw new Error('No importable records found. Include at least one client, traveller, flight, accommodation, transfer, activity, or driver section.');
       }
-      if (!parsed.travellers || !Array.isArray(parsed.travellers) || parsed.travellers.length === 0) {
-        throw new Error('At least one traveller must be listed in "travellers" array.');
-      }
+
+      // A section may be omitted for partial imports. Do not require dummy clients or travellers.
+      const clientSource = parsed.client || ({} as AIItineraryPayload['client']);
+      const hasClientSource = Boolean(parsed.client && (
+        parsed.client.name || parsed.client.email || parsed.client.phone || parsed.client.country ||
+        parsed.client.startDate || parsed.client.endDate || parsed.client.occasion || parsed.client.notes
+      ));
 
       // Pre-process items for review
       const processed: AIItineraryPayload = {
         ...parsed,
         schemaVersion: parsed.schemaVersion || 'viemma-itinerary-v1',
-        tripRef: parsed.tripRef || `VT-2026-${Math.floor(1000 + Math.random() * 9000)}`,
-        travellers: parsed.travellers.map((g, idx) => ({
+        tripRef: parsed.tripRef || currentState.ref,
+        client: {
+          ...clientSource,
+          name: clientSource.name || currentState.client.name || '',
+          email: clientSource.email || currentState.client.email || '',
+          phone: clientSource.phone || currentState.client.phone || '',
+          country: clientSource.country || currentState.client.country || '',
+          startDate: clientSource.startDate || currentState.client.startDate || '',
+          endDate: clientSource.endDate || currentState.client.endDate || '',
+          occasion: clientSource.occasion || currentState.client.occasion || '',
+          notes: clientSource.notes || currentState.client.notes || '',
+          needsReview: hasClientSource && Boolean(!clientSource.name || !clientSource.email || !clientSource.phone || !clientSource.country || !clientSource.startDate || !clientSource.endDate || clientSource.needsReview),
+          reviewReason: hasClientSource ? (!clientSource.name ? 'Missing client name' : !clientSource.email ? 'Missing client email' : !clientSource.phone ? 'Missing client phone' : !clientSource.country ? 'Missing client country' : !clientSource.startDate ? 'Missing trip start date' : !clientSource.endDate ? 'Missing trip end date' : clientSource.reviewReason) : ''
+        },
+        travellers: (parsed.travellers || []).map((g, idx) => ({
           ...g,
-          isLead: g.isLead ?? (idx === 0),
-          age: g.age || 'Adult',
-          nationality: g.nationality || parsed.client.country || '🇿🇦 South Africa',
-          needsReview: !g.last || !g.first || g.needsReview,
-          reviewReason: !g.last ? 'Missing traveller surname' : g.reviewReason
+          isLead: g.isLead ?? false,
+          age: g.age,
+          nationality: g.nationality || parsed.client.country || '',
+          needsReview: !g.last || !g.first || !g.age || (!g.nationality && !parsed.client.country) || g.needsReview,
+          reviewReason: !g.last ? 'Missing traveller surname' : !g.first ? 'Missing traveller first name' : !g.age ? 'Missing traveller age category' : (!g.nationality && !parsed.client.country) ? 'Missing traveller nationality' : g.reviewReason
         })),
         flights: (parsed.flights || []).map(f => ({
           ...f,
-          cabin: f.cabin || 'Business',
-          direction: f.direction || 'Inbound',
-          needsReview: !f.flightNo || !f.date || f.needsReview,
-          reviewReason: !f.flightNo ? 'Missing flight number' : !f.date ? 'Missing flight departure date' : f.reviewReason
+          cabin: f.cabin,
+          direction: f.direction,
+          needsReview: !f.airline || !f.flightNo || !f.from || !f.to || !f.date || !f.depTime || !f.arrTime || !f.cabin || !f.direction || f.needsReview,
+          reviewReason: !f.airline ? 'Missing airline' : !f.flightNo ? 'Missing flight number' : !f.from ? 'Missing origin airport' : !f.to ? 'Missing destination airport' : !f.date ? 'Missing flight date' : !f.depTime ? 'Missing departure time' : !f.arrTime ? 'Missing arrival time' : !f.cabin ? 'Missing cabin class' : !f.direction ? 'Missing flight direction' : f.reviewReason
         })),
         accommodations: (parsed.accommodations || []).map(s => ({
           ...s,
-          meal: s.meal || 'B&B',
-          nights: s.nights || 1,
-          needsReview: !s.hotel || !s.cin || s.needsReview,
-          reviewReason: !s.cin ? 'Missing check-in date' : s.reviewReason
+          meal: s.meal,
+          nights: s.nights,
+          needsReview: !s.hotel || !s.roomType || !s.cin || !s.cout || s.needsReview,
+          reviewReason: !s.hotel ? 'Missing property name' : !s.roomType ? 'Missing room type' : !s.cin ? 'Missing check-in date' : !s.cout ? 'Missing check-out date' : s.reviewReason
         })),
-        transfers: parsed.transfers || [],
-        activities: parsed.activities || []
+        transfers: (parsed.transfers || []).map(t => ({
+          ...t,
+          needsReview: !t.type || !t.from || !t.to || !t.date || !t.time || t.needsReview,
+          reviewReason: !t.from ? 'Missing pickup/origin location' : !t.to ? 'Missing drop-off/destination location' : !t.date ? 'Missing transfer date' : !t.time ? 'Missing transfer time' : !t.type ? 'Missing transfer type' : t.reviewReason
+        })),
+        activities: (parsed.activities || []).map(a => ({
+          ...a,
+          needsReview: !a.name || !a.day || !a.start || !a.dur || a.needsReview,
+          reviewReason: !a.name ? 'Missing activity name' : !a.day ? 'Missing itinerary day' : !a.start ? 'Missing activity start time' : !a.dur ? 'Missing activity duration' : a.reviewReason
+        })),
+        drivers: (parsed.drivers || []).map(d => ({
+          ...d,
+          needsReview: !d.name || !d.prdpExpiryDate || (!(d.phone || d.email)) || d.needsReview,
+          reviewReason: !d.name ? 'Missing driver name' : !d.prdpExpiryDate ? 'PrDP/PDP expiry date not supplied' : (!(d.phone || d.email)) ? 'No driver phone or email supplied' : d.reviewReason
+        }))
       };
 
       setPayload(processed);
@@ -366,7 +441,13 @@ export const AIItineraryImportModal: React.FC<AIItineraryImportModalProps> = ({
   const handleUpdateTraveller = (idx: number, updates: Partial<AIImportGuest>) => {
     if (!payload) return;
     const updated = [...payload.travellers];
-    updated[idx] = { ...updated[idx], ...updates };
+    if (updates.isLead === true) {
+      updated.forEach((traveller, index) => {
+        updated[index] = { ...traveller, isLead: index === idx };
+      });
+    } else {
+      updated[idx] = { ...updated[idx], ...updates };
+    }
     setPayload({ ...payload, travellers: updated });
   };
 
@@ -396,14 +477,50 @@ export const AIItineraryImportModal: React.FC<AIItineraryImportModalProps> = ({
     handleUpdateStay(idx, { needsReview: false, isReviewed: true });
   };
 
+  const handleUpdateTransfer = (idx: number, updates: Partial<AIImportTransfer>) => {
+    if (!payload?.transfers) return;
+    const updated = [...payload.transfers];
+    updated[idx] = { ...updated[idx], ...updates };
+    setPayload({ ...payload, transfers: updated });
+  };
+
+  const handleMarkTransferReviewed = (idx: number) => {
+    handleUpdateTransfer(idx, { needsReview: false, isReviewed: true });
+  };
+
+  const handleUpdateActivity = (idx: number, updates: Partial<AIImportActivity>) => {
+    if (!payload?.activities) return;
+    const updated = [...payload.activities];
+    updated[idx] = { ...updated[idx], ...updates };
+    setPayload({ ...payload, activities: updated });
+  };
+
+  const handleMarkActivityReviewed = (idx: number) => {
+    handleUpdateActivity(idx, { needsReview: false, isReviewed: true });
+  };
+
+  const handleUpdateDriver = (idx: number, updates: Partial<AIImportDriver>) => {
+    if (!payload?.drivers) return;
+    const updated = [...payload.drivers];
+    updated[idx] = { ...updated[idx], ...updates };
+    setPayload({ ...payload, drivers: updated });
+  };
+
+  const handleMarkDriverReviewed = (idx: number) => {
+    handleUpdateDriver(idx, { needsReview: false, isReviewed: true });
+  };
+
   const handleMarkAllReviewed = () => {
     if (!payload) return;
     setPayload({
       ...payload,
-      client: { ...payload.client, needsReview: false },
+      client: { ...payload.client, needsReview: false, isReviewed: true },
       travellers: payload.travellers.map(t => ({ ...t, needsReview: false, isReviewed: true })),
       flights: (payload.flights || []).map(f => ({ ...f, needsReview: false, isReviewed: true })),
-      accommodations: (payload.accommodations || []).map(s => ({ ...s, needsReview: false, isReviewed: true }))
+      accommodations: (payload.accommodations || []).map(s => ({ ...s, needsReview: false, isReviewed: true })),
+      transfers: (payload.transfers || []).map(t => ({ ...t, needsReview: false, isReviewed: true })),
+      activities: (payload.activities || []).map(a => ({ ...a, needsReview: false, isReviewed: true })),
+      drivers: (payload.drivers || []).map(d => ({ ...d, needsReview: false, isReviewed: true }))
     });
   };
 
@@ -411,197 +528,352 @@ export const AIItineraryImportModal: React.FC<AIItineraryImportModalProps> = ({
   const handleConfirmAndApply = () => {
     if (!payload) return;
 
-    // 1. Build Guests with stable IDs
+    const hasExistingData = Boolean(currentState.client.name.trim()) || currentState.guests.length > 0 || currentState.flights.length > 0 || currentState.rooms.length > 0 || currentState.transfers.length > 0 || currentState.activities.length > 0;
+    if (hasExistingData && !window.confirm('This booking already contains data. The import will merge into existing records, update matching records with supplied information, and keep records that are not in the import. Missing imported fields will not intentionally clear existing values. Continue?')) return;
+
+    // 1. Resolve traveller names to existing people first, then create new IDs only when needed.
     const guestIdMap = new Map<string, number>();
-    const newGuests: Guest[] = payload.travellers.map((tg, idx) => {
-      const gId = Date.now() + idx + 1;
-      const fullName = `${tg.first} ${tg.last}`.trim().toLowerCase();
-      guestIdMap.set(fullName, gId);
-      guestIdMap.set(tg.first.trim().toLowerCase(), gId);
+    const seenImportIdentities = new Set<string>();
+    const importTravellerRows = payload.travellers.filter(tg => {
+      const suppliedId = tg.id !== undefined ? 'id:' + tg.id : '';
+      const fullName = normalizeIdentity((tg.first || '') + ' ' + (tg.last || ''));
+      const provisionalLabel = normalizeIdentity(tg.provisionalLabel || '');
+      const identity = suppliedId || (fullName ? 'name:' + fullName : provisionalLabel ? 'label:' + provisionalLabel : '');
+      if (!identity) return true;
+      if (seenImportIdentities.has(identity)) return false;
+      seenImportIdentities.add(identity);
+      return true;
+    });
+    let nextGuestId = Math.max(0, ...currentState.guests.map(g => Number(g.id) || 0), ...importTravellerRows.map(g => Number(g.id) || 0)) + 1;
+    const assignedImportIds = new Set<number>();
+    const anonymousLabelCounts = new Map<string, number>();
+    const importedGuests: Guest[] = importTravellerRows.map((tg, idx) => {
+      const first = (tg.first || '').trim();
+      const last = (tg.last || '').trim();
+      const suppliedLabel = (tg.provisionalLabel || '').trim();
+      const fullName = normalizeIdentity(first + ' ' + last);
+      const ageKey = tg.age || 'Traveller';
+      const anonymousOrdinal = (anonymousLabelCounts.get(ageKey) || 0) + 1;
+      anonymousLabelCounts.set(ageKey, anonymousOrdinal);
+      const autoLabel = !first && !last ? (ageKey + ' ' + anonymousOrdinal) : '';
+      const matchingLabel = suppliedLabel || autoLabel;
+      const rawById = tg.id ? currentState.guests.find(g => g.id === tg.id) : undefined;
+      const idNameConflicts = Boolean(rawById && fullName && normalizeIdentity((rawById.first || '') + ' ' + (rawById.last || '')) !== fullName);
+      const existingById = !idNameConflicts && tg.id && !assignedImportIds.has(tg.id) ? rawById : undefined;
+      const existingByName = fullName
+        ? currentState.guests.find(g => normalizeIdentity((g.first || '') + ' ' + (g.last || '')) === fullName)
+        : undefined;
+      const existingByLabel = matchingLabel
+        ? currentState.guests.find(g => g.isProvisional && normalizeIdentity(g.provisionalLabel || g.first) === normalizeIdentity(matchingLabel))
+        : undefined;
+      const existingGuest = existingById || existingByName || existingByLabel;
+      const suppliedIdAvailable = Boolean(tg.id && !currentState.guests.some(g => g.id === tg.id) && !assignedImportIds.has(tg.id));
+      let id = existingGuest?.id ?? (suppliedIdAvailable ? tg.id as number : nextGuestId++);
+      // Every traveller in the import gets a unique ID, even when an AI payload repeats one.
+      if (assignedImportIds.has(id)) id = nextGuestId++;
+      assignedImportIds.add(id);
+      const mergedFirst = first || existingGuest?.first || '';
+      const mergedLast = last || existingGuest?.last || '';
+      const mergedIsAnonymous = !mergedFirst && !mergedLast;
+      const resolvedLabel = mergedIsAnonymous ? (matchingLabel || existingGuest?.provisionalLabel || ('Traveller ' + (idx + 1))) : undefined;
+      if (fullName) guestIdMap.set(fullName, id);
+      if (resolvedLabel) guestIdMap.set(normalizeIdentity(resolvedLabel), id);
 
       return {
-        id: gId,
-        first: tg.first,
-        last: tg.last,
-        preferredName: tg.preferredName || '',
-        nationality: tg.nationality || payload.client.country || '🇿🇦 South Africa',
-        country: tg.country || payload.client.country || '🇿🇦 South Africa',
-        age: tg.age || 'Adult',
-        exactAge: tg.exactAge,
-        dob: tg.dob || '',
-        passportNo: tg.passportNo || '',
-        passportExpiry: tg.passportExpiry || '',
-        relationshipToLead: tg.relationshipToLead || (tg.isLead ? 'Primary Contact' : 'Family Member'),
-        individualEmail: tg.individualEmail || '',
-        individualPhone: tg.individualPhone || '',
-        languagesSpoken: ['English'],
-        isLead: tg.isLead ?? (idx === 0),
-        notes: tg.notes || '',
-        diet: tg.dietary || [],
-        customFoodRequirements: tg.customFoodRequirements || [],
-        customAccessibilityRequirements: tg.customAccessibilityRequirements || [],
-        customAccommodationRequirements: tg.customAccommodationRequirements || [],
-        accessibilityMobility: [],
-        accessibilityVision: [],
-        accessibilityHearing: [],
-        medicalOperationalNotes: '',
-        dietaryReligious: [],
-        dietaryLifestyle: tg.dietary || [],
-        dietaryMedical: [],
-        dietaryPreferences: [],
-        preferencesAccommodation: [],
-        preferencesTransport: [],
-        preferencesInterests: []
+        ...(existingGuest || {} as Guest),
+        id,
+        first: mergedFirst,
+        last: mergedLast,
+        preferredName: tg.preferredName || existingGuest?.preferredName || '',
+        nationality: tg.nationality || existingGuest?.nationality || payload.client.country || '',
+        country: tg.country || existingGuest?.country || payload.client.country || '',
+        age: (tg.age || existingGuest?.age || '') as Guest['age'],
+        exactAge: tg.exactAge ?? existingGuest?.exactAge,
+        dob: tg.dob || existingGuest?.dob || '',
+        passportNo: tg.passportNo || existingGuest?.passportNo || '',
+        passportExpiry: tg.passportExpiry || existingGuest?.passportExpiry || '',
+        relationshipToLead: tg.relationshipToLead || existingGuest?.relationshipToLead || (tg.isLead ? 'Primary Contact' : 'Family Member'),
+        individualEmail: tg.individualEmail || existingGuest?.individualEmail || '',
+        individualPhone: tg.individualPhone || existingGuest?.individualPhone || '',
+        languagesSpoken: existingGuest?.languagesSpoken || ['English'],
+        isLead: tg.isLead ?? existingGuest?.isLead ?? false,
+        notes: tg.notes || existingGuest?.notes || '',
+        diet: tg.dietary || existingGuest?.diet || [],
+        attachments: existingGuest?.attachments || [],
+        customFoodRequirements: tg.customFoodRequirements || existingGuest?.customFoodRequirements || [],
+        customAccessibilityRequirements: tg.customAccessibilityRequirements || existingGuest?.customAccessibilityRequirements || [],
+        customAccommodationRequirements: tg.customAccommodationRequirements || existingGuest?.customAccommodationRequirements || [],
+        accessibilityMobility: tg.accessibility || existingGuest?.accessibilityMobility || [],
+        accessibilityVision: existingGuest?.accessibilityVision || [],
+        accessibilityHearing: existingGuest?.accessibilityHearing || [],
+        medicalOperationalNotes: existingGuest?.medicalOperationalNotes || '',
+        dietaryReligious: existingGuest?.dietaryReligious || [],
+        dietaryLifestyle: tg.dietary || existingGuest?.dietaryLifestyle || [],
+        dietaryMedical: existingGuest?.dietaryMedical || [],
+        dietaryPreferences: existingGuest?.dietaryPreferences || [],
+        preferencesAccommodation: tg.roomPreference ? [tg.roomPreference] : (existingGuest?.preferencesAccommodation || []),
+        roomTypePref: tg.roomPreference || existingGuest?.roomTypePref || '',
+        preferencesTransport: existingGuest?.preferencesTransport || [],
+        preferencesInterests: existingGuest?.preferencesInterests || [],
+        isProvisional: mergedIsAnonymous,
+        provisionalLabel: resolvedLabel,
+        leadContactId: existingGuest?.leadContactId
       };
     });
 
-    const leadGuest = newGuests.find(g => g.isLead) || newGuests[0];
-    const allGuestIds = newGuests.map(g => g.id);
+    const allGuestIds = importedGuests.map(g => g.id);
 
-    // 2. Build Flights
-    const newFlights: Flight[] = (payload.flights || []).map((f, idx) => {
-      // Match passenger names to guest IDs
-      let paxIds: number[] = [];
-      if (f.paxNames && f.paxNames.length > 0) {
-        f.paxNames.forEach(pName => {
-          const matchId = guestIdMap.get(pName.trim().toLowerCase());
-          if (matchId) paxIds.push(matchId);
-        });
-      }
-      if (paxIds.length === 0) paxIds = allGuestIds;
+    // 2. Match flights to existing records. Never invent missing routes, dates, times or prices.
+    const importedFlights: Flight[] = (payload.flights || []).map((f, idx) => {
+      const existingFlight = currentState.flights.find(item =>
+        Boolean(f.flightNo && item.flightNo) &&
+        normalizeIdentity(item.flightNo) === normalizeIdentity(f.flightNo) &&
+        (!f.date || item.date === f.date) &&
+        (!f.airline || normalizeIdentity(item.airline) === normalizeIdentity(f.airline))
+      );
+      const namedPaxIds: number[] = [];
+      (f.paxNames || []).forEach(name => {
+        const id = guestIdMap.get(normalizeIdentity(name));
+        if (id && !namedPaxIds.includes(id)) namedPaxIds.push(id);
+      });
+      const paxIds = namedPaxIds.length ? namedPaxIds : (existingFlight?.paxIds || []);
+      const missingFields = [
+        !f.airline && 'Airline',
+        !f.flightNo && 'Flight number',
+        !f.from && 'Origin airport',
+        !f.to && 'Destination airport',
+        !f.date && 'Flight date',
+        !f.depTime && 'Departure time',
+        !f.arrTime && 'Arrival time',
+        !f.cabin && 'Cabin class',
+        !f.direction && 'Flight direction',
+        !f.pnr && !existingFlight?.pnr && 'PNR / booking reference'
+      ].filter((value): value is string => Boolean(value));
 
       return {
-        id: Date.now() + 100 + idx,
-        direction: f.direction || 'Inbound',
-        airline: f.airline,
-        flightNo: f.flightNo,
-        pnr: f.pnr || '',
-        from: f.from || 'CPT',
-        to: f.to || 'JNB',
-        date: f.date || payload.client.startDate || new Date().toISOString().split('T')[0],
-        depTime: f.depTime || '10:00',
-        arrTime: f.arrTime || '12:00',
-        duration: '2h',
-        cabin: f.cabin || 'Business',
-        status: 'Booked',
+        ...(existingFlight || {} as Flight),
+        id: existingFlight?.id ?? (Date.now() + 100 + idx),
+        direction: f.direction || existingFlight?.direction || 'Inbound',
+        airline: f.airline || existingFlight?.airline || '',
+        flightNo: f.flightNo || existingFlight?.flightNo || '',
+        pnr: f.pnr || existingFlight?.pnr || '',
+        from: f.from || existingFlight?.from || '',
+        to: f.to || existingFlight?.to || '',
+        date: f.date || existingFlight?.date || '',
+        depTime: f.depTime || existingFlight?.depTime || '',
+        arrTime: f.arrTime || existingFlight?.arrTime || '',
+        duration: existingFlight?.duration || '',
+        cabin: f.cabin || existingFlight?.cabin || 'Economy',
+        status: existingFlight?.status || 'Pending',
         paxIds,
-        cost: f.cost || 4500,
-        markup: 500,
-        qty: paxIds.length,
-        notes: f.notes || '',
-        stops: []
+        bagHand: existingFlight?.bagHand || 0,
+        bagCheck: existingFlight?.bagCheck || 0,
+        bagOver: existingFlight?.bagOver || 0,
+        cost: f.cost ?? existingFlight?.cost ?? 0,
+        markup: existingFlight?.markup || 0,
+        qty: paxIds.length || existingFlight?.qty || 0,
+        notes: f.notes || existingFlight?.notes || '',
+        supplierContact: existingFlight?.supplierContact || '',
+        confirmationRef: existingFlight?.confirmationRef || '',
+        bookingUrl: existingFlight?.bookingUrl || '',
+        referenceLinks: existingFlight?.referenceLinks || [],
+        attachments: existingFlight?.attachments || [],
+        stops: existingFlight?.stops || [],
+        isIncomplete: missingFields.length > 0,
+        missingFields: missingFields.length ? missingFields : undefined
       };
     });
 
-    // 3. Build Rooms / Stays
-    const newRooms: Room[] = (payload.accommodations || []).map((s, idx) => {
-      let guestIds: number[] = [];
-      if (s.assignedPaxNames && s.assignedPaxNames.length > 0) {
-        s.assignedPaxNames.forEach(pName => {
-          const matchId = guestIdMap.get(pName.trim().toLowerCase());
-          if (matchId) guestIds.push(matchId);
-        });
-      }
-      if (guestIds.length === 0) guestIds = allGuestIds;
+    // 3. Match accommodation by property, dates and room type. Unknown commercial values stay blank.
+    const importedRooms: Room[] = (payload.accommodations || []).map((s, idx) => {
+      const existingRoom = currentState.rooms.find(item =>
+        normalizeIdentity(item.hotel) === normalizeIdentity(s.hotel) &&
+        (!s.cin || item.cin === s.cin) &&
+        (!s.cout || item.cout === s.cout) &&
+        (!s.roomType || normalizeIdentity(item.roomType) === normalizeIdentity(s.roomType))
+      );
+      const resolvedGuestIds: number[] = [];
+      (s.assignedPaxNames || []).forEach(name => {
+        const id = guestIdMap.get(normalizeIdentity(name));
+        if (id && !resolvedGuestIds.includes(id)) resolvedGuestIds.push(id);
+      });
+      const guestIds = resolvedGuestIds.length ? resolvedGuestIds : (existingRoom?.guestIds || []);
+      const derivedNights = s.cin && s.cout
+        ? Math.max(0, Math.round((new Date(s.cout).getTime() - new Date(s.cin).getTime()) / 86400000))
+        : 0;
 
       return {
-        id: Date.now() + 200 + idx,
-        hotel: s.hotel,
-        conf: `BK-${Math.floor(1000 + Math.random() * 9000)}`,
-        pay: 'Deposit Paid',
-        roomType: s.roomType || 'Standard',
-        bed: 'King',
-        meal: s.meal || 'B&B',
-        cin: s.cin || payload.client.startDate || new Date().toISOString().split('T')[0],
-        cout: s.cout || payload.client.endDate || new Date().toISOString().split('T')[0],
-        nights: s.nights || 1,
+        ...(existingRoom || {} as Room),
+        id: existingRoom?.id ?? (Date.now() + 200 + idx),
+        hotel: s.hotel || existingRoom?.hotel || '',
+        conf: existingRoom?.conf || '',
+        pay: existingRoom?.pay || 'Unpaid',
+        roomType: s.roomType || existingRoom?.roomType || '',
+        bed: existingRoom?.bed || '',
+        meal: s.meal || existingRoom?.meal || '',
+        cin: s.cin || existingRoom?.cin || '',
+        cout: s.cout || existingRoom?.cout || '',
+        nights: s.nights ?? existingRoom?.nights ?? derivedNights,
         guestIds,
-        rate: s.rate || 6500,
-        supp: 0,
-        reqs: [],
-        notes: s.notes || ''
+        rate: s.rate ?? existingRoom?.rate ?? 0,
+        supp: existingRoom?.supp || 0,
+        reqs: existingRoom?.reqs || [],
+        notes: s.notes || existingRoom?.notes || '',
+        address: s.address || existingRoom?.address || '',
+        googleMapsUrl: s.googleMapsUrl || existingRoom?.googleMapsUrl || '',
+        attachments: existingRoom?.attachments || [],
+        allocatedRooms: existingRoom?.allocatedRooms || []
       };
     });
 
-    // 4. Build Transfers
-    const newTransfers: Transfer[] = (payload.transfers || []).map((t, idx) => {
+    // 4. Match transfers without assigning fictional drivers, times, vehicles or prices.
+    const validTransferTypes: Transfer['type'][] = ['Airport Arrival', 'Airport Departure', 'Inter-Hotel', 'Activity Transfer', 'Full-Day Vehicle', 'Point-to-Point'];
+    const importedTransfers: Transfer[] = (payload.transfers || []).map((t, idx) => {
+      const transferType = validTransferTypes.includes(t.type as Transfer['type']) ? t.type as Transfer['type'] : undefined;
+      const existingTransfer = currentState.transfers.find(item =>
+        (!t.date || item.date === t.date) &&
+        (!transferType || item.type === transferType) &&
+        Boolean(t.from && t.to) &&
+        normalizeIdentity(item.from) === normalizeIdentity(t.from) &&
+        normalizeIdentity(item.to) === normalizeIdentity(t.to)
+      );
+      const paxIds = existingTransfer?.paxIds || [];
       return {
-        id: Date.now() + 300 + idx,
-        type: t.type || 'Airport Arrival',
-        date: t.date || payload.client.startDate || new Date().toISOString().split('T')[0],
-        time: t.time || '10:00',
-        status: 'Confirmed',
-        from: t.from,
-        to: t.to,
-        meet: 'Main Arrivals Hall',
-        sign: payload.client.name.toUpperCase(),
-        flight: t.flight || '',
-        dist: '25 km',
-        dur: '30 min',
-        vehicle: t.vehicle || 'Mercedes V-Class — 7 Seater',
-        driver: 'Assigned Driver',
-        driverPhone: '+27 82 555 0100',
-        paxCount: newGuests.length,
-        paxIds: allGuestIds,
-        bagHand: newGuests.length,
-        bagCheck: newGuests.length * 2,
-        bagOver: 0,
-        seats: [],
-        special: ['Water & Refreshments', 'Wi-Fi'],
-        cost: 1500,
-        tolls: 0,
-        parking: 0,
-        notes: t.notes || '',
-        waypoints: []
+        ...(existingTransfer || {} as Transfer),
+        id: existingTransfer?.id ?? (Date.now() + 300 + idx),
+        type: transferType || existingTransfer?.type || 'Point-to-Point',
+        date: t.date || existingTransfer?.date || '',
+        time: t.time || existingTransfer?.time || '',
+        status: existingTransfer?.status || 'Pending',
+        from: t.from || existingTransfer?.from || '',
+        to: t.to || existingTransfer?.to || '',
+        meet: existingTransfer?.meet || '',
+        sign: existingTransfer?.sign || '',
+        flight: t.flight || existingTransfer?.flight || '',
+        dist: existingTransfer?.dist || '',
+        dur: existingTransfer?.dur || '',
+        vehicle: t.vehicle || existingTransfer?.vehicle || '',
+        driver: existingTransfer?.driver || '',
+        driverPhone: existingTransfer?.driverPhone || '',
+        paxCount: paxIds.length || existingTransfer?.paxCount || 0,
+        paxIds,
+        bagHand: existingTransfer?.bagHand || 0,
+        bagCheck: existingTransfer?.bagCheck || 0,
+        bagOver: existingTransfer?.bagOver || 0,
+        seats: existingTransfer?.seats || [],
+        special: existingTransfer?.special || [],
+        cost: existingTransfer?.cost || 0,
+        tolls: existingTransfer?.tolls || 0,
+        parking: existingTransfer?.parking || 0,
+        notes: t.notes || existingTransfer?.notes || '',
+        waypoints: existingTransfer?.waypoints || []
       };
     });
 
-    // 5. Build Activities
-    const newActivities: Activity[] = (payload.activities || []).map((a, idx) => {
+    // 5. Match activities by day and name. Unprovided prices and operational times remain blank.
+    const importedActivities: Activity[] = (payload.activities || []).map((a, idx) => {
+      const day = a.day ?? 1;
+      const existingActivity = currentState.activities.find(item =>
+        item.day === day && normalizeIdentity(item.name) === normalizeIdentity(a.name)
+      );
+      const paxIds = existingActivity?.paxIds || [];
       return {
-        id: Date.now() + 400 + idx,
-        day: a.day || 1,
-        slot: a.slot || 'Morning',
+        ...(existingActivity || {} as Activity),
+        id: existingActivity?.id ?? (Date.now() + 400 + idx),
+        day,
+        slot: a.slot || existingActivity?.slot || 'Morning',
         name: a.name,
-        desc: a.desc || '',
-        pickup: '09:00',
-        start: '09:30',
-        dur: a.dur || '3 hours',
-        pickupLoc: 'Hotel Lobby',
-        status: 'Confirmed',
-        conf: `ACT-${Math.floor(1000 + Math.random() * 9000)}`,
-        supplier: 'Viemma Experiences',
-        supPhone: '+27 21 555 8820',
-        paxIds: allGuestIds,
-        pAdult: a.pAdult || 500,
-        pChild: 250,
-        nAdult: newGuests.length,
-        nChild: 0,
-        flat: 0,
-        total: (a.pAdult || 500) * newGuests.length,
-        inc: ['Transport', 'Guide', 'Entrance Fees'],
-        backup: 'Indoor Gallery Experience',
-        notes: a.notes || '',
-        isFree: false
+        desc: a.desc || existingActivity?.desc || '',
+        pickup: a.pickup || existingActivity?.pickup || '',
+        start: a.start || existingActivity?.start || '',
+        dur: a.dur || existingActivity?.dur || '',
+        pickupLoc: a.pickupLoc || existingActivity?.pickupLoc || '',
+        status: existingActivity?.status || 'Planned',
+        conf: existingActivity?.conf || '',
+        supplier: a.supplier || existingActivity?.supplier || '',
+        supPhone: a.supPhone || existingActivity?.supPhone || '',
+        paxIds,
+        pAdult: a.pAdult ?? existingActivity?.pAdult ?? 0,
+        pChild: a.pChild ?? existingActivity?.pChild ?? 0,
+        nAdult: a.nAdult ?? existingActivity?.nAdult ?? 0,
+        nChild: a.nChild ?? existingActivity?.nChild ?? 0,
+        flat: a.flat ?? existingActivity?.flat ?? 0,
+        total: existingActivity?.total || 0,
+        inc: a.inc || existingActivity?.inc || [],
+        backup: a.backup || existingActivity?.backup || '',
+        notes: a.notes || existingActivity?.notes || '',
+        isFree: a.isFree ?? existingActivity?.isFree ?? false
       };
     });
 
-    // 6. Calculate Duration Text
+    const assignedDriverIds = new Set<string>();
+    const importedDrivers: Driver[] = (payload.drivers || []).map((d, idx) => {
+      const suppliedId = (d.id || '').trim();
+      const name = (d.name || '').trim();
+      const phone = (d.phone || '').trim();
+      const normalizedName = normalizeIdentity(name);
+      const rawById = suppliedId ? (currentState.drivers || []).find(driver => driver.id === suppliedId) : undefined;
+      const idNameConflicts = Boolean(rawById && normalizedName && normalizeIdentity(rawById.name) !== normalizedName);
+      const existingById = !idNameConflicts && rawById && !assignedDriverIds.has(rawById.id) ? rawById : undefined;
+      const existingByName = normalizedName
+        ? (currentState.drivers || []).find(driver =>
+            normalizeIdentity(driver.name) === normalizedName &&
+            (!phone || !driver.phone || normalizeIdentity(driver.phone) === normalizeIdentity(phone))
+          )
+        : undefined;
+      const existingByPhone = phone
+        ? (currentState.drivers || []).find(driver => normalizeIdentity(driver.phone) === normalizeIdentity(phone))
+        : undefined;
+      const existingDriver = existingById || existingByName || existingByPhone;
+      let id = existingDriver?.id || (suppliedId && !(currentState.drivers || []).some(driver => driver.id === suppliedId) ? suppliedId : 'drv_import_' + Date.now().toString(36) + '_' + idx);
+      if (assignedDriverIds.has(id)) id = 'drv_import_' + Date.now().toString(36) + '_' + idx;
+      assignedDriverIds.add(id);
+      return {
+        ...(existingDriver || {} as Driver),
+        id,
+        name: name || existingDriver?.name || '',
+        preferredName: d.preferredName || existingDriver?.preferredName,
+        phone: phone || existingDriver?.phone || '',
+        email: (d.email || '').trim() || existingDriver?.email || '',
+        prdpExpiryDate: d.prdpExpiryDate || existingDriver?.prdpExpiryDate || undefined,
+        assignedVehicleId: d.assignedVehicleId || existingDriver?.assignedVehicleId || undefined,
+        operationalAvailability: d.operationalAvailability || existingDriver?.operationalAvailability,
+        status: d.status || existingDriver?.status || 'Unavailable',
+        profileStatus: d.profileStatus || existingDriver?.profileStatus || 'Pending Verification',
+        notes: d.notes || existingDriver?.notes || ''
+      };
+    });
+
+    // Keep records that weren't mentioned by the import. Matched records reuse their IDs.
+    const mergedGuests = mergeRecordsById(currentState.guests, importedGuests);
+    const designatedLeadId =
+      importedGuests.find(g => g.isLead)?.id ??
+      currentState.guests.find(g => g.isLead)?.id;
+    const normalizedMergedGuests = mergedGuests.map(g => ({
+      ...g,
+      isLead: designatedLeadId ? g.id === designatedLeadId : Boolean(g.isLead),
+      leadContactId: designatedLeadId && g.id !== designatedLeadId ? designatedLeadId : undefined
+    }));
+    const mergedFlights = mergeRecordsById(currentState.flights, importedFlights);
+    const mergedRooms = mergeRecordsById(currentState.rooms, importedRooms);
+    const mergedTransfers = mergeRecordsById(currentState.transfers, importedTransfers);
+    const mergedActivities = mergeRecordsById(currentState.activities, importedActivities);
+    const mergedDrivers = mergeRecordsById(currentState.drivers || [], importedDrivers);
+
     let durationText = currentState.client.durationText;
     if (payload.client.startDate && payload.client.endDate) {
-      const s = new Date(payload.client.startDate);
-      const e = new Date(payload.client.endDate);
-      const diffDays = Math.max(1, Math.round((e.getTime() - s.getTime()) / (1000 * 60 * 60 * 24)) + 1);
+      const startDate = new Date(payload.client.startDate);
+      const endDate = new Date(payload.client.endDate);
+      const diffDays = Math.max(1, Math.round((endDate.getTime() - startDate.getTime()) / 86400000) + 1);
       durationText = `${diffDays} Days / ${Math.max(0, diffDays - 1)} Nights`;
     }
 
-    // Apply partial update
     onApplyItinerary({
-      ref: payload.tripRef || currentState.ref,
-      title: payload.tripTitle || `${payload.client.name} Luxury Itinerary`,
+      ref: currentState.ref,
+      title: payload.tripTitle || (payload.client.name ? `${payload.client.name} Luxury Itinerary` : currentState.title || 'New Itinerary'),
       client: {
         ...currentState.client,
-        name: payload.client.name,
+        name: payload.client.name || currentState.client.name,
         email: payload.client.email || currentState.client.email,
         phone: payload.client.phone || currentState.client.phone,
         country: payload.client.country || currentState.client.country,
@@ -610,11 +882,12 @@ export const AIItineraryImportModal: React.FC<AIItineraryImportModalProps> = ({
         durationText,
         occasion: payload.client.occasion || currentState.client.occasion
       },
-      guests: newGuests,
-      flights: newFlights,
-      rooms: newRooms,
-      transfers: newTransfers,
-      activities: newActivities
+      guests: normalizedMergedGuests,
+      flights: mergedFlights,
+      rooms: mergedRooms,
+      transfers: mergedTransfers,
+      activities: mergedActivities,
+      drivers: mergedDrivers
     });
 
     onClose();
@@ -625,7 +898,10 @@ export const AIItineraryImportModal: React.FC<AIItineraryImportModalProps> = ({
     (payload.client.needsReview ? 1 : 0) +
     payload.travellers.filter(t => t.needsReview).length +
     (payload.flights || []).filter(f => f.needsReview).length +
-    (payload.accommodations || []).filter(s => s.needsReview).length
+    (payload.accommodations || []).filter(s => s.needsReview).length +
+    (payload.transfers || []).filter(t => t.needsReview).length +
+    (payload.activities || []).filter(a => a.needsReview).length +
+    (payload.drivers || []).filter(d => d.needsReview).length
   ) : 0;
 
   return (
@@ -646,7 +922,7 @@ export const AIItineraryImportModal: React.FC<AIItineraryImportModalProps> = ({
                 </span>
               </div>
               <p className="text-xs text-gray-300 mt-0.5">
-                Paste structured AI JSON from ChatGPT, Claude, or Gemini to populate travellers, flights, accommodations, and ground logistics.
+                Paste source text or JSON from ChatGPT, Claude, or Gemini to populate supported booking, traveller, flight, hotel, driver and ground-operation records.
               </p>
             </div>
           </div>
@@ -879,6 +1155,12 @@ export const AIItineraryImportModal: React.FC<AIItineraryImportModalProps> = ({
                     />
                   </div>
                 </div>
+                {payload.client.needsReview && (
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2">
+                    <p className="text-[11px] text-amber-900 font-semibold"><AlertTriangle size={12} className="inline mr-1" />Review client details: {payload.client.reviewReason || 'Some client contact or trip information is missing.'}</p>
+                    <button type="button" onClick={() => setPayload({ ...payload, client: { ...payload.client, needsReview: false, isReviewed: true } })} className="px-3 py-1.5 rounded-lg bg-amber-200 text-amber-950 text-[11px] font-bold">Mark as Reviewed</button>
+                  </div>
+                )}
               </div>
 
               {/* SECTION: TRAVELLERS MANIFEST */}
@@ -917,11 +1199,12 @@ export const AIItineraryImportModal: React.FC<AIItineraryImportModalProps> = ({
                             className="p-1.5 rounded-lg border bg-white font-bold text-xs w-28"
                           />
                           <select
-                            value={tg.age || 'Adult'}
-                            onChange={(e) => handleUpdateTraveller(idx, { age: e.target.value as any })}
+                            value={tg.age || ''}
+                            onChange={(e) => handleUpdateTraveller(idx, { age: (e.target.value || undefined) as AIImportGuest['age'], needsReview: true, isReviewed: false })}
                             className="p-1.5 rounded-lg border bg-white text-xs"
                           >
-                            <option value="Adult">Adult</option>
+                            <option value="">Age TBC</option>
+<option value="Adult">Adult</option>
                             <option value="Elderly">Elderly</option>
                             <option value="Teen">Teen</option>
                             <option value="Child">Child</option>
@@ -965,6 +1248,31 @@ export const AIItineraryImportModal: React.FC<AIItineraryImportModalProps> = ({
                           <AlertTriangle size={11} /> Note: {tg.reviewReason}
                         </p>
                       )}
+                      <div className="mt-3 pt-3 border-t border-gray-200 grid grid-cols-1 md:grid-cols-2 gap-2.5">
+                        <label className="text-[10px] font-bold text-gray-600">Preferred name
+                          <input value={tg.preferredName || ''} onChange={e => handleUpdateTraveller(idx, { preferredName: e.target.value, needsReview: true, isReviewed: false })} className="mt-1 w-full p-2 rounded-lg border border-gray-200 bg-white text-xs font-normal" placeholder="Name to use" />
+                        </label>
+                        <label className="text-[10px] font-bold text-gray-600">Age category
+                          <select value={tg.age || ''} onChange={e => handleUpdateTraveller(idx, { age: (e.target.value || undefined) as AIImportGuest['age'], needsReview: true, isReviewed: false })} className="mt-1 w-full p-2 rounded-lg border border-gray-200 bg-white text-xs font-normal">
+                            <option value="">Not supplied — confirm</option><option value="Adult">Adult</option><option value="Elderly">Elderly</option><option value="Teen">Teen</option><option value="Child">Child</option><option value="Infant">Infant</option>
+                          </select>
+                        </label>
+                        <label className="text-[10px] font-bold text-gray-600">Nationality
+                          <input value={tg.nationality || ''} onChange={e => handleUpdateTraveller(idx, { nationality: e.target.value, needsReview: true, isReviewed: false })} className="mt-1 w-full p-2 rounded-lg border border-gray-200 bg-white text-xs font-normal" placeholder="Confirm if not supplied" />
+                        </label>
+                        <label className="text-[10px] font-bold text-gray-600">Dietary requirements (comma-separated)
+                          <input value={(tg.dietary || []).join(', ')} onChange={e => handleUpdateTraveller(idx, { dietary: e.target.value.split(',').map(v => v.trim()).filter(Boolean) })} className="mt-1 w-full p-2 rounded-lg border border-gray-200 bg-white text-xs font-normal" placeholder="Vegetarian, nut allergy..." />
+                        </label>
+                        <label className="text-[10px] font-bold text-gray-600">Accessibility / mobility requirements
+                          <input value={(tg.accessibility || []).join(', ')} onChange={e => handleUpdateTraveller(idx, { accessibility: e.target.value.split(',').map(v => v.trim()).filter(Boolean) })} className="mt-1 w-full p-2 rounded-lg border border-gray-200 bg-white text-xs font-normal" placeholder="Wheelchair, step-free access..." />
+                        </label>
+                        <label className="text-[10px] font-bold text-gray-600">Room preference
+                          <input value={tg.roomPreference || ''} onChange={e => handleUpdateTraveller(idx, { roomPreference: e.target.value, needsReview: true, isReviewed: false })} className="mt-1 w-full p-2 rounded-lg border border-gray-200 bg-white text-xs font-normal" placeholder="Twin / double / family / sharing requests" />
+                        </label>
+                        <label className="text-[10px] font-bold text-gray-600">Traveller notes
+                          <input value={tg.notes || ''} onChange={e => handleUpdateTraveller(idx, { notes: e.target.value, needsReview: true, isReviewed: false })} className="mt-1 w-full p-2 rounded-lg border border-gray-200 bg-white text-xs font-normal" placeholder="Requirements, room sharing, other notes" />
+                        </label>
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -984,20 +1292,19 @@ export const AIItineraryImportModal: React.FC<AIItineraryImportModalProps> = ({
                           f.needsReview ? 'bg-amber-50/50 border-amber-300' : 'bg-gray-50/60 border-gray-200'
                         }`}
                       >
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <span className="font-bold text-gray-800">{f.airline}</span>
-                          <span className="font-mono bg-blue-50 text-blue-900 px-1.5 py-0.5 rounded text-[11px] font-bold">
-                            {f.flightNo}
-                          </span>
-                          <span className="text-gray-500 font-mono text-[11px]">
-                            {f.from} → {f.to}
-                          </span>
-                          <span className="text-gray-500 text-[11px]">({f.date} {f.depTime})</span>
-                          <span className="text-[10px] bg-purple-50 text-purple-900 px-1.5 py-0.5 rounded font-bold">
-                            {f.cabin}
-                          </span>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 w-full">
+                          <label className="text-[10px] font-bold text-gray-600">Airline<input value={f.airline || ''} onChange={e => handleUpdateFlight(idx, { airline: e.target.value, needsReview: true, isReviewed: false })} className="mt-1 w-full p-2 rounded-lg border border-gray-200 bg-white text-xs font-normal" placeholder="Airline" /></label>
+                          <label className="text-[10px] font-bold text-gray-600">Flight number<input value={f.flightNo || ''} onChange={e => handleUpdateFlight(idx, { flightNo: e.target.value.toUpperCase(), needsReview: true, isReviewed: false })} className="mt-1 w-full p-2 rounded-lg border border-gray-200 bg-white text-xs font-mono font-normal" placeholder="e.g. EK772" /></label>
+                          <label className="text-[10px] font-bold text-gray-600">From<input value={f.from || ''} onChange={e => handleUpdateFlight(idx, { from: e.target.value.toUpperCase(), needsReview: true, isReviewed: false })} className="mt-1 w-full p-2 rounded-lg border border-gray-200 bg-white text-xs font-mono font-normal" placeholder="Airport / code" /></label>
+                          <label className="text-[10px] font-bold text-gray-600">To<input value={f.to || ''} onChange={e => handleUpdateFlight(idx, { to: e.target.value.toUpperCase(), needsReview: true, isReviewed: false })} className="mt-1 w-full p-2 rounded-lg border border-gray-200 bg-white text-xs font-mono font-normal" placeholder="Airport / code" /></label>
+                          <label className="text-[10px] font-bold text-gray-600">Flight date<input type="date" value={f.date || ''} onChange={e => handleUpdateFlight(idx, { date: e.target.value, needsReview: true, isReviewed: false })} className="mt-1 w-full p-2 rounded-lg border border-gray-200 bg-white text-xs font-normal" /></label>
+                          <label className="text-[10px] font-bold text-gray-600">Departure time<input type="time" value={f.depTime || ''} onChange={e => handleUpdateFlight(idx, { depTime: e.target.value, needsReview: true, isReviewed: false })} className="mt-1 w-full p-2 rounded-lg border border-gray-200 bg-white text-xs font-normal" /></label>
+                          <label className="text-[10px] font-bold text-gray-600">Arrival time<input type="time" value={f.arrTime || ''} onChange={e => handleUpdateFlight(idx, { arrTime: e.target.value, needsReview: true, isReviewed: false })} className="mt-1 w-full p-2 rounded-lg border border-gray-200 bg-white text-xs font-normal" /></label>
+                          <label className="text-[10px] font-bold text-gray-600">PNR / booking reference<input value={f.pnr || ''} onChange={e => handleUpdateFlight(idx, { pnr: e.target.value.toUpperCase(), needsReview: true, isReviewed: false })} className="mt-1 w-full p-2 rounded-lg border border-gray-200 bg-white text-xs font-mono font-normal" placeholder="Optional" /></label>
+                          <label className="text-[10px] font-bold text-gray-600">Cabin class<select value={f.cabin || 'Economy'} onChange={e => handleUpdateFlight(idx, { cabin: e.target.value as AIImportFlight['cabin'] })} className="mt-1 w-full p-2 rounded-lg border border-gray-200 bg-white text-xs font-normal"><option>Economy</option><option>Premium Economy</option><option>Business</option><option>First</option></select></label>
+                          <label className="text-[10px] font-bold text-gray-600">Direction<select value={f.direction || 'Inbound'} onChange={e => handleUpdateFlight(idx, { direction: e.target.value as AIImportFlight['direction'] })} className="mt-1 w-full p-2 rounded-lg border border-gray-200 bg-white text-xs font-normal"><option>Inbound</option><option>Outbound</option><option>Internal</option></select></label>
+                          <label className="text-[10px] font-bold text-gray-600 sm:col-span-2">Notes<input value={f.notes || ''} onChange={e => handleUpdateFlight(idx, { notes: e.target.value })} className="mt-1 w-full p-2 rounded-lg border border-gray-200 bg-white text-xs font-normal" placeholder="Optional flight notes" /></label>
                         </div>
-
                         <div className="flex items-center gap-2">
                           {f.needsReview ? (
                             <button
@@ -1033,17 +1340,19 @@ export const AIItineraryImportModal: React.FC<AIItineraryImportModalProps> = ({
                           s.needsReview ? 'bg-amber-50/50 border-amber-300' : 'bg-gray-50/60 border-gray-200'
                         }`}
                       >
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <span className="font-bold text-gray-800">{s.hotel}</span>
-                          <span className="text-gray-500 text-[11px] font-medium">{s.roomType}</span>
-                          <span className="text-[11px] font-mono bg-emerald-50 text-emerald-800 px-1.5 py-0.5 rounded">
-                            {s.cin} to {s.cout} ({s.nights}N)
-                          </span>
-                          <span className="text-[10px] bg-amber-50 text-amber-900 px-1.5 py-0.5 rounded font-bold">
-                            {s.meal}
-                          </span>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 w-full">
+                          <label className="text-[10px] font-bold text-gray-600">Property / accommodation name<input value={s.hotel || ''} onChange={e => handleUpdateStay(idx, { hotel: e.target.value, needsReview: true, isReviewed: false })} className="mt-1 w-full p-2 rounded-lg border border-gray-200 bg-white text-xs font-normal" placeholder="Hotel / property name" /></label>
+                          <label className="text-[10px] font-bold text-gray-600">Room type<input value={s.roomType || ''} onChange={e => handleUpdateStay(idx, { roomType: e.target.value, needsReview: true, isReviewed: false })} className="mt-1 w-full p-2 rounded-lg border border-gray-200 bg-white text-xs font-normal" placeholder="Suite, twin room..." /></label>
+                          <label className="text-[10px] font-bold text-gray-600">Hotel address<input value={s.address || ''} onChange={e => handleUpdateStay(idx, { address: e.target.value, needsReview: true, isReviewed: false })} className="mt-1 w-full p-2 rounded-lg border border-gray-200 bg-white text-xs font-normal" placeholder="Street address, suburb, city" /></label>
+                          <label className="text-[10px] font-bold text-gray-600">Google Maps share link<input value={s.googleMapsUrl || ''} onChange={e => handleUpdateStay(idx, { googleMapsUrl: e.target.value })} className="mt-1 w-full p-2 rounded-lg border border-gray-200 bg-white text-xs font-normal" placeholder="Paste location URL if supplied" /></label>
+                          <label className="text-[10px] font-bold text-gray-600">Check-in<input type="date" value={s.cin || ''} onChange={e => handleUpdateStay(idx, { cin: e.target.value, needsReview: true, isReviewed: false })} className="mt-1 w-full p-2 rounded-lg border border-gray-200 bg-white text-xs font-normal" /></label>
+                          <label className="text-[10px] font-bold text-gray-600">Check-out<input type="date" value={s.cout || ''} onChange={e => handleUpdateStay(idx, { cout: e.target.value, needsReview: true, isReviewed: false })} className="mt-1 w-full p-2 rounded-lg border border-gray-200 bg-white text-xs font-normal" /></label>
+                          <label className="text-[10px] font-bold text-gray-600">Nights<input type="number" min="0" value={s.nights ?? ''} onChange={e => handleUpdateStay(idx, { nights: e.target.value === '' ? undefined : Number(e.target.value) })} className="mt-1 w-full p-2 rounded-lg border border-gray-200 bg-white text-xs font-normal" /></label>
+                          <label className="text-[10px] font-bold text-gray-600">Meal plan<input value={s.meal || ''} onChange={e => handleUpdateStay(idx, { meal: e.target.value })} className="mt-1 w-full p-2 rounded-lg border border-gray-200 bg-white text-xs font-normal" placeholder="B&B, Half board..." /></label>
+                          <label className="text-[10px] font-bold text-gray-600">Rate (as supplied)<input type="number" min="0" value={s.rate ?? ''} onChange={e => handleUpdateStay(idx, { rate: e.target.value === '' ? undefined : Number(e.target.value) })} className="mt-1 w-full p-2 rounded-lg border border-gray-200 bg-white text-xs font-normal" placeholder="Do not guess" /></label>
+                          <label className="text-[10px] font-bold text-gray-600">Assigned passenger names<input value={(s.assignedPaxNames || []).join(', ')} onChange={e => handleUpdateStay(idx, { assignedPaxNames: e.target.value.split(',').map(v => v.trim()).filter(Boolean) })} className="mt-1 w-full p-2 rounded-lg border border-gray-200 bg-white text-xs font-normal" placeholder="Names separated by commas" /></label>
+                          <label className="text-[10px] font-bold text-gray-600 sm:col-span-2 lg:col-span-4">Property notes / requirements<input value={s.notes || ''} onChange={e => handleUpdateStay(idx, { notes: e.target.value })} className="mt-1 w-full p-2 rounded-lg border border-gray-200 bg-white text-xs font-normal" placeholder="Room sharing, dietary or property requirements" /></label>
                         </div>
-
                         <div className="flex items-center gap-2">
                           {s.needsReview ? (
                             <button
@@ -1065,33 +1374,126 @@ export const AIItineraryImportModal: React.FC<AIItineraryImportModalProps> = ({
                 </div>
               )}
 
-              {/* SECTION: TRANSFERS & EXPERIENCES QUICK STATS */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="p-4 rounded-2xl bg-gray-50 border border-gray-200 space-y-2">
-                  <h5 className="font-bold text-gray-800 flex items-center gap-1.5 text-xs">
-                    <Car size={13} className="text-emerald-700" />
-                    Transfers to Create ({payload.transfers?.length || 0})
-                  </h5>
-                  <p className="text-[11px] text-gray-600">
-                    {payload.transfers && payload.transfers.length > 0 
-                      ? payload.transfers.map(t => `${t.type}: ${t.from} → ${t.to}`).join('; ')
-                      : 'No ground transfers specified.'}
-                  </p>
-                </div>
+              {/* SECTION: DRIVER DIRECTORY & COMPLIANCE */}
+              {payload.drivers && payload.drivers.length > 0 && (
+                <section className="space-y-3 bg-white p-5 rounded-2xl border border-gray-100 shadow-xs">
+                  <div className="flex items-center justify-between border-b border-gray-100 pb-2">
+                    <h4 className="text-xs font-bold text-[#1A3326] uppercase tracking-wider flex items-center gap-2"><Users size={14} className="text-emerald-700" /> Drivers & Compliance ({payload.drivers.length})</h4>
+                    <span className="text-[10px] text-gray-500">Only source-supplied contact and expiry details are imported.</span>
+                  </div>
+                  {payload.drivers.map((d, idx) => (
+                    <div key={d.id || idx} className={`p-3 rounded-xl border space-y-3 ${d.needsReview ? 'bg-amber-50/50 border-amber-300' : 'bg-gray-50/60 border-gray-200'}`}>
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                        <div>
+                          <p className="text-[11px] font-bold text-gray-800">{d.name || 'Driver name to be confirmed'}</p>
+                          <p className="text-[10px] text-gray-500">{d.prdpExpiryDate ? 'PrDP/PDP expiry: ' + d.prdpExpiryDate : 'PrDP/PDP expiry not supplied'}</p>
+                        </div>
+                        {d.needsReview ? (
+                          <button type="button" onClick={() => handleMarkDriverReviewed(idx)} className="px-2.5 py-1 rounded-lg bg-amber-200 text-amber-900 font-bold text-[11px] w-fit"><Check size={11} className="inline mr-1" />Mark Reviewed</button>
+                        ) : (
+                          <span className="text-[10px] text-emerald-700 font-bold"><CheckCircle size={12} className="inline mr-1" />Reviewed</span>
+                        )}
+                      </div>
+                      {d.needsReview && d.reviewReason && <p className="text-[10px] text-amber-800 font-semibold"><AlertTriangle size={11} className="inline mr-1" />{d.reviewReason}</p>}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
+                        <label className="text-[10px] font-bold text-gray-600">Driver name
+                          <input value={d.name || ''} onChange={e => handleUpdateDriver(idx, { name: e.target.value, needsReview: true, isReviewed: false })} className="mt-1 w-full p-2 rounded-lg border border-gray-200 bg-white text-xs font-normal" placeholder="Full name" />
+                        </label>
+                        <label className="text-[10px] font-bold text-gray-600">Preferred name
+                          <input value={d.preferredName || ''} onChange={e => handleUpdateDriver(idx, { preferredName: e.target.value, needsReview: true, isReviewed: false })} className="mt-1 w-full p-2 rounded-lg border border-gray-200 bg-white text-xs font-normal" placeholder="Optional" />
+                        </label>
+                        <label className="text-[10px] font-bold text-gray-600">Phone / WhatsApp
+                          <input value={d.phone || ''} onChange={e => handleUpdateDriver(idx, { phone: e.target.value, needsReview: true, isReviewed: false })} className="mt-1 w-full p-2 rounded-lg border border-gray-200 bg-white text-xs font-normal" placeholder="Contact number" />
+                        </label>
+                        <label className="text-[10px] font-bold text-gray-600">Email
+                          <input type="email" value={d.email || ''} onChange={e => handleUpdateDriver(idx, { email: e.target.value, needsReview: true, isReviewed: false })} className="mt-1 w-full p-2 rounded-lg border border-gray-200 bg-white text-xs font-normal" placeholder="Optional" />
+                        </label>
+                        <label className="text-[10px] font-bold text-gray-600">PrDP / PDP expiry date
+                          <input type="date" value={d.prdpExpiryDate || ''} onChange={e => handleUpdateDriver(idx, { prdpExpiryDate: e.target.value, needsReview: true, isReviewed: false })} className="mt-1 w-full p-2 rounded-lg border border-gray-200 bg-white text-xs font-normal" />
+                        </label>
+                        <label className="text-[10px] font-bold text-gray-600">Operational availability
+                          <select value={d.operationalAvailability || ''} onChange={e => handleUpdateDriver(idx, { operationalAvailability: (e.target.value || undefined) as AIImportDriver['operationalAvailability'], needsReview: true, isReviewed: false })} className="mt-1 w-full p-2 rounded-lg border border-gray-200 bg-white text-xs font-normal">
+                            <option value="">Not supplied</option><option value="Full-time">Full-time</option><option value="Part-time">Part-time</option><option value="On-Call">On-Call</option><option value="Weekend Only">Weekend Only</option>
+                          </select>
+                        </label>
+                        <label className="text-[10px] font-bold text-gray-600">Operational status
+                          <select value={d.status || ''} onChange={e => handleUpdateDriver(idx, { status: (e.target.value || undefined) as AIImportDriver['status'], needsReview: true, isReviewed: false })} className="mt-1 w-full p-2 rounded-lg border border-gray-200 bg-white text-xs font-normal">
+                            <option value="">Not supplied — review</option><option value="Available">Available</option><option value="Assigned">Assigned</option><option value="Off Duty">Off Duty</option><option value="Unavailable">Unavailable</option>
+                          </select>
+                        </label>
+                        <label className="text-[10px] font-bold text-gray-600">Profile status
+                          <select value={d.profileStatus || ''} onChange={e => handleUpdateDriver(idx, { profileStatus: (e.target.value || undefined) as AIImportDriver['profileStatus'], needsReview: true, isReviewed: false })} className="mt-1 w-full p-2 rounded-lg border border-gray-200 bg-white text-xs font-normal">
+                            <option value="">Not supplied — review</option><option value="Active">Active</option><option value="Suspended">Suspended</option><option value="Pending Verification">Pending Verification</option>
+                          </select>
+                        </label>
+                        <label className="text-[10px] font-bold text-gray-600 sm:col-span-2 lg:col-span-3">Driver notes
+                          <input value={d.notes || ''} onChange={e => handleUpdateDriver(idx, { notes: e.target.value, needsReview: true, isReviewed: false })} className="mt-1 w-full p-2 rounded-lg border border-gray-200 bg-white text-xs font-normal" placeholder="Only facts supplied in the source" />
+                        </label>
+                      </div>
+                    </div>
+                  ))}
+                </section>
+              )}
 
-                <div className="p-4 rounded-2xl bg-gray-50 border border-gray-200 space-y-2">
-                  <h5 className="font-bold text-gray-800 flex items-center gap-1.5 text-xs">
-                    <Route size={13} className="text-[#D4AF37]" />
-                    Experiences to Create ({payload.activities?.length || 0})
-                  </h5>
-                  <p className="text-[11px] text-gray-600">
-                    {payload.activities && payload.activities.length > 0
-                      ? payload.activities.map(a => `Day ${a.day}: ${a.name}`).join('; ')
-                      : 'No daily experiences specified.'}
-                  </p>
-                </div>
+              {/* SECTION: TRANSFERS & ACTIVITIES — REVIEW AND EDIT BEFORE APPLY */}
+              <div className="space-y-4">
+                <section className="space-y-3 bg-white p-5 rounded-2xl border border-gray-100 shadow-xs">
+                  <div className="flex items-center justify-between border-b border-gray-100 pb-2">
+                    <h4 className="text-xs font-bold text-[#1A3326] uppercase tracking-wider flex items-center gap-2"><Car size={14} className="text-emerald-700" /> Ground Transfers ({payload.transfers?.length || 0})</h4>
+                    <span className="text-[10px] text-gray-500">Unknown details are left blank for confirmation.</span>
+                  </div>
+                  {(!payload.transfers || payload.transfers.length === 0) && <p className="text-xs text-gray-400">No ground transfers supplied.</p>}
+                  {(payload.transfers || []).map((t, idx) => (
+                    <div key={idx} className={`p-3 rounded-xl border space-y-3 ${t.needsReview ? 'bg-amber-50/50 border-amber-300' : 'bg-gray-50/60 border-gray-200'}`}>
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                        <span className="text-[11px] font-bold text-gray-700">Transfer {idx + 1}</span>
+                        {t.needsReview ? <button type="button" onClick={() => handleMarkTransferReviewed(idx)} className="px-2.5 py-1 rounded-lg bg-amber-200 text-amber-900 font-bold text-[11px] w-fit"><Check size={11} className="inline mr-1" />Mark Reviewed</button> : <span className="text-[10px] text-emerald-700 font-bold"><CheckCircle size={12} className="inline mr-1" />Verified</span>}
+                      </div>
+                      {t.needsReview && t.reviewReason && <p className="text-[10px] text-amber-800 font-semibold"><AlertTriangle size={11} className="inline mr-1" />{t.reviewReason}</p>}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2">
+                        <label className="text-[10px] font-bold text-gray-600">Transfer type<select value={t.type || ''} onChange={e => handleUpdateTransfer(idx, { type: e.target.value, needsReview: true, isReviewed: false })} className="mt-1 w-full p-2 rounded-lg border border-gray-200 bg-white text-xs font-normal"><option value="">Select type</option><option>Airport Arrival</option><option>Airport Departure</option><option>Inter-Hotel</option><option>Activity Transfer</option><option>Full-Day Vehicle</option><option>Point-to-Point</option></select></label>
+                        <label className="text-[10px] font-bold text-gray-600">Date<input type="date" value={t.date || ''} onChange={e => handleUpdateTransfer(idx, { date: e.target.value, needsReview: true, isReviewed: false })} className="mt-1 w-full p-2 rounded-lg border border-gray-200 bg-white text-xs font-normal" /></label>
+                        <label className="text-[10px] font-bold text-gray-600">Pickup time<input type="time" value={t.time || ''} onChange={e => handleUpdateTransfer(idx, { time: e.target.value, needsReview: true, isReviewed: false })} className="mt-1 w-full p-2 rounded-lg border border-gray-200 bg-white text-xs font-normal" /></label>
+                        <label className="text-[10px] font-bold text-gray-600">Flight number / link<input value={t.flight || ''} onChange={e => handleUpdateTransfer(idx, { flight: e.target.value, needsReview: true, isReviewed: false })} className="mt-1 w-full p-2 rounded-lg border border-gray-200 bg-white text-xs font-normal" placeholder="Optional" /></label>
+                        <label className="text-[10px] font-bold text-gray-600">From / pickup address<input value={t.from || ''} onChange={e => handleUpdateTransfer(idx, { from: e.target.value, needsReview: true, isReviewed: false })} className="mt-1 w-full p-2 rounded-lg border border-gray-200 bg-white text-xs font-normal" placeholder="Origin" /></label>
+                        <label className="text-[10px] font-bold text-gray-600">To / drop-off address<input value={t.to || ''} onChange={e => handleUpdateTransfer(idx, { to: e.target.value, needsReview: true, isReviewed: false })} className="mt-1 w-full p-2 rounded-lg border border-gray-200 bg-white text-xs font-normal" placeholder="Destination" /></label>
+                        <label className="text-[10px] font-bold text-gray-600">Vehicle requested<input value={t.vehicle || ''} onChange={e => handleUpdateTransfer(idx, { vehicle: e.target.value, needsReview: true, isReviewed: false })} className="mt-1 w-full p-2 rounded-lg border border-gray-200 bg-white text-xs font-normal" placeholder="Vehicle type, if known" /></label>
+                        <label className="text-[10px] font-bold text-gray-600">Notes / meet-and-greet instructions<input value={t.notes || ''} onChange={e => handleUpdateTransfer(idx, { notes: e.target.value })} className="mt-1 w-full p-2 rounded-lg border border-gray-200 bg-white text-xs font-normal" placeholder="Do not invent instructions" /></label>
+                      </div>
+                    </div>
+                  ))}
+                </section>
+
+                <section className="space-y-3 bg-white p-5 rounded-2xl border border-gray-100 shadow-xs">
+                  <div className="flex items-center justify-between border-b border-gray-100 pb-2">
+                    <h4 className="text-xs font-bold text-[#1A3326] uppercase tracking-wider flex items-center gap-2"><Route size={14} className="text-[#D4AF37]" /> Activities & Experiences ({payload.activities?.length || 0})</h4>
+                    <span className="text-[10px] text-gray-500">Prices and timings are not guessed.</span>
+                  </div>
+                  {(!payload.activities || payload.activities.length === 0) && <p className="text-xs text-gray-400">No activities supplied.</p>}
+                  {(payload.activities || []).map((a, idx) => (
+                    <div key={idx} className={`p-3 rounded-xl border space-y-3 ${a.needsReview ? 'bg-amber-50/50 border-amber-300' : 'bg-gray-50/60 border-gray-200'}`}>
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                        <span className="text-[11px] font-bold text-gray-700">Activity {idx + 1}</span>
+                        {a.needsReview ? <button type="button" onClick={() => handleMarkActivityReviewed(idx)} className="px-2.5 py-1 rounded-lg bg-amber-200 text-amber-900 font-bold text-[11px] w-fit"><Check size={11} className="inline mr-1" />Mark Reviewed</button> : <span className="text-[10px] text-emerald-700 font-bold"><CheckCircle size={12} className="inline mr-1" />Verified</span>}
+                      </div>
+                      {a.needsReview && a.reviewReason && <p className="text-[10px] text-amber-800 font-semibold"><AlertTriangle size={11} className="inline mr-1" />{a.reviewReason}</p>}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2">
+                        <label className="text-[10px] font-bold text-gray-600">Activity name<input value={a.name || ''} onChange={e => handleUpdateActivity(idx, { name: e.target.value, needsReview: true, isReviewed: false })} className="mt-1 w-full p-2 rounded-lg border border-gray-200 bg-white text-xs font-normal" placeholder="Activity / experience" /></label>
+                        <label className="text-[10px] font-bold text-gray-600">Day number<input type="number" min="1" value={a.day ?? ''} onChange={e => handleUpdateActivity(idx, { day: e.target.value === '' ? undefined : Number(e.target.value), needsReview: true, isReviewed: false })} className="mt-1 w-full p-2 rounded-lg border border-gray-200 bg-white text-xs font-normal" /></label>
+                        <label className="text-[10px] font-bold text-gray-600">Time slot<select value={a.slot || 'Morning'} onChange={e => handleUpdateActivity(idx, { slot: e.target.value as AIImportActivity['slot'] })} className="mt-1 w-full p-2 rounded-lg border border-gray-200 bg-white text-xs font-normal"><option>Morning</option><option>Afternoon</option><option>Evening</option><option>Full Day</option></select></label>
+                        <label className="text-[10px] font-bold text-gray-600">Start time<input type="time" value={a.start || ''} onChange={e => handleUpdateActivity(idx, { start: e.target.value, needsReview: true, isReviewed: false })} className="mt-1 w-full p-2 rounded-lg border border-gray-200 bg-white text-xs font-normal" /></label>
+                        <label className="text-[10px] font-bold text-gray-600">Pickup time<input type="time" value={a.pickup || ''} onChange={e => handleUpdateActivity(idx, { pickup: e.target.value })} className="mt-1 w-full p-2 rounded-lg border border-gray-200 bg-white text-xs font-normal" /></label>
+                        <label className="text-[10px] font-bold text-gray-600">Duration<input value={a.dur || ''} onChange={e => handleUpdateActivity(idx, { dur: e.target.value, needsReview: true, isReviewed: false })} className="mt-1 w-full p-2 rounded-lg border border-gray-200 bg-white text-xs font-normal" placeholder="e.g. 3 hours" /></label>
+                        <label className="text-[10px] font-bold text-gray-600">Adult rate (as supplied)<input type="number" min="0" value={a.pAdult ?? ''} onChange={e => handleUpdateActivity(idx, { pAdult: e.target.value === '' ? undefined : Number(e.target.value) })} className="mt-1 w-full p-2 rounded-lg border border-gray-200 bg-white text-xs font-normal" placeholder="Unknown stays blank" /></label>
+                        <label className="text-[10px] font-bold text-gray-600">Child rate (as supplied)<input type="number" min="0" value={a.pChild ?? ''} onChange={e => handleUpdateActivity(idx, { pChild: e.target.value === '' ? undefined : Number(e.target.value) })} className="mt-1 w-full p-2 rounded-lg border border-gray-200 bg-white text-xs font-normal" placeholder="Unknown stays blank" /></label>
+                        <label className="text-[10px] font-bold text-gray-600 sm:col-span-2 lg:col-span-4">Description<input value={a.desc || ''} onChange={e => handleUpdateActivity(idx, { desc: e.target.value })} className="mt-1 w-full p-2 rounded-lg border border-gray-200 bg-white text-xs font-normal" placeholder="Experience details" /></label>
+                        <label className="text-[10px] font-bold text-gray-600 sm:col-span-2 lg:col-span-4">Inclusions (comma-separated)<input value={(a.inc || []).join(', ')} onChange={e => handleUpdateActivity(idx, { inc: e.target.value.split(',').map(v => v.trim()).filter(Boolean) })} className="mt-1 w-full p-2 rounded-lg border border-gray-200 bg-white text-xs font-normal" placeholder="Entry tickets, guide, transport..." /></label>
+                        <label className="text-[10px] font-bold text-gray-600 sm:col-span-2 lg:col-span-4">Notes<input value={a.notes || ''} onChange={e => handleUpdateActivity(idx, { notes: e.target.value })} className="mt-1 w-full p-2 rounded-lg border border-gray-200 bg-white text-xs font-normal" placeholder="Requirements / source notes" /></label>
+                      </div>
+                    </div>
+                  ))}
+                </section>
               </div>
-
             </div>
           )}
 

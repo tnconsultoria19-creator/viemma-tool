@@ -10,7 +10,7 @@ body {
   margin: 0;
   padding: 0;
   min-height: 100vh;
-  background-image: url('https://images.pexels.com/photos/7843687/pexels-photo-7843687.jpeg?auto=compress&cs=tinysrgb&w=1920');
+  background-image: url('/hero-bg.jpg');
   background-size: cover;
   background-position: center;
   background-attachment: fixed;
@@ -59,4 +59,55 @@ body {
   border-radius: 1rem;
   background: linear-gradient(90deg, rgba(255,255,255,0.95) 0%, rgba(255,255,255,0.85) 60%, rgba(255,255,255,0.20) 100%);
   pointer-events: none;
+}
+
+/* Focused A4 print layout for the airport chauffeur placard. Other printing remains unchanged. */
+@page {
+  size: A4 portrait;
+  margin: 8mm;
+}
+
+@media print {
+  html:has(.driver-pickup-board),
+  body:has(.driver-pickup-board) {
+    width: 100% !important;
+    min-height: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: #fff !important;
+    background-image: none !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  body:has(.driver-pickup-board) * { visibility: hidden !important; }
+  body:has(.driver-pickup-board) .driver-pickup-board,
+  body:has(.driver-pickup-board) .driver-pickup-board * { visibility: visible !important; }
+  body:has(.driver-pickup-board) .driver-pickup-board-controls { display: none !important; }
+  body:has(.driver-pickup-board) .driver-pickup-board {
+    position: fixed !important;
+    inset: 0 auto auto 0 !important;
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+  body:has(.driver-pickup-board) .driver-pickup-sheet-wrap {
+    width: 100% !important;
+    max-width: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+  }
+  body:has(.driver-pickup-board) .driver-pickup-sheet {
+    box-sizing: border-box !important;
+    width: 100% !important;
+    min-height: 0 !important;
+    height: 280mm !important;
+    margin: 0 !important;
+    padding: 10mm !important;
+    border-radius: 0 !important;
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+  }
 }

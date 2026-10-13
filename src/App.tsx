@@ -68,7 +68,8 @@ import {
   Radio,
   Calendar,
   Lock,
-  ShieldAlert
+  ShieldAlert,
+  ArrowLeft
 } from 'lucide-react';
 
 export const INITIAL_STATE: AppState = {
@@ -773,11 +774,17 @@ export default function App() {
   };
 
   const handleCreateNewTrip = (newTrip: AppState) => {
-    const updated = [newTrip, ...tripsList];
+    const sharedDrivers = newTrip.drivers?.length
+      ? newTrip.drivers
+      : state.drivers?.length
+        ? state.drivers
+        : (tripsList.find(trip => trip.drivers?.length)?.drivers || []);
+    const tripWithDirectory: AppState = { ...newTrip, drivers: sharedDrivers };
+    const updated = [tripWithDirectory, ...tripsList.filter(trip => trip.ref !== tripWithDirectory.ref)];
     setTripsList(updated);
     localStorage.setItem('viemma_trips_list', JSON.stringify(updated));
-    setState(newTrip);
-    localStorage.setItem('viemma_workspace_state', JSON.stringify(newTrip));
+    setState(tripWithDirectory);
+    localStorage.setItem('viemma_workspace_state', JSON.stringify(tripWithDirectory));
     setActiveTab('guests');
   };
 
@@ -817,6 +824,20 @@ export default function App() {
   const handleUpdateState = (updates: Partial<AppState>) => {
     const updated = { ...state, ...updates };
     updateFullState(updated);
+
+    // Driver profiles are a shared directory across bookings, not trip-specific guests.
+    // Keep the directory consistent in saved local and cloud trip snapshots.
+    if (updates.drivers) {
+      const sharedTrips = tripsList.map(trip => ({ ...trip, drivers: updates.drivers || [] }));
+      const currentIndex = sharedTrips.findIndex(trip => trip.ref === updated.ref);
+      if (currentIndex >= 0) sharedTrips[currentIndex] = updated;
+      else sharedTrips.unshift(updated);
+      setTripsList(sharedTrips);
+      localStorage.setItem('viemma_trips_list', JSON.stringify(sharedTrips));
+      sharedTrips.forEach(trip => {
+        if (trip.ref !== updated.ref) saveTripToCloud(trip);
+      });
+    }
   };
 
   const handleUpdateClient = (updates: Partial<AppState['client']>) => {
@@ -850,14 +871,53 @@ export default function App() {
   };
 
   const handleRemoveGuest = (id: number) => {
-    const list = state.guests.filter(g => g.id !== id);
-    handleUpdateState({ guests: list });
+    const removed = state.guests.find(g => g.id === id);
+    const list = state.guests
+      .filter(g => g.id !== id)
+      .map(g => removed?.isLead && g.leadContactId === id
+        ? { ...g, leadContactId: undefined, isLead: false }
+        : g);
+
+    // Remove deleted traveller IDs from related manifests and room allocations.
+    const flights = state.flights.map(flight => {
+      const hadGuest = (flight.paxIds || []).includes(id);
+      const paxIds = (flight.paxIds || []).filter(guestId => guestId !== id);
+      return {
+        ...flight,
+        paxIds,
+        qty: hadGuest ? paxIds.length : flight.qty
+      };
+    });
+    const transfers = state.transfers.map(transfer => {
+      const hadGuest = (transfer.paxIds || []).includes(id);
+      const paxIds = (transfer.paxIds || []).filter(guestId => guestId !== id);
+      return {
+        ...transfer,
+        paxIds,
+        paxCount: hadGuest ? paxIds.length : transfer.paxCount
+      };
+    });
+    const rooms = state.rooms.map(room => ({
+      ...room,
+      guestIds: (room.guestIds || []).filter(guestId => guestId !== id),
+      allocatedRooms: room.allocatedRooms?.map(allocation => ({
+        ...allocation,
+        guestIds: (allocation.guestIds || []).filter(guestId => guestId !== id)
+      }))
+    }));
+    const activities = state.activities.map(activity => ({
+      ...activity,
+      paxIds: (activity.paxIds || []).filter(guestId => guestId !== id)
+    }));
+    handleUpdateState({ guests: list, flights, transfers, rooms, activities });
   };
 
   const handleSetLeadGuest = (id: number) => {
+    // A booking has one designated lead contact. Keep all group-member links in sync.
     const list = state.guests.map(g => ({
       ...g,
-      isLead: g.id === id
+      isLead: g.id === id,
+      leadContactId: g.id === id ? undefined : id
     }));
     handleUpdateState({ guests: list });
   };
@@ -952,8 +1012,12 @@ export default function App() {
 
   const handleNewBooking = () => {
     const newRef = `VT-2026-${Math.floor(1000 + Math.random() * 9000)}`;
+    const sharedDrivers = state.drivers?.length
+      ? state.drivers
+      : (tripsList.find(trip => trip.drivers?.length)?.drivers || []);
     const newEmptyTrip: AppState = {
       ...INITIAL_STATE,
+      drivers: sharedDrivers,
       ref: newRef,
       title: `New Itinerary (${newRef})`,
       publishing: {
@@ -1002,6 +1066,7 @@ export default function App() {
     if (publicShare.role === 'client') {
       return (
         <div className="min-h-screen relative flex flex-col font-sans bg-[#FDFBF7]">
+          <a href={window.location.origin + '/?mode=landing'} className="fixed top-3 left-3 z-[160] px-3.5 py-2 rounded-xl bg-[#1A3326] text-white hover:bg-[#234433] shadow-md text-xs font-bold">← Viemma Tours Home</a>
           <ClientView state={clientDocToAppState(shareDocData)} />
         </div>
       );
@@ -1010,6 +1075,7 @@ export default function App() {
     if (publicShare.role === 'agent') {
       return (
         <div className="min-h-screen relative flex flex-col font-sans bg-slate-950 p-4 md:p-8">
+          <a href={window.location.origin + '/?mode=landing'} className="fixed top-3 left-3 z-[160] px-3.5 py-2 rounded-xl bg-[#1A3326] text-white hover:bg-[#234433] shadow-md text-xs font-bold">← Viemma Tours Home</a>
           <AgentPortalView state={agentDocToAppState(shareDocData)} />
         </div>
       );
@@ -1018,6 +1084,7 @@ export default function App() {
     if (publicShare.role === 'ops') {
       return (
         <div className="min-h-screen relative flex flex-col font-sans bg-slate-100 p-4 md:p-8">
+          <a href={window.location.origin + '/?mode=landing'} className="fixed top-3 left-3 z-[160] px-3.5 py-2 rounded-xl bg-[#1A3326] text-white hover:bg-[#234433] shadow-md text-xs font-bold">← Viemma Tours Home</a>
           <OperatorGroundSheetView state={opsDocToAppState(shareDocData)} />
         </div>
       );
@@ -1123,6 +1190,7 @@ export default function App() {
   if (activeRoleView === 'client') {
     return (
       <div className="min-h-screen relative flex flex-col font-sans bg-[#FDFBF7]">
+        <button type="button" onClick={() => setActiveRoleView('owner')} className="fixed top-3 left-3 z-[160] px-3.5 py-2 rounded-xl bg-[#1A3326] text-white hover:bg-[#234433] shadow-md text-xs font-bold inline-flex items-center gap-2"><ArrowLeft size={14} /> Back to Operations</button>
         <ClientView state={state} onBackToAdmin={() => setActiveRoleView('owner')} />
       </div>
     );
@@ -1131,6 +1199,7 @@ export default function App() {
   if (activeRoleView === 'agent') {
     return (
       <div className="min-h-screen relative flex flex-col font-sans bg-slate-950 p-4 md:p-8">
+        <button type="button" onClick={() => setActiveRoleView('owner')} className="fixed top-3 left-3 z-[160] px-3.5 py-2 rounded-xl bg-[#1A3326] text-white hover:bg-[#234433] shadow-md text-xs font-bold inline-flex items-center gap-2"><ArrowLeft size={14} /> Back to Operations</button>
         <AgentPortalView state={state} onBackToAdmin={() => setActiveRoleView('owner')} />
       </div>
     );
@@ -1139,6 +1208,7 @@ export default function App() {
   if (activeRoleView === 'operator') {
     return (
       <div className="min-h-screen relative flex flex-col font-sans bg-slate-100 p-4 md:p-8">
+        <button type="button" onClick={() => setActiveRoleView('owner')} className="fixed top-3 left-3 z-[160] px-3.5 py-2 rounded-xl bg-[#1A3326] text-white hover:bg-[#234433] shadow-md text-xs font-bold inline-flex items-center gap-2"><ArrowLeft size={14} /> Back to Operations</button>
         <OperatorGroundSheetView state={state} onBackToAdmin={() => setActiveRoleView('owner')} />
       </div>
     );
@@ -1501,6 +1571,7 @@ export default function App() {
                   onAddFlight={handleAddFlight}
                   onRemoveFlight={handleRemoveFlight}
                   onUpdateFlight={handleUpdateFlight}
+                  onOpenAIImport={() => setIsAIImportOpen(true)}
                 />
               )}
 
@@ -1521,6 +1592,7 @@ export default function App() {
                   onAddRoom={handleAddRoom}
                   onRemoveRoom={handleRemoveRoom}
                   onUpdateRoom={handleUpdateRoom}
+                  onOpenAIImport={() => setIsAIImportOpen(true)}
                 />
               )}
 
@@ -1832,7 +1904,7 @@ export default function App() {
         onClose={() => setIsAIImportOpen(false)}
         currentState={state}
         onApplyItinerary={(updatedState) => {
-          updateFullState({ ...state, ...updatedState });
+          handleUpdateState(updatedState);
           setSaveMessage('AI Itinerary Imported Successfully!');
           setTimeout(() => setSaveMessage(''), 3000);
         }}
