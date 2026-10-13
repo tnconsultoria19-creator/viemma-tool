@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { AppState, Flight, Stop } from '../types';
+import { AttachmentManager } from './AttachmentManager';
 import { fetchAirlinesCatalogue, addCustomAirlineToCatalogue } from '../lib/catalogueService';
 import { 
   Plane, 
@@ -31,6 +32,7 @@ interface FlightsViewProps {
   onAddFlight: (f: Flight) => void;
   onRemoveFlight: (id: number) => void;
   onUpdateFlight: (id: number, updates: Partial<Flight>) => void;
+  onOpenAIImport?: () => void;
 }
 
 export const FlightsView: React.FC<FlightsViewProps> = ({
@@ -38,7 +40,8 @@ export const FlightsView: React.FC<FlightsViewProps> = ({
   onUpdateState,
   onAddFlight,
   onRemoveFlight,
-  onUpdateFlight
+  onUpdateFlight,
+  onOpenAIImport
 }) => {
   const [editingFlightId, setEditingFlightId] = useState<number | null>(null);
   const [fForm, setFForm] = useState<Partial<Flight>>({});
@@ -156,6 +159,7 @@ export const FlightsView: React.FC<FlightsViewProps> = ({
       markup: Number(fForm.markup) || 0,
       qty: Number(fForm.qty) || 1,
       notes: fForm.notes || '',
+      attachments: fForm.attachments || [],
       stops: stopsList,
       isIncomplete: missingFields.length > 0,
       missingFields: missingFields.length ? missingFields : undefined
@@ -808,6 +812,22 @@ export const FlightsView: React.FC<FlightsViewProps> = ({
                 className="w-full p-4 rounded-xl border border-gray-200 text-xs font-medium focus:border-[#D4AF37] transition"
                 placeholder="e.g. Flight booked via Skywards miles, business class lounge passes issued, infant bassinet requested in bulkhead row..."
                 style={{ resize: 'vertical', minHeight: '80px' }}
+              />
+            </div>
+
+            {/* Flight e-ticket and supplier quotation attachments */}
+            <div className="bg-white rounded-[20px] p-6 border border-gray-100 shadow-sm space-y-3">
+              <h3 className="text-xs uppercase font-bold text-[#1A3326] tracking-wider border-b border-gray-100 pb-2 flex items-center gap-2"><FileText size={14} className="text-[#D4AF37]" /> E-Tickets & Flight Documents</h3>
+              <AttachmentManager
+                attachments={fForm.attachments || []}
+                onAddAttachment={item => setFForm({ ...fForm, attachments: [...(fForm.attachments || []), item] })}
+                onRemoveAttachment={id => setFForm({ ...fForm, attachments: (fForm.attachments || []).filter(item => item.id !== id) })}
+                recordType="flight"
+                recordId={fForm.id || ('draft-' + (state.ref || 'booking'))}
+                bookingRef={state.ref || 'draft'}
+                title="Upload e-ticket, itinerary or supplier PDF"
+                description="PDF, JPG, PNG or WebP up to 15 MB."
+                onExtractToAI={() => onOpenAIImport?.()}
               />
             </div>
 
