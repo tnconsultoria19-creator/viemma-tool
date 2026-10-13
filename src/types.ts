@@ -37,17 +37,32 @@ export type DataVisibility =
 
 export interface Client {
   name: string;
+  preferredName?: string;
   email: string;
   phone: string;
+  whatsapp?: string;
   country: string;
   contactMethod: 'whatsapp' | 'email' | 'call';
   tripType: 'multi' | 'day' | 'transfer';
   startDate: string;
   endDate: string;
   durationText: string;
+  isCustomDuration?: boolean;
+  customDays?: number;
+  customNights?: number;
   occasion: string;
   otherOccasion: string;
   tags: string[];
+  relationshipToGroup?: string;
+  leadStatus?: 'new' | 'contacted' | 'qualifying' | 'proposal_sent' | 'confirmed' | 'lost';
+  leadNotes?: string;
+}
+
+export interface CustomRequirementItem {
+  id: string;
+  name: string;
+  type?: 'allergy' | 'preference' | 'medical' | 'mobility';
+  notes?: string;
 }
 
 export interface GroupConditions {
@@ -56,11 +71,28 @@ export interface GroupConditions {
   medical: string[];
   prefs: string[];
   notes: string;
+  customFoodRequirements?: CustomRequirementItem[];
+  customAccessibilityRequirements?: CustomRequirementItem[];
+  customAccommodationRequirements?: CustomRequirementItem[];
   defaultEmergencyContact?: {
     name: string;
     phone: string;
     relation: string;
   };
+}
+
+export interface AttachmentItem {
+  id: string;
+  name: string;
+  size: number;
+  type: string; // 'application/pdf', 'image/jpeg', 'image/png', 'image/webp'
+  url: string;
+  uploadedAt: string;
+  uploadedBy?: string;
+  recordType: 'booking' | 'guest' | 'hotel' | 'flight';
+  recordId?: string | number;
+  storagePath?: string;
+  notes?: string;
 }
 
 export interface Guest {
@@ -72,9 +104,33 @@ export interface Guest {
   country?: string;
   age: 'Adult' | 'Elderly' | 'Teen' | 'Child' | 'Infant';
   exactAge?: number;
+  dob?: string; // Date of birth
+  passportNo?: string;
+  passportExpiry?: string;
+  relationshipToLead?: string; // e.g. Primary contact, Spouse/Partner, Child, Family member, Friend, Colleague
+  individualEmail?: string;
+  individualPhone?: string;
   languagesSpoken?: string[];
   isLead: boolean;
   notes: string;
+
+  // Provisional traveller flags (Section 2.B Quick Add)
+  isProvisional?: boolean;
+  provisionalLabel?: string;
+  leadContactId?: number;
+
+  // Room sharing & accommodation preferences (Section 2.B)
+  roomSharingPref?: string;
+  roomTypePref?: string;
+  specialAccomNotes?: string;
+
+  // Associated attachments
+  attachments?: AttachmentItem[];
+
+  // Custom Requirements (Extensible free-text & badges)
+  customFoodRequirements?: CustomRequirementItem[];
+  customAccessibilityRequirements?: CustomRequirementItem[];
+  customAccommodationRequirements?: CustomRequirementItem[];
 
   // Smart Group Inheritance Overrides
   inheritCountry?: boolean;
@@ -144,7 +200,16 @@ export interface Flight {
   notes: string;
   supplierContact?: string;
   confirmationRef?: string;
+  bookingUrl?: string;
+  referenceLinks?: { title: string; url: string }[];
   stops: Stop[];
+
+  // Non-blocking save warning flags (Section 4)
+  isIncomplete?: boolean;
+  missingFields?: string[];
+
+  // Attachments
+  attachments?: AttachmentItem[];
 }
 
 export interface Waypoint {
@@ -229,7 +294,10 @@ export interface Room {
   id: number;
   hotel: string;
   conf: string;
-  pay: 'Unpaid' | 'Deposit Paid' | 'Fully Paid';
+  pay: 'Unpaid' | 'Deposit Paid' | 'Paid' | 'Negotiation / Pending Confirmation' | 'Fully Paid';
+  depositAmount?: number;
+  balanceDue?: number;
+  paymentNotes?: string;
   status?: 'Requested' | 'Held' | 'Confirmed' | 'Cancelled';
   serviceStatus?: ServiceStatus;
   roomType: string;
@@ -243,6 +311,13 @@ export interface Room {
   supp: number;
   reqs: string[];
   notes: string;
+
+  // Address and Google Maps Location Import (Section 6)
+  address?: string;
+  googleMapsUrl?: string;
+
+  // Associated attachments
+  attachments?: AttachmentItem[];
 
   // Smart Room Allocation
   allocatedRooms?: AllocatedRoom[];
@@ -403,15 +478,62 @@ export interface Guide {
 export interface Driver {
   id: string;
   name: string;
+  preferredName?: string;
   phone: string;
   email: string;
   licenseNo: string;
+  licenseCategory?: string; // e.g. Code 8 / B, Code 10 / C1, Code 14 / EC
+  prdpNumber?: string; // Professional Driving Permit number
+  prdpExpiryDate?: string; // Expiration date YYYY-MM-DD
+  documentExpiryDates?: { docName: string; expiryDate: string }[];
   assignedVehicleId?: string;
+  operationalAvailability?: 'Full-time' | 'Part-time' | 'On-Call' | 'Weekend Only';
   status: 'Available' | 'Assigned' | 'Off Duty' | 'Unavailable';
+  profileStatus?: 'Active' | 'Suspended' | 'Pending Verification';
   emergencyContactName?: string;
   emergencyContactPhone?: string;
   notes: string;
   photoUrl?: string;
+}
+
+export type StaffRole = 'Driver' | 'Agent' | 'Employee' | 'Administrator';
+
+export interface StaffProfile {
+  id: string;
+  role: StaffRole;
+  fullName: string;
+  preferredName?: string;
+  email: string;
+  phone: string;
+  whatsapp?: string;
+  status: 'Active' | 'On Leave' | 'Inactive' | 'Pending Verification';
+  emergencyContact?: {
+    name: string;
+    phone: string;
+    relation: string;
+  };
+  notes?: string;
+
+  // Driver specific
+  licenseNo?: string;
+  licenseCategory?: string;
+  prdpNumber?: string;
+  prdpExpiryDate?: string; // YYYY-MM-DD
+  assignedVehicleId?: string;
+
+  // Agent specific
+  agencyName?: string;
+  commissionRate?: number;
+  agencyAddress?: string;
+
+  // Employee specific
+  jobTitle?: string;
+  department?: string;
+  responsibilities?: string;
+
+  // Administrator specific
+  adminPrivileges?: string[];
+  accessLevel?: 'SuperAdmin' | 'OpsAdmin' | 'BillingAdmin';
 }
 
 export interface AppState {
@@ -444,6 +566,7 @@ export interface AppState {
   vehicles: Vehicle[];
   guides?: Guide[];
   drivers: Driver[];
+  staffProfiles?: StaffProfile[];
   experienceLibrary: ExperienceLibraryItem[];
   destinationLibrary: DestinationLibraryItem[];
   finance: {
@@ -515,6 +638,7 @@ export interface AppState {
       status: string;
     }[];
   };
+  attachments?: AttachmentItem[];
 }
 
 export interface TripSummaryItem {
@@ -530,4 +654,129 @@ export interface TripSummaryItem {
   consultant: string;
   lastUpdated: string;
 }
+
+// AI Itinerary Import Schema Interfaces
+export interface AIImportReviewableField<T = any> {
+  value: T;
+  needsReview?: boolean;
+  reviewReason?: string;
+  isReviewed?: boolean;
+}
+
+export interface AIImportGuest {
+  first: string;
+  last: string;
+  preferredName?: string;
+  nationality?: string;
+  country?: string;
+  age?: 'Adult' | 'Elderly' | 'Teen' | 'Child' | 'Infant';
+  exactAge?: number;
+  dob?: string;
+  passportNo?: string;
+  passportExpiry?: string;
+  relationshipToLead?: string;
+  individualEmail?: string;
+  individualPhone?: string;
+  isLead?: boolean;
+  customFoodRequirements?: CustomRequirementItem[];
+  customAccessibilityRequirements?: CustomRequirementItem[];
+  customAccommodationRequirements?: CustomRequirementItem[];
+  dietary?: string[];
+  accessibility?: string[];
+  notes?: string;
+  needsReview?: boolean;
+  reviewReason?: string;
+  isReviewed?: boolean;
+}
+
+export interface AIImportFlight {
+  airline: string;
+  flightNo: string;
+  from: string;
+  to: string;
+  date?: string;
+  depTime?: string;
+  arrTime?: string;
+  cabin?: 'Economy' | 'Premium Economy' | 'Business' | 'First';
+  direction?: 'Inbound' | 'Outbound' | 'Internal';
+  pnr?: string;
+  cost?: number;
+  paxNames?: string[];
+  notes?: string;
+  needsReview?: boolean;
+  reviewReason?: string;
+  isReviewed?: boolean;
+}
+
+export interface AIImportStay {
+  hotel: string;
+  roomType?: string;
+  meal?: string;
+  cin?: string;
+  cout?: string;
+  nights?: number;
+  rate?: number;
+  notes?: string;
+  assignedPaxNames?: string[];
+  needsReview?: boolean;
+  reviewReason?: string;
+  isReviewed?: boolean;
+}
+
+export interface AIImportTransfer {
+  type: string;
+  date?: string;
+  time?: string;
+  from: string;
+  to: string;
+  flight?: string;
+  vehicle?: string;
+  notes?: string;
+  needsReview?: boolean;
+  reviewReason?: string;
+  isReviewed?: boolean;
+}
+
+export interface AIImportActivity {
+  day?: number;
+  slot?: 'Morning' | 'Afternoon' | 'Evening' | 'Full Day';
+  name: string;
+  desc?: string;
+  pickup?: string;
+  start?: string;
+  dur?: string;
+  pAdult?: number;
+  notes?: string;
+  needsReview?: boolean;
+  reviewReason?: string;
+  isReviewed?: boolean;
+}
+
+export interface AIItineraryPayload {
+  schemaVersion: string; // e.g. "viemma-itinerary-v1"
+  tripRef?: string;
+  tripTitle?: string;
+  client: {
+    name: string;
+    preferredName?: string;
+    email?: string;
+    phone?: string;
+    whatsapp?: string;
+    country?: string;
+    startDate?: string;
+    endDate?: string;
+    occasion?: string;
+    notes?: string;
+    needsReview?: boolean;
+    reviewReason?: string;
+  };
+  travellers: AIImportGuest[];
+  flights?: AIImportFlight[];
+  accommodations?: AIImportStay[];
+  transfers?: AIImportTransfer[];
+  activities?: AIImportActivity[];
+  generalNotes?: string;
+  warnings?: string[];
+}
+
 

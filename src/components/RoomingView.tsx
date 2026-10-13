@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { AppState, Room, AllocatedRoom } from '../types';
 import { DB_DEFAULT, ROOM_TYPE_OPTIONS, MEAL_PLAN_OPTIONS, ROOM_REQUEST_OPTIONS } from '../dbDefaults';
+import { fetchHotelsCatalogue, addCustomHotelToCatalogue } from '../lib/catalogueService';
 import { 
   Hotel, 
   Plus, 
@@ -26,6 +27,7 @@ import {
   Eye,
   Heart,
   FileText,
+  Search,
   X
 } from 'lucide-react';
 
@@ -47,6 +49,17 @@ export const RoomingView: React.FC<RoomingViewProps> = ({
   const [editingRoomId, setEditingRoomId] = useState<number | null>(null);
   const [rForm, setRForm] = useState<Partial<Room>>({});
   const [showQuickBook, setShowQuickBook] = useState(false);
+
+  // Dynamic Accommodation Catalogue & Autocomplete
+  const [hotelCatalog, setHotelCatalog] = useState<string[]>([]);
+  const [hotelSearch, setHotelSearch] = useState('');
+  const [showHotelDropdown, setShowHotelDropdown] = useState(false);
+  const [customReqInput, setCustomReqInput] = useState('');
+  const [roomValidationError, setRoomValidationError] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetchHotelsCatalogue().then(list => setHotelCatalog(list));
+  }, []);
 
   // Sub-state for creating/editing an allocated room inside the active Stay Form
   const [showRoomAllocModal, setShowRoomAllocModal] = useState(false);
@@ -158,9 +171,17 @@ export const RoomingView: React.FC<RoomingViewProps> = ({
   };
 
   const handleSaveRoom = () => {
-    if (!rForm.hotel) {
-      alert('Hotel Property Name is required.');
+    const chosenHotel = (hotelSearch || rForm.hotel || '').trim();
+    if (!chosenHotel) {
+      setRoomValidationError('Hotel Property Name is required.');
       return;
+    }
+    setRoomValidationError(null);
+
+    // Save custom hotel into catalogue if not present
+    if (!hotelCatalog.includes(chosenHotel)) {
+      const updated = addCustomHotelToCatalogue(chosenHotel);
+      setHotelCatalog(updated);
     }
 
     // Auto calculate retail sum from allocated rooms if present
@@ -171,7 +192,7 @@ export const RoomingView: React.FC<RoomingViewProps> = ({
 
     const savedRoom: Room = {
       id: rForm.id || Date.now(),
-      hotel: rForm.hotel,
+      hotel: chosenHotel,
       conf: rForm.conf || '',
       pay: rForm.pay || 'Unpaid',
       roomType: rForm.allocatedRooms?.[0]?.roomType || rForm.roomType || 'Standard',
@@ -369,7 +390,15 @@ export const RoomingView: React.FC<RoomingViewProps> = ({
   const toggleAllocRoomGuest = (gId: number) => {
     const list = allocRoomForm.guestIds ? [...allocRoomForm.guestIds] : [];
     const updated = list.includes(gId) ? list.filter(id => id !== gId) : [...list, gId];
-    setAllocRoomForm({ ...allocRoomForm, guestIds: updated });
+    const selectedGuests = state.guests.filter(g => updated.includes(g.id));
+    const adults = selectedGuests.filter(g => g.age === 'Adult' || g.age === 'Elderly' || !g.age).length;
+    const children = selectedGuests.filter(g => g.age === 'Child' || g.age === 'Teen' || g.age === 'Infant').length;
+    setAllocRoomForm({ 
+      ...allocRoomForm, 
+      guestIds: updated,
+      adults: adults || (allocRoomForm.adults ?? 1),
+      children
+    });
   };
 
   const toggleStayAmenity = (amenity: string) => {
@@ -378,6 +407,42 @@ export const RoomingView: React.FC<RoomingViewProps> = ({
     setRForm({ ...rForm, amenities: updated });
   };
 
+  // ROOMING DIAGNOSTICS & VERIFICATION
+  const allAllocatedGuestIds = Array.from(
+    new Set(state.rooms.flatMap(r => (r.allocatedRooms || []).flatMap(ar => ar.guestIds)))
+  );
+  const unallocatedGuests = state.guests.filter(g => !allAllocatedGuestIds.includes(g.id));
+
+  // Capacity Exceedance
+  const capacityAlerts: string[] = [];
+  state.rooms.forEach(r => {
+    (r.allocatedRooms || []).forEach(ar => {
+      const max = ar.maxOccupancy || 2;
+      if (ar.guestIds.length > max) {
+        capacityAlerts.push(`${r.hotel} - ${ar.roomName}: ${ar.guestIds.length} travellers assigned (${max} max capacity)`);
+      }
+    });
+  });
+
+  // Duplicate guest assignment inside the same stay
+  const duplicateStayAlerts: string[] = [];
+  state.rooms.forEach(r => {
+    const guestCounts: Record<number, number> = {};
+    (r.allocatedRooms || []).forEach(ar => {
+      ar.guestIds.forEach(gid => {
+        guestCounts[gid] = (guestCounts[gid] || 0) + 1;
+      });
+    });
+    Object.entries(guestCounts).forEach(([gidStr, count]) => {
+      if (count > 1) {
+        const guest = state.guests.find(g => g.id === Number(gidStr));
+        if (guest) {
+          duplicateStayAlerts.push(`${guest.first} ${guest.last} is assigned to ${count} rooms at ${r.hotel}`);
+        }
+      }
+    });
+  });
+
   return (
     <div className="space-y-8 max-w-[1500px] mx-auto animate-in fade-in duration-500">
       
@@ -385,11 +450,11 @@ export const RoomingView: React.FC<RoomingViewProps> = ({
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 pb-6 border-b border-gray-100">
         <div className="space-y-2">
           <span className="text-xs uppercase tracking-[0.2em] font-bold text-[#D4AF37] flex items-center gap-2">
-            <Hotel size={14} /> ACCOMMODATION CONTROL CORRIDOR
+            <Hotel size={14} /> ACCOMMODATION & ROOMING
           </span>
           <h1 className="text-3xl font-bold tracking-tight text-gray-900 font-sans">Lodging Properties & Room Allocations</h1>
           <p className="text-gray-500 max-w-2xl text-sm leading-relaxed">
-            Link 5-Star luxury properties, private reserves, and wilderness bush camps. Configure intelligent room types, occupancy capacities, and specific layout configurations.
+            Link luxury properties and allocate tour party travellers into realistic room configurations (Single, Double, Twin, Triple, Family, Suites).
           </p>
         </div>
         
@@ -399,7 +464,7 @@ export const RoomingView: React.FC<RoomingViewProps> = ({
               onClick={() => setShowQuickBook(!showQuickBook)} 
               className="flex items-center gap-2 px-5 py-3 rounded-xl border border-[#D4AF37] text-[#1A3326] bg-yellow-50 hover:bg-yellow-100 text-xs font-bold shadow-sm transition"
             >
-              <Briefcase size={14} className="text-[#D4AF37]" /> Quick booking Desk
+              <Briefcase size={14} className="text-[#D4AF37]" /> Quick Booking Desk
             </button>
             <button 
               onClick={handleOpenAddForm} 
@@ -410,6 +475,58 @@ export const RoomingView: React.FC<RoomingViewProps> = ({
           </div>
         )}
       </div>
+
+      {/* ROOMING DIAGNOSTICS & ALERTS BAR */}
+      {state.guests.length > 0 && (
+        <div className="bg-white rounded-2xl border border-gray-200 p-4 shadow-xs space-y-3">
+          <div className="flex flex-wrap items-center justify-between gap-3 text-xs">
+            <div className="flex items-center gap-2">
+              <span className="font-bold text-[#10233F]">Rooming Allocation Status:</span>
+              <span className={`px-2.5 py-0.5 rounded-full font-bold text-[11px] ${
+                unallocatedGuests.length === 0 && state.rooms.length > 0
+                  ? 'bg-emerald-100 text-emerald-800'
+                  : 'bg-amber-100 text-amber-800'
+              }`}>
+                {state.guests.length - unallocatedGuests.length} of {state.guests.length} Travellers Allocated
+              </span>
+            </div>
+
+            <div className="text-[11px] text-gray-500">
+              {state.rooms.length} Stay Propert{state.rooms.length === 1 ? 'y' : 'ies'} •{' '}
+              {state.rooms.reduce((acc, r) => acc + (r.allocatedRooms?.length || 0), 0)} Allocated Rooms
+            </div>
+          </div>
+
+          {/* Actionable Warnings */}
+          {(unallocatedGuests.length > 0 && state.rooms.length > 0) && (
+            <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl flex items-center gap-2 text-xs text-amber-800 animate-in fade-in">
+              <AlertCircle size={15} className="text-amber-600 shrink-0" />
+              <span>
+                <strong>Unassigned Travellers:</strong>{' '}
+                {unallocatedGuests.map(g => `${g.first} ${g.last}`).join(', ')} {unallocatedGuests.length === 1 ? 'has' : 'have'} not been assigned to any room.
+              </span>
+            </div>
+          )}
+
+          {capacityAlerts.length > 0 && (
+            <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl flex items-center gap-2 text-xs text-rose-800 animate-in fade-in">
+              <AlertCircle size={15} className="text-rose-600 shrink-0" />
+              <span>
+                <strong>Occupancy Warning:</strong> {capacityAlerts.join('; ')}
+              </span>
+            </div>
+          )}
+
+          {duplicateStayAlerts.length > 0 && (
+            <div className="p-3 bg-sky-50 border border-sky-200 rounded-xl flex items-center gap-2 text-xs text-sky-800 animate-in fade-in">
+              <Info size={15} className="text-sky-600 shrink-0" />
+              <span>
+                <strong>Multi-Room Notice:</strong> {duplicateStayAlerts.join('; ')} (Verify if this is intentional for family sharing or split rooms).
+              </span>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* QUICK BOOK PANEL */}
       {showQuickBook && (
@@ -544,19 +661,54 @@ export const RoomingView: React.FC<RoomingViewProps> = ({
               
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 
-                <div className="space-y-1.5 md:col-span-2">
-                  <label className="text-[11px] text-gray-500 font-bold uppercase tracking-wider block">Property Hotel Name</label>
-                  <input 
-                    type="text" 
-                    value={rForm.hotel || ''} 
-                    onChange={e => setRForm({ ...rForm, hotel: e.target.value })}
-                    className="w-full h-11 px-4 rounded-xl border border-gray-200 text-xs font-semibold text-gray-800 focus:border-[#D4AF37] transition duration-200" 
-                    placeholder="e.g. The Silo Hotel"
-                    list="hotels-list"
-                  />
-                  <datalist id="hotels-list">
-                    {DB_DEFAULT.hotels.map(h => <option key={h.id} value={h.name} />)}
-                  </datalist>
+                <div className="space-y-1.5 md:col-span-2 relative">
+                  <div className="flex items-center justify-between">
+                    <label className="text-[11px] text-gray-500 font-bold uppercase tracking-wider block">Property / Accommodation Name</label>
+                    <span className="text-[10px] text-gray-400 font-medium">Shared Catalogue ({hotelCatalog.length} properties)</span>
+                  </div>
+                  <div className="relative">
+                    <input 
+                      type="text" 
+                      value={hotelSearch} 
+                      onChange={e => {
+                        setHotelSearch(e.target.value);
+                        setRForm({ ...rForm, hotel: e.target.value });
+                        setShowHotelDropdown(true);
+                      }}
+                      onFocus={() => setShowHotelDropdown(true)}
+                      className="w-full h-11 px-4 rounded-xl border border-gray-200 text-xs font-semibold text-gray-800 focus:border-[#D4AF37] transition duration-200" 
+                      placeholder="Type or search property (Hotel, Villa, Apartment)..."
+                    />
+                    <span className="absolute right-3 top-3 text-gray-400 pointer-events-none">
+                      <Search size={14} />
+                    </span>
+                  </div>
+
+                  {showHotelDropdown && (
+                    <div className="absolute left-0 top-full mt-1 w-full bg-white border border-gray-200 rounded-xl shadow-xl max-h-56 overflow-y-auto z-50 py-1 text-xs">
+                      <div className="px-3 py-1 text-[10px] uppercase font-bold text-gray-400 bg-gray-50 border-b border-gray-100 flex justify-between items-center">
+                        <span>Select from Catalogue or enter custom property</span>
+                        <button type="button" onClick={() => setShowHotelDropdown(false)} className="text-gray-400 hover:text-gray-600">Close</button>
+                      </div>
+                      {(hotelSearch.trim() 
+                        ? hotelCatalog.filter(h => h.toLowerCase().includes(hotelSearch.toLowerCase())) 
+                        : hotelCatalog.slice(0, 30)
+                      ).map(hotel => (
+                        <div
+                          key={hotel}
+                          onClick={() => {
+                            setHotelSearch(hotel);
+                            setRForm({ ...rForm, hotel });
+                            setShowHotelDropdown(false);
+                          }}
+                          className="px-3 py-2 hover:bg-emerald-50 cursor-pointer font-medium text-gray-700 hover:text-[#1A3326] transition flex items-center justify-between"
+                        >
+                          <span>{hotel}</span>
+                          {(hotelSearch === hotel || rForm.hotel === hotel) && <Check size={12} className="text-emerald-600" />}
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
 
                 <div className="space-y-1.5">
@@ -1089,17 +1241,32 @@ export const RoomingView: React.FC<RoomingViewProps> = ({
                 <div className="space-y-1.5">
                   <label className="text-[10px] text-gray-400 font-bold uppercase block">Sharing Configuration</label>
                   <select 
-                    value={allocRoomForm.occupancy || 'Couple'}
-                    onChange={e => setAllocRoomForm({ ...allocRoomForm, occupancy: e.target.value })}
+                    value={allocRoomForm.occupancy || 'Double'}
+                    onChange={e => {
+                      const val = e.target.value;
+                      let defaultMax = 2;
+                      if (val === 'Single') defaultMax = 1;
+                      else if (val === 'Triple') defaultMax = 3;
+                      else if (val === 'Family') defaultMax = 4;
+                      else if (val === 'Suite') defaultMax = 3;
+                      setAllocRoomForm({ 
+                        ...allocRoomForm, 
+                        occupancy: val,
+                        maxOccupancy: allocRoomForm.maxOccupancy || defaultMax
+                      });
+                    }}
                     className="w-full h-10 px-3 rounded-lg border border-gray-200 bg-white text-xs font-semibold"
                   >
-                    <option value="Couple">Couple (1 King Bed)</option>
-                    <option value="Friends sharing">Friends Sharing (Twin Beds)</option>
-                    <option value="Family sharing">Family Sharing (King + Bunk)</option>
-                    <option value="Single Supplement">Single Supplement</option>
+                    <option value="Single">Single (1 Adult)</option>
+                    <option value="Double">Double (1 King / Queen Bed)</option>
+                    <option value="Twin">Twin (2 Separate Single Beds)</option>
+                    <option value="Triple">Triple (3 Beds)</option>
+                    <option value="Family">Family (Parents + Children)</option>
+                    <option value="Suite">Suite / Villa</option>
                     <option value="Guide Room">Guide Accommodation</option>
                     <option value="Driver Room">Driver Accommodation</option>
                     <option value="Staff lodging">Staff Lodging</option>
+                    <option value="Custom">Other / Custom Layout</option>
                   </select>
                 </div>
 
@@ -1107,6 +1274,7 @@ export const RoomingView: React.FC<RoomingViewProps> = ({
                   <label className="text-[10px] text-gray-400 font-bold uppercase block">Max Occupancy</label>
                   <input 
                     type="number" 
+                    min="1"
                     value={allocRoomForm.maxOccupancy || 2}
                     onChange={e => setAllocRoomForm({ ...allocRoomForm, maxOccupancy: Number(e.target.value) })}
                     className="w-full h-10 px-3 rounded-lg border border-gray-200 text-xs font-semibold"

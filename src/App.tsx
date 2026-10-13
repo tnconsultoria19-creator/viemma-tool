@@ -32,6 +32,7 @@ import { TransportFleetView } from './components/TransportFleetView';
 import { DriversView } from './components/DriversView';
 import { DailyTimelinesView } from './components/DailyTimelinesView';
 import { DriverItineraryView } from './components/DriverItineraryView';
+import { AIItineraryImportModal } from './components/AIItineraryImportModal';
 import { 
   Home, 
   TrendingUp, 
@@ -306,8 +307,68 @@ const SAMPLE_TEMPLATE: AppState = {
       isFree: false
     }
   ],
-  vehicles: [],
-  drivers: [],
+  vehicles: [
+    { 
+      id: "v1", 
+      name: "Toyota Quantum — 13 Seater", 
+      type: "Minibus / Quantum", 
+      registration: "CA 482-910", 
+      capacity: 13, 
+      luggageCapacity: 14, 
+      status: "Assigned", 
+      notes: "Equipped with passenger PA system and air conditioning." 
+    },
+    { 
+      id: "v2", 
+      name: "Mercedes V-Class — 7 Seater", 
+      type: "Mercedes V-Class", 
+      registration: "CA 931-204", 
+      capacity: 7, 
+      luggageCapacity: 8, 
+      status: "Available", 
+      notes: "Luxury leather interior, onboard Wi-Fi and chilled refreshments cooler." 
+    }
+  ],
+  drivers: [
+    {
+      id: "drv_sipho",
+      name: "Sipho Khumalo",
+      preferredName: "Sipho",
+      phone: "+27 60 555 1234",
+      email: "sipho@viemmatours.com",
+      licenseNo: "8403125089081",
+      licenseCategory: "Code 10 (C1) — Heavy Motor Vehicle (<16t)",
+      prdpNumber: "PrDP-CPT-84920",
+      prdpExpiryDate: "2026-11-30",
+      assignedVehicleId: "v1",
+      operationalAvailability: "Full-time",
+      status: "Assigned",
+      profileStatus: "Active",
+      emergencyContactName: "Nomusa Khumalo",
+      emergencyContactPhone: "+27 83 555 9911",
+      notes: "First Aid Level 2, Advanced Defensive Driving certified. 12 years luxury chauffeur experience.",
+      photoUrl: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?q=80&w=400&auto=format&fit=crop"
+    },
+    {
+      id: "drv_johan",
+      name: "Johan Botha",
+      preferredName: "Johan",
+      phone: "+27 83 777 5678",
+      email: "johan@viemmatours.com",
+      licenseNo: "7911045129087",
+      licenseCategory: "Code 8 (B) — Light Motor Vehicle",
+      prdpNumber: "PrDP-CPT-79312",
+      prdpExpiryDate: "2026-08-15",
+      assignedVehicleId: "v2",
+      operationalAvailability: "Full-time",
+      status: "Available",
+      profileStatus: "Active",
+      emergencyContactName: "Annelize Botha",
+      emergencyContactPhone: "+27 82 444 1290",
+      notes: "Specialist Cape Peninsula & Winelands route chauffeur. Fluent in English and Afrikaans.",
+      photoUrl: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?q=80&w=400&auto=format&fit=crop"
+    }
+  ],
   experienceLibrary: DEFAULT_EXPERIENCES,
   destinationLibrary: DEFAULT_DESTINATIONS,
   finance: {
@@ -448,6 +509,7 @@ export default function App() {
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [isLauncherOpen, setIsLauncherOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isAIImportOpen, setIsAIImportOpen] = useState(false);
   const [windowWidth, setWindowWidth] = useState(typeof window !== 'undefined' ? window.innerWidth : 1200);
 
   // Resize listener to adapt menu
@@ -1180,6 +1242,18 @@ export default function App() {
                   </button>
                 )}
 
+                {/* [AI IMPORT] */}
+                {!isClientView && (
+                  <button
+                    onClick={() => setIsAIImportOpen(true)}
+                    className="h-9 px-2.5 xl:px-3 rounded-xl border border-white/15 bg-white/5 text-gray-200 hover:text-white hover:bg-white/10 hover:border-[#D4AF37] transition-all text-xs font-bold shadow-xs flex items-center gap-1.5 active:scale-95 focus-visible:ring-2 focus-visible:ring-[#D4AF37] focus:outline-none shrink-0 cursor-pointer"
+                    title="Import full itinerary payload from AI Assistant (ChatGPT, Gemini, Claude)"
+                  >
+                    <Sparkles size={13} className="text-[#D4AF37]" />
+                    <span>AI Import</span>
+                  </button>
+                )}
+
                 {/* [PRINT HUB] */}
                 <button
                   onClick={() => setActiveTab('exporthub')}
@@ -1321,6 +1395,14 @@ export default function App() {
               <span className="text-[9px] text-gray-400 font-bold uppercase tracking-widest block px-3.5 select-none">Quick Actions</span>
               
               <button
+                onClick={() => { setIsAIImportOpen(true); setIsDrawerOpen(false); }}
+                className="h-11 w-full px-4 rounded-xl bg-white/10 text-white hover:bg-white/15 font-bold text-xs flex items-center justify-center gap-2 border border-white/15 shadow-md active:scale-95 transition focus-visible:ring-2 focus-visible:ring-[#D4AF37] focus:outline-none cursor-pointer"
+              >
+                <Sparkles size={14} className="text-[#D4AF37]" />
+                <span>AI Itinerary Import</span>
+              </button>
+
+              <button
                 onClick={() => { generateAIItinerary(); setIsDrawerOpen(false); }}
                 className="h-11 w-full px-4 rounded-xl bg-[#D4AF37] text-[#1A3326] font-bold text-xs flex items-center justify-center gap-2 shadow-md active:scale-95 transition focus-visible:ring-2 focus-visible:ring-[#D4AF37] focus:outline-none"
               >
@@ -1408,6 +1490,7 @@ export default function App() {
                   onSetLeadGuest={handleSetLeadGuest}
                   onUpdateGuest={handleUpdateGuest}
                   onNavigateTab={(tab) => setActiveTab(tab)}
+                  onOpenAIImport={() => setIsAIImportOpen(true)}
                 />
               )}
 
@@ -1742,6 +1825,18 @@ export default function App() {
           </div>
         </div>
       )}
+
+      {/* AI ITINERARY IMPORT MODAL */}
+      <AIItineraryImportModal
+        isOpen={isAIImportOpen}
+        onClose={() => setIsAIImportOpen(false)}
+        currentState={state}
+        onApplyItinerary={(updatedState) => {
+          updateFullState({ ...state, ...updatedState });
+          setSaveMessage('AI Itinerary Imported Successfully!');
+          setTimeout(() => setSaveMessage(''), 3000);
+        }}
+      />
     </div>
   );
 }

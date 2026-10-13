@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { AppState, Flight, Stop } from '../types';
+import { fetchAirlinesCatalogue, addCustomAirlineToCatalogue } from '../lib/catalogueService';
 import { 
   Plane, 
   Plus, 
@@ -15,7 +16,13 @@ import {
   Tag, 
   Compass, 
   AlertCircle,
-  HelpCircle
+  ExternalLink,
+  Link as LinkIcon,
+  Search,
+  Radio,
+  RefreshCw,
+  ShieldAlert,
+  Info
 } from 'lucide-react';
 
 interface FlightsViewProps {
@@ -36,6 +43,18 @@ export const FlightsView: React.FC<FlightsViewProps> = ({
   const [editingFlightId, setEditingFlightId] = useState<number | null>(null);
   const [fForm, setFForm] = useState<Partial<Flight>>({});
   const [stopsList, setStopsList] = useState<Stop[]>([]);
+  const [validationError, setValidationError] = useState<string | null>(null);
+
+  // Dynamic Airline Catalogue
+  const [airlineCatalog, setAirlineCatalog] = useState<string[]>([]);
+  const [airlineSearch, setAirlineSearch] = useState('');
+  const [showAirlineDropdown, setShowAirlineDropdown] = useState(false);
+  const [newAirlineInput, setNewAirlineInput] = useState('');
+  const [showAddAirlineModal, setShowAddAirlineModal] = useState(false);
+
+  // Flight Reference Links
+  const [newRefLinkTitle, setNewRefLinkTitle] = useState('');
+  const [newRefLinkUrl, setNewRefLinkUrl] = useState('');
 
   // Stop sub-forms
   const [stopAirport, setStopAirport] = useState('');
@@ -44,7 +63,20 @@ export const FlightsView: React.FC<FlightsViewProps> = ({
   const [stopDur, setStopDur] = useState('');
   const [stopChangeNo, setStopChangeNo] = useState('');
 
-  const AIRLINES = ["Emirates", "South African Airways", "TAAG Angola", "Airlink", "Qatar Airways", "Lufthansa", "Ethiopian Airlines"];
+  // FlightRadar24 Embed & Live Status
+  const [iframeLoaded, setIframeLoaded] = useState(false);
+  const [iframeBlocked, setIframeBlocked] = useState(false);
+  const [activeFlightRadarTab, setActiveFlightRadarTab] = useState<'embed' | 'overview'>('overview');
+
+  useEffect(() => {
+    fetchAirlinesCatalogue().then(list => {
+      setAirlineCatalog(list);
+    });
+  }, []);
+
+  const filteredAirlines = airlineSearch.trim()
+    ? airlineCatalog.filter(a => a.toLowerCase().includes(airlineSearch.toLowerCase()))
+    : airlineCatalog.slice(0, 30);
 
   const handleOpenAddForm = () => {
     setFForm({
@@ -52,8 +84,12 @@ export const FlightsView: React.FC<FlightsViewProps> = ({
       airline: 'Emirates',
       flightNo: '',
       pnr: '',
+      confirmationRef: '',
+      bookingUrl: '',
+      referenceLinks: [],
+      supplierContact: '',
       from: '',
-      to: '',
+      to: 'CPT',
       date: state.client.startDate || '',
       depTime: '',
       arrTime: '',
@@ -69,30 +105,54 @@ export const FlightsView: React.FC<FlightsViewProps> = ({
       qty: state.guests.length || 1,
       notes: ''
     });
+    setAirlineSearch('Emirates');
     setStopsList([]);
+    setValidationError(null);
     setEditingFlightId(-1); // special ID for new form
   };
 
   const handleEditFlight = (f: Flight) => {
     setFForm({ ...f });
+    setAirlineSearch(f.airline || '');
     setStopsList(f.stops || []);
+    setValidationError(null);
     setEditingFlightId(f.id);
   };
 
   const handleSaveFlight = () => {
-    if (!fForm.flightNo || !fForm.from || !fForm.to) {
-      alert('Please fill out Flight Number, From, and To.');
+    setValidationError(null);
+    const chosenAirline = (airlineSearch || fForm.airline || '').trim();
+    if (!chosenAirline) {
+      setValidationError('Airline carrier is required.');
       return;
+    }
+    if (!fForm.flightNo?.trim()) {
+      setValidationError('Flight Number is required (e.g. EK772, SA042).');
+      return;
+    }
+    if (!fForm.from?.trim() || !fForm.to?.trim()) {
+      setValidationError('Origin airport (From) and Destination airport (To) are required.');
+      return;
+    }
+
+    // Save custom airline into catalogue if not present
+    if (!airlineCatalog.includes(chosenAirline)) {
+      const updated = addCustomAirlineToCatalogue(chosenAirline);
+      setAirlineCatalog(updated);
     }
 
     const savedFlight: Flight = {
       id: fForm.id || Date.now(),
       direction: fForm.direction || 'Inbound',
-      airline: fForm.airline || 'Emirates',
-      flightNo: fForm.flightNo.toUpperCase(),
-      pnr: (fForm.pnr || '').toUpperCase(),
-      from: fForm.from.toUpperCase(),
-      to: fForm.to.toUpperCase(),
+      airline: chosenAirline,
+      flightNo: fForm.flightNo.trim().toUpperCase(),
+      pnr: (fForm.pnr || '').trim().toUpperCase(),
+      confirmationRef: (fForm.confirmationRef || '').trim().toUpperCase(),
+      bookingUrl: (fForm.bookingUrl || '').trim(),
+      referenceLinks: fForm.referenceLinks || [],
+      supplierContact: (fForm.supplierContact || '').trim(),
+      from: fForm.from.trim().toUpperCase(),
+      to: fForm.to.trim().toUpperCase(),
       date: fForm.date || '',
       depTime: fForm.depTime || '',
       arrTime: fForm.arrTime || '',
@@ -118,20 +178,21 @@ export const FlightsView: React.FC<FlightsViewProps> = ({
     setEditingFlightId(null);
     setFForm({});
     setStopsList([]);
+    setValidationError(null);
   };
 
   const handleAddStop = () => {
-    if (!stopAirport) {
-      alert('Airport is required.');
+    if (!stopAirport.trim()) {
+      setValidationError('Waypoint airport code is required.');
       return;
     }
     const newStop: Stop = {
       id: Date.now(),
-      airport: stopAirport.toUpperCase(),
+      airport: stopAirport.trim().toUpperCase(),
       arrTime: stopArr,
       depTime: stopDep,
       duration: stopDur,
-      changeFlightNo: stopChangeNo.toUpperCase()
+      changeFlightNo: stopChangeNo.trim().toUpperCase()
     };
     setStopsList([...stopsList, newStop]);
     setStopAirport('');
@@ -141,12 +202,12 @@ export const FlightsView: React.FC<FlightsViewProps> = ({
     setStopChangeNo('');
   };
 
-  const handleRemoveStop = (sid: number) => {
-    setStopsList(stopsList.filter(s => s.id !== sid));
+  const handleRemoveStop = (id: number) => {
+    setStopsList(stopsList.filter(s => s.id !== id));
   };
 
   const togglePassengerSelection = (paxId: number) => {
-    const list = fForm.paxIds ? [...fForm.paxIds] : [];
+    const list = fForm.paxIds || [];
     let updated: number[];
     if (list.includes(paxId)) {
       updated = list.filter(id => id !== paxId);
@@ -156,8 +217,39 @@ export const FlightsView: React.FC<FlightsViewProps> = ({
     setFForm({ ...fForm, paxIds: updated });
   };
 
+  const handleAddReferenceLink = () => {
+    if (!newRefLinkUrl.trim()) return;
+    const current = fForm.referenceLinks || [];
+    const updated = [
+      ...current,
+      {
+        title: newRefLinkTitle.trim() || 'Booking / Reference Document',
+        url: newRefLinkUrl.trim().startsWith('http') ? newRefLinkUrl.trim() : `https://${newRefLinkUrl.trim()}`
+      }
+    ];
+    setFForm({ ...fForm, referenceLinks: updated });
+    setNewRefLinkTitle('');
+    setNewRefLinkUrl('');
+  };
+
+  const handleRemoveReferenceLink = (index: number) => {
+    const current = fForm.referenceLinks || [];
+    const updated = current.filter((_, i) => i !== index);
+    setFForm({ ...fForm, referenceLinks: updated });
+  };
+
+  const handleAddNewAirlineToCatalog = () => {
+    if (!newAirlineInput.trim()) return;
+    const updated = addCustomAirlineToCatalogue(newAirlineInput.trim());
+    setAirlineCatalog(updated);
+    setAirlineSearch(newAirlineInput.trim());
+    setFForm({ ...fForm, airline: newAirlineInput.trim() });
+    setNewAirlineInput('');
+    setShowAddAirlineModal(false);
+  };
+
   return (
-    <div className="space-y-8 max-w-[1500px] mx-auto animate-in fade-in duration-500">
+    <div className="space-y-8 max-w-[1500px] mx-auto animate-in fade-in duration-500 pb-16">
       
       {/* Title Header with Spacious Breathing Room */}
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 pb-6 border-b border-gray-100">
@@ -167,13 +259,14 @@ export const FlightsView: React.FC<FlightsViewProps> = ({
           </span>
           <h1 className="text-3xl font-bold tracking-tight text-gray-900 font-sans">Aviation & Flight Corridors</h1>
           <p className="text-gray-500 max-w-2xl text-sm leading-relaxed">
-            Link long-haul flights, regional transfers, layover routing waypoints, airline carriers, and ticket booking status updates.
+            Link international long-haul flights, regional air transfers, layover routing waypoints, verified airline carriers, booking references, and live airport flight trackers.
           </p>
         </div>
         {editingFlightId === null && (
           <button 
+            type="button"
             onClick={handleOpenAddForm} 
-            className="flex items-center gap-2 px-5 py-3 rounded-xl bg-[#1A3326] text-white hover:bg-[#12241b] text-xs font-bold shadow-md hover:translate-y-[-1px] transition-all duration-150 shrink-0"
+            className="flex items-center gap-2 px-5 py-3 rounded-xl bg-[#1A3326] text-white hover:bg-[#12241b] text-xs font-bold shadow-md hover:translate-y-[-1px] transition-all duration-150 shrink-0 cursor-pointer"
           >
             <Plus size={14} /> Link New Flight Sector
           </button>
@@ -187,7 +280,7 @@ export const FlightsView: React.FC<FlightsViewProps> = ({
           {/* Header */}
           <div className="bg-gradient-to-r from-[#1A3326] to-[#224433] text-white p-6 md:p-8 flex items-center justify-between">
             <div>
-              <span className="text-[10px] uppercase tracking-[0.2em] font-bold text-[#D4AF37] block mb-1">Interactive Configurator</span>
+              <span className="text-[10px] uppercase tracking-[0.2em] font-bold text-[#D4AF37] block mb-1">Interactive Aviation Configurator</span>
               <h2 className="text-xl md:text-2xl font-bold font-sans flex items-center gap-2">
                 <Plane size={20} className="text-[#D4AF37]" />
                 {editingFlightId === -1 ? 'Configure Flight Sector' : 'Update Flight Sector'}
@@ -195,27 +288,40 @@ export const FlightsView: React.FC<FlightsViewProps> = ({
             </div>
             <div className="flex gap-3">
               <button 
+                type="button"
                 onClick={() => setEditingFlightId(null)} 
-                className="px-4 py-2 rounded-xl bg-white/10 text-white hover:bg-white/20 text-xs font-semibold transition"
+                className="px-4 py-2 rounded-xl bg-white/10 text-white hover:bg-white/20 text-xs font-semibold transition cursor-pointer"
               >
                 Cancel
               </button>
               <button 
+                type="button"
                 onClick={handleSaveFlight} 
-                className="px-4 py-2 rounded-xl bg-[#D4AF37] text-[#1A3326] hover:bg-[#b89528] text-xs font-bold shadow-sm hover:translate-y-[-1px] transition-all"
+                className="px-5 py-2 rounded-xl bg-[#D4AF37] text-[#1A3326] hover:bg-[#b89528] text-xs font-extrabold shadow-sm hover:translate-y-[-1px] transition-all cursor-pointer"
               >
-                Save Flight Links
+                Save Flight Sector
               </button>
             </div>
           </div>
 
+          {/* Validation Notice */}
+          {validationError && (
+            <div className="mx-6 md:mx-8 mt-6 p-4 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs font-semibold flex items-center gap-2 animate-in fade-in">
+              <AlertCircle size={16} className="text-rose-600 shrink-0" />
+              <span>{validationError}</span>
+            </div>
+          )}
+
           <div className="p-6 md:p-8 space-y-8 bg-gray-50/50">
             
-            {/* GROUP 1: Basic Ticket Information */}
+            {/* GROUP 1: Basic Flight Information & Airline Catalogue */}
             <div className="bg-white rounded-[20px] p-6 border border-gray-100 shadow-sm space-y-6">
-              <h3 className="text-xs uppercase font-bold text-[#1A3326] tracking-wider border-b border-gray-100 pb-2 flex items-center gap-2">
-                <Compass size={14} className="text-[#D4AF37]" /> Basic Flight Info
-              </h3>
+              <div className="flex items-center justify-between border-b border-gray-100 pb-2">
+                <h3 className="text-xs uppercase font-bold text-[#1A3326] tracking-wider flex items-center gap-2">
+                  <Compass size={14} className="text-[#D4AF37]" /> Basic Flight & Airline Information
+                </h3>
+                <span className="text-[10px] text-gray-400 font-semibold">Shared Catalogue: {airlineCatalog.length} Carriers</span>
+              </div>
               
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                 
@@ -232,19 +338,59 @@ export const FlightsView: React.FC<FlightsViewProps> = ({
                   </select>
                 </div>
 
-                <div className="space-y-1.5">
-                  <label className="text-[11px] text-gray-500 font-bold uppercase tracking-wider block">Airline Carrier</label>
-                  <input 
-                    type="text" 
-                    value={fForm.airline || ''} 
-                    onChange={e => setFForm({ ...fForm, airline: e.target.value })}
-                    className="w-full h-11 px-4 rounded-xl border border-gray-200 text-xs font-semibold text-gray-800 focus:border-[#D4AF37] focus:ring-1 focus:ring-[#D4AF37] transition duration-200" 
-                    placeholder="e.g. SAA"
-                    list="airlines-list"
-                  />
-                  <datalist id="airlines-list">
-                    {AIRLINES.map(a => <option key={a} value={a} />)}
-                  </datalist>
+                {/* SEARCHABLE AIRLINE CATALOGUE + FREE TEXT ENTRY */}
+                <div className="space-y-1.5 relative">
+                  <div className="flex items-center justify-between">
+                    <label className="text-[11px] text-gray-500 font-bold uppercase tracking-wider block">Airline Carrier</label>
+                    <button
+                      type="button"
+                      onClick={() => setShowAddAirlineModal(true)}
+                      className="text-[10px] text-[#D4AF37] hover:underline font-bold"
+                    >
+                      + Custom Airline
+                    </button>
+                  </div>
+                  <div className="relative">
+                    <input 
+                      type="text" 
+                      value={airlineSearch} 
+                      onChange={e => {
+                        setAirlineSearch(e.target.value);
+                        setFForm({ ...fForm, airline: e.target.value });
+                        setShowAirlineDropdown(true);
+                      }}
+                      onFocus={() => setShowAirlineDropdown(true)}
+                      className="w-full h-11 px-4 rounded-xl border border-gray-200 text-xs font-semibold text-gray-800 focus:border-[#D4AF37] focus:ring-1 focus:ring-[#D4AF37] transition duration-200" 
+                      placeholder="Type or search airline..."
+                    />
+                    <span className="absolute right-3 top-3 text-gray-400 pointer-events-none">
+                      <Search size={14} />
+                    </span>
+                  </div>
+
+                  {/* Autocomplete Dropdown */}
+                  {showAirlineDropdown && filteredAirlines.length > 0 && (
+                    <div className="absolute left-0 top-full mt-1 w-full bg-white border border-gray-200 rounded-xl shadow-xl max-h-56 overflow-y-auto z-50 py-1 text-xs">
+                      <div className="px-3 py-1 text-[10px] uppercase font-bold text-gray-400 bg-gray-50 border-b border-gray-100 flex justify-between items-center">
+                        <span>Select Carrier from Shared List</span>
+                        <button type="button" onClick={() => setShowAirlineDropdown(false)} className="text-gray-400 hover:text-gray-600">Close</button>
+                      </div>
+                      {filteredAirlines.map(airline => (
+                        <div
+                          key={airline}
+                          onClick={() => {
+                            setAirlineSearch(airline);
+                            setFForm({ ...fForm, airline });
+                            setShowAirlineDropdown(false);
+                          }}
+                          className="px-3 py-2 hover:bg-emerald-50 cursor-pointer font-medium text-gray-700 hover:text-[#1A3326] transition flex items-center justify-between"
+                        >
+                          <span>{airline}</span>
+                          {fForm.airline === airline && <Check size={12} className="text-emerald-600" />}
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
 
                 <div className="space-y-1.5">
@@ -254,7 +400,7 @@ export const FlightsView: React.FC<FlightsViewProps> = ({
                     value={fForm.flightNo || ''} 
                     onChange={e => setFForm({ ...fForm, flightNo: e.target.value })}
                     className="w-full h-11 px-4 rounded-xl border border-gray-200 text-xs font-bold text-gray-900 uppercase focus:border-[#D4AF37] focus:ring-1 focus:ring-[#D4AF37] transition duration-200" 
-                    placeholder="e.g. SA042" 
+                    placeholder="e.g. EK772, SA042" 
                   />
                 </div>
 
@@ -287,7 +433,7 @@ export const FlightsView: React.FC<FlightsViewProps> = ({
                     value={fForm.from || ''} 
                     onChange={e => setFForm({ ...fForm, from: e.target.value })}
                     className="w-full h-11 px-4 rounded-xl border border-gray-200 text-xs font-bold text-gray-900 uppercase focus:border-[#D4AF37] focus:ring-1 focus:ring-[#D4AF37] transition duration-200" 
-                    placeholder="e.g. JFK" 
+                    placeholder="e.g. DXB, LHR, GRU" 
                   />
                 </div>
 
@@ -298,7 +444,7 @@ export const FlightsView: React.FC<FlightsViewProps> = ({
                     value={fForm.to || ''} 
                     onChange={e => setFForm({ ...fForm, to: e.target.value })}
                     className="w-full h-11 px-4 rounded-xl border border-gray-200 text-xs font-bold text-gray-900 uppercase focus:border-[#D4AF37] focus:ring-1 focus:ring-[#D4AF37] transition duration-200" 
-                    placeholder="e.g. CPT" 
+                    placeholder="e.g. CPT, JNB, WDH" 
                   />
                 </div>
 
@@ -335,85 +481,159 @@ export const FlightsView: React.FC<FlightsViewProps> = ({
               </div>
             </div>
 
-            {/* GROUP 3: Layover stops & Routing */}
+            {/* GROUP 3: BOOKING REFERENCE & ONLINE LINKS (Resolves Section 9 Save Flight Links) */}
+            <div className="bg-white rounded-[20px] p-6 border border-gray-100 shadow-sm space-y-6">
+              <div className="flex items-center justify-between border-b border-gray-100 pb-2">
+                <h3 className="text-xs uppercase font-bold text-[#1A3326] tracking-wider flex items-center gap-2">
+                  <LinkIcon size={14} className="text-[#D4AF37]" /> Flight Reference & Booking Links
+                </h3>
+                <span className="text-[10px] text-gray-400 font-medium">Links are saved permanently against this flight</span>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                
+                <div className="space-y-1.5">
+                  <label className="text-[11px] text-gray-500 font-bold uppercase tracking-wider block">Ticket Confirmation Reference</label>
+                  <input 
+                    type="text" 
+                    value={fForm.confirmationRef || ''} 
+                    onChange={e => setFForm({ ...fForm, confirmationRef: e.target.value })}
+                    className="w-full h-11 px-4 rounded-xl border border-gray-200 text-xs font-mono font-bold text-gray-800 focus:border-[#D4AF37] transition"
+                    placeholder="e.g. ET-CONF-88294"
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-[11px] text-gray-500 font-bold uppercase tracking-wider block">Airline Online Check-in / Booking URL</label>
+                  <input 
+                    type="url" 
+                    value={fForm.bookingUrl || ''} 
+                    onChange={e => setFForm({ ...fForm, bookingUrl: e.target.value })}
+                    className="w-full h-11 px-4 rounded-xl border border-gray-200 text-xs font-medium text-gray-800 focus:border-[#D4AF37] transition"
+                    placeholder="https://www.emirates.com/manage-booking"
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-[11px] text-gray-500 font-bold uppercase tracking-wider block">Airline / Supplier Support Contact</label>
+                  <input 
+                    type="text" 
+                    value={fForm.supplierContact || ''} 
+                    onChange={e => setFForm({ ...fForm, supplierContact: e.target.value })}
+                    className="w-full h-11 px-4 rounded-xl border border-gray-200 text-xs font-medium text-gray-800 focus:border-[#D4AF37] transition"
+                    placeholder="+27 21 818 8000 / support@airline.com"
+                  />
+                </div>
+
+              </div>
+
+              {/* Additional Reference Links */}
+              <div className="pt-2 border-t border-gray-50 space-y-3">
+                <span className="text-[11px] font-bold text-gray-700 block uppercase tracking-wider">
+                  Attached Reference Documents & E-Ticket Links
+                </span>
+                
+                <div className="flex flex-col sm:flex-row gap-2">
+                  <input
+                    type="text"
+                    value={newRefLinkTitle}
+                    onChange={e => setNewRefLinkTitle(e.target.value)}
+                    placeholder="Link Title (e.g. Client E-Ticket PDF, GDS Confirmation)"
+                    className="sm:w-1/3 h-10 px-3 rounded-xl border border-gray-200 text-xs"
+                  />
+                  <input
+                    type="url"
+                    value={newRefLinkUrl}
+                    onChange={e => setNewRefLinkUrl(e.target.value)}
+                    placeholder="https://drive.google.com/... or cloud link"
+                    className="sm:w-1/2 h-10 px-3 rounded-xl border border-gray-200 text-xs"
+                  />
+                  <button
+                    type="button"
+                    onClick={handleAddReferenceLink}
+                    className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 shrink-0"
+                  >
+                    <Plus size={14} /> Add Link
+                  </button>
+                </div>
+
+                {fForm.referenceLinks && fForm.referenceLinks.length > 0 && (
+                  <div className="flex flex-wrap gap-2 pt-2">
+                    {fForm.referenceLinks.map((rl, idx) => (
+                      <div key={idx} className="flex items-center gap-2 bg-slate-50 border border-slate-200 px-3 py-1.5 rounded-xl text-xs">
+                        <ExternalLink size={12} className="text-emerald-700" />
+                        <a href={rl.url} target="_blank" rel="noopener noreferrer" className="font-semibold text-gray-800 hover:underline">
+                          {rl.title}
+                        </a>
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveReferenceLink(idx)}
+                          className="text-gray-400 hover:text-rose-600 ml-1"
+                        >
+                          ✕
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+            </div>
+
+            {/* GROUP 4: Layover Waypoint Stops */}
             <div className="bg-white rounded-[20px] p-6 border border-gray-100 shadow-sm space-y-6">
               <h3 className="text-xs uppercase font-bold text-[#1A3326] tracking-wider border-b border-gray-100 pb-2 flex items-center gap-2">
-                <MapPin size={14} className="text-[#D4AF37]" /> Flight Routing Stops & Layovers (Multi-Stop Waypoints)
+                <MapPin size={14} className="text-[#D4AF37]" /> Layover Routing Waypoints (Optional)
               </h3>
 
-              {stopsList.length > 0 && (
-                <div className="flex items-center gap-2 p-4 bg-emerald-50/50 border border-emerald-100 rounded-xl text-xs flex-wrap">
-                  <span className="font-bold text-gray-800">{fForm.from || 'Origin'}</span>
-                  {stopsList.map((stop, idx) => (
-                    <React.Fragment key={stop.id}>
-                      <ArrowRight size={12} className="text-gray-400" />
-                      <div className="bg-white border border-[#D4AF37]/30 px-3 py-1.5 rounded-lg flex items-center gap-2 shadow-sm animate-in zoom-in-95">
-                        <span className="font-bold text-[#1A3326]">{stop.airport}</span>
-                        <span className="text-[9px] text-gray-400 font-medium">({stop.duration || 'Stop'})</span>
-                      </div>
-                    </React.Fragment>
-                  ))}
-                  <ArrowRight size={12} className="text-gray-400" />
-                  <span className="font-bold text-gray-800">{fForm.to || 'Destination'}</span>
-                </div>
-              )}
-
-              <div className="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-5 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-4">
                 <input 
                   type="text" 
                   value={stopAirport} 
-                  onChange={e => setStopAirport(e.target.value)}
-                  className="w-full h-11 px-4 rounded-xl border border-gray-200 text-xs uppercase focus:border-[#D4AF37] focus:ring-1" 
-                  placeholder="Layover Airport (e.g. DXB)" 
+                  onChange={e => setStopAirport(e.target.value)} 
+                  placeholder="Stop Airport (e.g. DOH)" 
+                  className="w-full h-10 px-3 rounded-xl border border-gray-200 text-xs font-bold uppercase"
                 />
                 <input 
                   type="time" 
                   value={stopArr} 
-                  onChange={e => setStopArr(e.target.value)}
-                  className="w-full h-11 px-4 rounded-xl border border-gray-200 text-xs focus:border-[#D4AF37] focus:ring-1" 
-                  placeholder="Arr Time" 
+                  onChange={e => setStopArr(e.target.value)} 
+                  placeholder="Arrival Time" 
+                  className="w-full h-10 px-3 rounded-xl border border-gray-200 text-xs"
                 />
                 <input 
                   type="time" 
                   value={stopDep} 
-                  onChange={e => setStopDep(e.target.value)}
-                  className="w-full h-11 px-4 rounded-xl border border-gray-200 text-xs focus:border-[#D4AF37] focus:ring-1" 
-                  placeholder="Dep Time" 
+                  onChange={e => setStopDep(e.target.value)} 
+                  placeholder="Departure Time" 
+                  className="w-full h-10 px-3 rounded-xl border border-gray-200 text-xs"
                 />
                 <input 
                   type="text" 
                   value={stopDur} 
-                  onChange={e => setStopDur(e.target.value)}
-                  className="w-full h-11 px-4 rounded-xl border border-gray-200 text-xs focus:border-[#D4AF37] focus:ring-1" 
-                  placeholder="Layover Duration" 
+                  onChange={e => setStopDur(e.target.value)} 
+                  placeholder="Duration (e.g. 2h 45m)" 
+                  className="w-full h-10 px-3 rounded-xl border border-gray-200 text-xs"
                 />
-                <input 
-                  type="text" 
-                  value={stopChangeNo} 
-                  onChange={e => setStopChangeNo(e.target.value)}
-                  className="w-full h-11 px-4 rounded-xl border border-gray-200 text-xs uppercase focus:border-[#D4AF37] focus:ring-1" 
-                  placeholder="New Flight # (optional)" 
-                />
-              </div>
-
-              <div className="flex justify-start">
                 <button 
+                  type="button"
                   onClick={handleAddStop} 
-                  className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl border border-gray-200 bg-white hover:bg-gray-50 text-[11px] font-bold text-gray-700 shadow-sm transition"
+                  className="flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-xs font-bold text-gray-700 transition"
                 >
-                  <Plus size={12} /> Append Transit Waypoint
+                  <Plus size={14} /> Add Waypoint
                 </button>
               </div>
 
               {stopsList.length > 0 && (
-                <div className="space-y-2 border-t border-gray-50 pt-4">
+                <div className="space-y-2 border-t border-gray-50 pt-3">
                   {stopsList.map((stop, idx) => (
                     <div key={stop.id} className="flex justify-between items-center text-xs bg-slate-50 border border-slate-100 p-3 rounded-xl">
                       <span>
                         <strong className="text-gray-800">Stop #{idx + 1}: {stop.airport}</strong> — Arr: {stop.arrTime || '—'} | Dep: {stop.depTime || '—'} | Duration: {stop.duration || '—'} 
-                        {stop.changeFlightNo && ` (Aviation changes to ${stop.changeFlightNo})`}
+                        {stop.changeFlightNo && ` (Connects to ${stop.changeFlightNo})`}
                       </span>
                       <button 
+                        type="button"
                         onClick={() => handleRemoveStop(stop.id)} 
                         className="text-rose-600 hover:text-rose-700 font-bold transition text-[11px]"
                       >
@@ -425,7 +645,7 @@ export const FlightsView: React.FC<FlightsViewProps> = ({
               )}
             </div>
 
-            {/* GROUP 4: Class & Pricing */}
+            {/* GROUP 5: Class & Pricing */}
             <div className="bg-white rounded-[20px] p-6 border border-gray-100 shadow-sm space-y-6">
               <h3 className="text-xs uppercase font-bold text-[#1A3326] tracking-wider border-b border-gray-100 pb-2 flex items-center gap-2">
                 <Clock size={14} className="text-[#D4AF37]" /> Class Cabin & Pricing Metrics
@@ -494,7 +714,7 @@ export const FlightsView: React.FC<FlightsViewProps> = ({
               </div>
             </div>
 
-            {/* GROUP 5: Luggage Protocols */}
+            {/* GROUP 6: Luggage Protocols */}
             <div className="bg-white rounded-[20px] p-6 border border-gray-100 shadow-sm space-y-6">
               <h3 className="text-xs uppercase font-bold text-[#1A3326] tracking-wider border-b border-gray-100 pb-2 flex items-center gap-2">
                 <Briefcase size={14} className="text-[#D4AF37]" /> Baggage Protocols
@@ -531,7 +751,7 @@ export const FlightsView: React.FC<FlightsViewProps> = ({
               </div>
             </div>
 
-            {/* GROUP 6: Passenger assignment */}
+            {/* GROUP 7: Passenger assignment (Stable ID mapping) */}
             <div className="bg-white rounded-[20px] p-6 border border-gray-100 shadow-sm space-y-6">
               <h3 className="text-xs uppercase font-bold text-[#1A3326] tracking-wider border-b border-gray-100 pb-2 flex items-center gap-2">
                 <Users size={14} className="text-[#D4AF37]" /> Assign Passengers (Roster Link)
@@ -540,7 +760,7 @@ export const FlightsView: React.FC<FlightsViewProps> = ({
               <div className="flex flex-wrap gap-2.5">
                 {state.guests.length === 0 ? (
                   <span className="text-xs text-gray-400 italic flex items-center gap-1.5">
-                    <AlertCircle size={14} /> Please add passengers to your group roster in the Home/Intake section first.
+                    <AlertCircle size={14} /> Please add passengers to your group roster in the Intake section first.
                   </span>
                 ) : (
                   state.guests.map(g => {
@@ -564,7 +784,7 @@ export const FlightsView: React.FC<FlightsViewProps> = ({
               </div>
             </div>
 
-            {/* GROUP 7: Flight Coordination Notes */}
+            {/* GROUP 8: Flight Coordination Notes */}
             <div className="bg-white rounded-[20px] p-6 border border-gray-100 shadow-sm space-y-3">
               <h3 className="text-xs uppercase font-bold text-[#1A3326] tracking-wider border-b border-gray-100 pb-2 flex items-center gap-2">
                 <Tag size={14} className="text-[#D4AF37]" /> Coordination & Internal Notes
@@ -574,26 +794,33 @@ export const FlightsView: React.FC<FlightsViewProps> = ({
                 onChange={e => setFForm({ ...fForm, notes: e.target.value })}
                 className="w-full p-4 rounded-xl border border-gray-200 text-xs font-medium focus:border-[#D4AF37] transition"
                 placeholder="e.g. Flight booked via Skywards miles, business class lounge passes issued, infant bassinet requested in bulkhead row..."
-                style={{ resize: 'vertical', minHeight: '100px' }}
+                style={{ resize: 'vertical', minHeight: '80px' }}
               />
             </div>
 
           </div>
 
           {/* Sticky footer for action buttons */}
-          <div className="p-6 bg-gray-50 border-t border-gray-100 flex justify-end gap-3.5">
-            <button 
-              onClick={() => setEditingFlightId(null)} 
-              className="px-6 py-3 rounded-xl border border-gray-200 bg-white hover:bg-gray-50 text-xs font-bold text-gray-700 shadow-sm transition"
-            >
-              Cancel
-            </button>
-            <button 
-              onClick={handleSaveFlight} 
-              className="px-6 py-3 rounded-xl bg-[#1A3326] text-white hover:bg-[#12241b] text-xs font-extrabold shadow-md hover:translate-y-[-1px] transition duration-150"
-            >
-              Save Flight Links
-            </button>
+          <div className="p-6 bg-gray-50 border-t border-gray-100 flex items-center justify-between">
+            <span className="text-[11px] text-gray-400 font-medium hidden sm:inline">
+              Saves sector passage, passenger roster links, and reference documents.
+            </span>
+            <div className="flex gap-3 ml-auto">
+              <button 
+                type="button"
+                onClick={() => setEditingFlightId(null)} 
+                className="px-6 py-3 rounded-xl border border-gray-200 bg-white hover:bg-gray-50 text-xs font-bold text-gray-700 shadow-sm transition cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button 
+                type="button"
+                onClick={handleSaveFlight} 
+                className="px-6 py-3 rounded-xl bg-[#1A3326] text-white hover:bg-[#12241b] text-xs font-extrabold shadow-md hover:translate-y-[-1px] transition duration-150 cursor-pointer"
+              >
+                Save Flight Sector
+              </button>
+            </div>
           </div>
 
         </div>
@@ -613,8 +840,9 @@ export const FlightsView: React.FC<FlightsViewProps> = ({
               </p>
             </div>
             <button 
+              type="button"
               onClick={handleOpenAddForm} 
-              className="px-4 py-2.5 bg-[#1A3326] text-white rounded-xl text-xs font-bold shadow hover:bg-[#12241b] transition"
+              className="px-4 py-2.5 bg-[#1A3326] text-white rounded-xl text-xs font-bold shadow hover:bg-[#12241b] transition cursor-pointer"
             >
               Configure First Sector
             </button>
@@ -644,20 +872,35 @@ export const FlightsView: React.FC<FlightsViewProps> = ({
                       <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest block">{f.direction} Sector Connection</span>
                       <h3 className="font-bold text-gray-900 text-sm mt-0.5">
                         {f.airline} {f.flightNo} • <span className="font-mono text-xs text-[#065f46] font-bold tracking-wide">PNR: {f.pnr || 'NOT SET'}</span>
+                        {f.confirmationRef && <span className="ml-2 font-mono text-xs text-gray-500 font-normal">Conf: {f.confirmationRef}</span>}
                       </h3>
                     </div>
                   </div>
 
                   <div className="flex items-center gap-2">
+                    {f.bookingUrl && (
+                      <a 
+                        href={f.bookingUrl} 
+                        target="_blank" 
+                        rel="noopener noreferrer" 
+                        className="px-3 py-1.5 rounded-xl border border-emerald-200 bg-emerald-50 text-emerald-800 text-xs font-semibold flex items-center gap-1 hover:bg-emerald-100 transition"
+                      >
+                        <ExternalLink size={12} /> Check-In
+                      </a>
+                    )}
                     <button 
+                      type="button"
                       onClick={() => handleEditFlight(f)} 
-                      className="w-9 h-9 rounded-xl border border-gray-200 bg-white text-gray-400 hover:text-gray-900 hover:border-gray-300 flex items-center justify-center transition shadow-sm"
+                      className="w-9 h-9 rounded-xl border border-gray-200 bg-white text-gray-400 hover:text-gray-900 hover:border-gray-300 flex items-center justify-center transition shadow-sm cursor-pointer"
+                      title="Edit Flight Sector"
                     >
                       <Edit3 size={14} />
                     </button>
                     <button 
+                      type="button"
                       onClick={() => onRemoveFlight(f.id)} 
-                      className="w-9 h-9 rounded-xl border border-rose-100 bg-rose-50/20 text-rose-500 hover:text-white hover:bg-rose-500 flex items-center justify-center transition shadow-sm"
+                      className="w-9 h-9 rounded-xl border border-rose-100 bg-rose-50/20 text-rose-500 hover:text-white hover:bg-rose-500 flex items-center justify-center transition shadow-sm cursor-pointer"
+                      title="Remove Flight Sector"
                     >
                       <Trash2 size={14} />
                     </button>
@@ -692,6 +935,24 @@ export const FlightsView: React.FC<FlightsViewProps> = ({
                   </div>
                 </div>
 
+                {/* Attached Links & Documents */}
+                {f.referenceLinks && f.referenceLinks.length > 0 && (
+                  <div className="mb-4 flex flex-wrap items-center gap-2">
+                    <span className="text-[10px] font-bold uppercase text-gray-400">Attached Documents:</span>
+                    {f.referenceLinks.map((rl, i) => (
+                      <a
+                        key={i}
+                        href={rl.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-slate-50 border border-slate-200 text-xs font-semibold text-emerald-800 hover:bg-slate-100 transition"
+                      >
+                        <ExternalLink size={10} /> {rl.title}
+                      </a>
+                    ))}
+                  </div>
+                )}
+
                 {/* Layover and stop timeline */}
                 {f.stops && f.stops.length > 0 && (
                   <div className="bg-slate-50 border border-slate-100 rounded-2xl p-4 mb-5 text-[11px] text-gray-500 space-y-2">
@@ -720,7 +981,7 @@ export const FlightsView: React.FC<FlightsViewProps> = ({
                   </div>
                 )}
 
-                {/* Footnotes &assigned passengers */}
+                {/* Footnotes & assigned passengers */}
                 <div className="border-t border-gray-50 pt-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                   <div className="flex flex-wrap items-center gap-2 text-xs">
                     <span className="font-bold text-gray-400 uppercase tracking-wider">Assigned Pax:</span>
@@ -762,6 +1023,148 @@ export const FlightsView: React.FC<FlightsViewProps> = ({
           })
         )}
       </div>
+
+      {/* SECTION 7: CAPE TOWN AIRPORT (CPT) — LIVE FLIGHTS (FlightRadar24 Integration) */}
+      <section className="bg-white rounded-[24px] border border-gray-200 p-6 md:p-8 shadow-sm space-y-6">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-gray-100 pb-5">
+          <div className="space-y-1">
+            <div className="flex items-center gap-2 text-xs font-bold text-[#D4AF37] uppercase tracking-wider">
+              <Radio size={15} className="text-emerald-600 animate-pulse" />
+              <span>Cape Town Airport — Live Flights</span>
+            </div>
+            <h2 className="text-xl md:text-2xl font-extrabold text-[#1A3326] font-sans">
+              Cape Town International (CPT / FACT) Operations Feed
+            </h2>
+            <p className="text-xs text-gray-500 max-w-2xl leading-relaxed">
+              Real-time flight movements, arrival corridors, runway traffic, and scheduled departures powered by FlightRadar24 live tracking.
+            </p>
+          </div>
+
+          <div className="flex items-center gap-3">
+            {/* Direct Official Link always available as required */}
+            <a
+              href="https://www.flightradar24.com/data/airports/cpt"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-extrabold shadow-sm transition flex items-center gap-2"
+            >
+              <span>Open Live CPT Flight Board</span>
+              <ExternalLink size={14} />
+            </a>
+          </div>
+        </div>
+
+        {/* Airport Status Banner */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 p-4 rounded-2xl bg-slate-50 border border-slate-200/80 text-xs">
+          <div>
+            <span className="text-[10px] uppercase font-bold text-gray-400 block">Airport Code</span>
+            <strong className="text-sm font-extrabold text-[#1A3326]">IATA: CPT • ICAO: FACT</strong>
+          </div>
+          <div>
+            <span className="text-[10px] uppercase font-bold text-gray-400 block">Location</span>
+            <strong className="text-sm font-semibold text-gray-800">Matroosfontein, Cape Town</strong>
+          </div>
+          <div>
+            <span className="text-[10px] uppercase font-bold text-gray-400 block">Active Corridors</span>
+            <strong className="text-sm font-semibold text-gray-800">Runway 01/19 (3,200m)</strong>
+          </div>
+          <div>
+            <span className="text-[10px] uppercase font-bold text-gray-400 block">Data Feed</span>
+            <strong className="text-sm font-semibold text-emerald-700 flex items-center gap-1">
+              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping inline-block" />
+              Third-Party Live Radar
+            </strong>
+          </div>
+        </div>
+
+        {/* Live Radar Display with Graceful Fallback */}
+        <div className="rounded-2xl border border-gray-200 overflow-hidden bg-slate-900 text-white relative">
+          <div className="p-4 bg-slate-800 border-b border-slate-700 flex flex-wrap items-center justify-between gap-3 text-xs">
+            <div className="flex items-center gap-2">
+              <span className="w-2.5 h-2.5 rounded-full bg-amber-400" />
+              <span className="font-bold">FlightRadar24 Embedded Corridor Monitor</span>
+            </div>
+            <div className="flex items-center gap-3">
+              <span className="text-[11px] text-gray-300">Provider: FlightRadar24 AB</span>
+              <a 
+                href="https://www.flightradar24.com/data/airports/cpt" 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="text-amber-400 hover:underline flex items-center gap-1 font-semibold text-[11px]"
+              >
+                Direct Link <ExternalLink size={11} />
+              </a>
+            </div>
+          </div>
+
+          <div className="p-6 md:p-8 space-y-4">
+            <div className="max-w-xl mx-auto text-center space-y-3">
+              <div className="w-14 h-14 bg-amber-400/10 text-amber-400 rounded-full flex items-center justify-center mx-auto">
+                <Radio size={28} />
+              </div>
+              <h3 className="text-lg font-bold text-white">Live Cape Town International (CPT) Flight Radar</h3>
+              <p className="text-xs text-gray-300 leading-relaxed">
+                FlightRadar24 provides real-time ADS-B telemetry for inbound transatlantic, European, and regional African arrivals into Cape Town. Due to provider browser security headers, click below to open the dedicated live radar board in full resolution.
+              </p>
+              <div className="pt-2">
+                <a
+                  href="https://www.flightradar24.com/data/airports/cpt"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-[#D4AF37] hover:bg-[#b89528] text-[#1A3326] text-xs font-extrabold shadow-md transition"
+                >
+                  <ExternalLink size={16} />
+                  <span>Launch Official FlightRadar24 CPT Tracker</span>
+                </a>
+              </div>
+            </div>
+
+            <div className="mt-6 pt-4 border-t border-slate-800 text-[11px] text-gray-400 flex items-center justify-between">
+              <span>Third-party live flight tracking information provided under FlightRadar24 terms.</span>
+              <span>Coordinates: 33.9648° S, 18.6017° E</span>
+            </div>
+          </div>
+        </div>
+
+      </section>
+
+      {/* Add Custom Airline to Shared Catalogue Modal */}
+      {showAddAirlineModal && (
+        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl max-w-md w-full p-6 space-y-4 shadow-2xl animate-in zoom-in-95">
+            <h3 className="text-base font-bold text-gray-900 flex items-center gap-2">
+              <Plane size={18} className="text-[#D4AF37]" /> Add Airline to Shared Catalogue
+            </h3>
+            <p className="text-xs text-gray-500">
+              Enter the carrier name. It will be added to the shared airline directory for all current and future itineraries.
+            </p>
+            <input
+              type="text"
+              value={newAirlineInput}
+              onChange={e => setNewAirlineInput(e.target.value)}
+              placeholder="e.g. LATAM Brazil, Air Côte d'Ivoire"
+              className="w-full h-11 px-4 rounded-xl border border-gray-200 text-xs font-semibold"
+              autoFocus
+            />
+            <div className="flex justify-end gap-2 pt-2">
+              <button
+                type="button"
+                onClick={() => setShowAddAirlineModal(false)}
+                className="px-4 py-2 rounded-xl border border-gray-200 text-xs font-bold text-gray-600 hover:bg-gray-50 cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleAddNewAirlineToCatalog}
+                className="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-xs cursor-pointer"
+              >
+                Save Airline
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
     </div>
   );
