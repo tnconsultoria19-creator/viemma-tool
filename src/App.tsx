@@ -1510,6 +1510,7 @@ export default function App() {
                   onAddFlight={handleAddFlight}
                   onRemoveFlight={handleRemoveFlight}
                   onUpdateFlight={handleUpdateFlight}
+                  onOpenAIImport={() => setIsAIImportOpen(true)}
                 />
               )}
 
