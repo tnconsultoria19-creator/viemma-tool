@@ -478,7 +478,6 @@ export const AIItineraryImportModal: React.FC<AIItineraryImportModalProps> = ({
       );
       const id = existingGuest?.id ?? nextGuestId++;
       if (fullName) guestIdMap.set(fullName, id);
-      if (normalizeIdentity(first)) guestIdMap.set(normalizeIdentity(first), id);
 
       return {
         ...(existingGuest || {} as Guest),
@@ -708,6 +707,15 @@ export const AIItineraryImportModal: React.FC<AIItineraryImportModalProps> = ({
 
     // Keep records that weren't mentioned by the import. Matched records reuse their IDs.
     const mergedGuests = mergeRecordsById(currentState.guests, importedGuests);
+    const designatedLeadId =
+      importedGuests.find(g => g.isLead)?.id ??
+      currentState.guests.find(g => g.isLead)?.id ??
+      mergedGuests[0]?.id;
+    const normalizedMergedGuests = mergedGuests.map(g => ({
+      ...g,
+      isLead: g.id === designatedLeadId,
+      leadContactId: g.id === designatedLeadId ? undefined : designatedLeadId
+    }));
     const mergedFlights = mergeRecordsById(currentState.flights, importedFlights);
     const mergedRooms = mergeRecordsById(currentState.rooms, importedRooms);
     const mergedTransfers = mergeRecordsById(currentState.transfers, importedTransfers);
@@ -735,7 +743,7 @@ export const AIItineraryImportModal: React.FC<AIItineraryImportModalProps> = ({
         durationText,
         occasion: payload.client.occasion || currentState.client.occasion
       },
-      guests: mergedGuests,
+      guests: normalizedMergedGuests,
       flights: mergedFlights,
       rooms: mergedRooms,
       transfers: mergedTransfers,
