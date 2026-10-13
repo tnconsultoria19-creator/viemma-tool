@@ -250,9 +250,9 @@ export const RoomingView: React.FC<RoomingViewProps> = ({
     try {
       const parsed = new URL(url);
       const query = parsed.searchParams.get('q') || parsed.searchParams.get('query') || parsed.searchParams.get('destination') || '';
-      const placePath = parsed.pathname.match(/\\/place\\/([^/]+)/)?.[1] || '';
-      const candidate = (query || placePath).replace(/\\+/g, ' ').trim();
-      if (candidate && !/^[-+]?\\d+(?:\\.\\d+)?\\s*,\\s*[-+]?\\d+(?:\\.\\d+)?$/.test(candidate)) candidateAddress = decodeURIComponent(candidate);
+      const placePath = parsed.pathname.match(/\/place\/([^/]+)/)?.[1] || '';
+      const candidate = (query || placePath).replace(/\+/g, ' ').trim();
+      if (candidate && !/^[-+]?\d+(?:\.\d+)?\s*,\s*[-+]?\d+(?:\.\d+)?$/.test(candidate)) candidateAddress = decodeURIComponent(candidate);
     } catch { /* Shortened Google Maps links may need manual address confirmation. */ }
     setRForm({ ...rForm, googleMapsUrl: url, ...(candidateAddress ? { address: candidateAddress } : {}) });
     if (!candidateAddress) alert('The Google Maps link has been saved. Please enter or confirm the hotel address manually.');
