@@ -566,7 +566,7 @@ export const RoomingView: React.FC<RoomingViewProps> = ({
               {showQuickHotelDropdown && (
                 <div className="absolute left-0 top-full mt-1 w-full bg-white text-gray-800 border border-gray-200 rounded-xl shadow-xl max-h-64 overflow-y-auto z-[80] py-1">
                   <div className="px-3 py-2 text-[10px] uppercase tracking-wide font-bold text-gray-400 bg-gray-50 border-b border-gray-100 flex items-center justify-between"><span>Shared accommodation catalogue</span><button type="button" onClick={() => setShowQuickHotelDropdown(false)} className="text-gray-500 hover:text-gray-900 underline">Close</button></div>
-                  {(qbHotel.trim() ? hotelCatalog.filter(h => h.toLocaleLowerCase().includes(qbHotel.toLocaleLowerCase())) : hotelCatalog).slice(0, 60).map(hotel => <button type="button" key={hotel} onClick={() => { setQbHotel(hotel); setShowQuickHotelDropdown(false); }} className="block w-full text-left px-3 py-2 text-xs hover:bg-emerald-50 hover:text-[#1A3326]">{hotel}</button>)}
+                  {(qbHotel.trim() ? hotelCatalog.filter(h => h.toLocaleLowerCase().includes(qbHotel.toLocaleLowerCase())) : hotelCatalog).map(hotel => <button type="button" key={hotel} onClick={() => { setQbHotel(hotel); setShowQuickHotelDropdown(false); }} className="block w-full text-left px-3 py-2 text-xs hover:bg-emerald-50 hover:text-[#1A3326]">{hotel}</button>)}
                   {qbHotel.trim() && !hotelCatalog.some(h => h.toLocaleLowerCase() === qbHotel.trim().toLocaleLowerCase()) && <button type="button" onClick={() => { setHotelCatalog(addCustomHotelToCatalogue(qbHotel)); setShowQuickHotelDropdown(false); }} className="block w-full text-left px-3 py-2.5 text-xs font-bold text-emerald-800 bg-emerald-50 hover:bg-emerald-100">+ Add custom property “{qbHotel.trim()}” to catalogue</button>}
                   {hotelCatalog.length === 0 && <p className="px-3 py-2 text-xs text-gray-400">The catalogue is loading or unavailable. You can still enter a custom property.</p>}
                 </div>
@@ -720,7 +720,7 @@ export const RoomingView: React.FC<RoomingViewProps> = ({
                       </div>
                       {(hotelSearch.trim() 
                         ? hotelCatalog.filter(h => h.toLowerCase().includes(hotelSearch.toLowerCase())) 
-                        : hotelCatalog.slice(0, 30)
+                        : hotelCatalog
                       ).map(hotel => (
                         <div
                           key={hotel}
