@@ -16,7 +16,6 @@ import { ClientView } from "./components/ClientView";
 import { TripsDashboardView } from './components/TripsDashboardView';
 import { AgentPortalView } from './components/AgentPortalView';
 import { OperatorGroundSheetView } from './components/OperatorGroundSheetView';
-import { INITIAL_TRIPS } from './data/sampleTrips';
 import { saveTripToCloud, subscribeToTrip, listAllTrips, getTripById } from './lib/tripService';
 import { 
   subscribeToShareDoc, 
@@ -371,7 +370,7 @@ export default function App() {
         console.warn('Failed to parse trips list:', e);
       }
     }
-    return INITIAL_TRIPS;
+    return [];
   });
   
   const [state, setState] = useState<AppState>(() => {
