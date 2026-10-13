@@ -119,8 +119,20 @@ export const RoomingView: React.FC<RoomingViewProps> = ({
   };
 
   const handleEditRoom = (r: Room) => {
+    const rawSettlement = String(r.pay || '');
+    const knownSettlement = ['Unpaid', 'Deposit Paid', 'Paid', 'Negotiation / Pending Confirmation', 'Fully Paid'];
+    const isLegacySettlement = rawSettlement === 'Fully Vouchered' || rawSettlement === 'Prepaid' || !knownSettlement.includes(rawSettlement);
+    const mappedSettlement =
+      rawSettlement === 'Prepaid' || rawSettlement === 'Fully Paid' ? 'Paid' :
+      rawSettlement === 'Fully Vouchered' || isLegacySettlement ? 'Legacy Status — Review Required' :
+      rawSettlement || 'Unpaid';
     setRForm({
       ...r,
+      pay: mappedSettlement as Room['pay'],
+      legacyPayStatus: r.legacyPayStatus || (isLegacySettlement ? rawSettlement : undefined),
+      depositAmount: r.depositAmount,
+      balanceDue: r.balanceDue,
+      paymentNotes: r.paymentNotes || '',
       allocatedRooms: r.allocatedRooms || [],
       address: r.address || '',
       googleMapsUrl: r.googleMapsUrl || '',
@@ -186,12 +198,16 @@ export const RoomingView: React.FC<RoomingViewProps> = ({
       hotel: chosenHotel,
       conf: rForm.conf || '',
       pay: rForm.pay || 'Unpaid',
-      roomType: rForm.allocatedRooms?.[0]?.roomType || rForm.roomType || 'Standard',
-      bed: rForm.allocatedRooms?.[0]?.roomName || rForm.bed || 'King',
-      meal: rForm.allocatedRooms?.[0]?.mealBasis || rForm.meal || 'B&B',
+      depositAmount: typeof rForm.depositAmount === 'number' ? rForm.depositAmount : undefined,
+      balanceDue: typeof rForm.balanceDue === 'number' ? rForm.balanceDue : undefined,
+      paymentNotes: rForm.paymentNotes || '',
+      legacyPayStatus: rForm.legacyPayStatus || undefined,
+      roomType: rForm.allocatedRooms?.[0]?.roomType || rForm.roomType || '',
+      bed: rForm.allocatedRooms?.[0]?.roomName || rForm.bed || '',
+      meal: rForm.allocatedRooms?.[0]?.mealBasis || rForm.meal || '',
       cin: rForm.cin || '',
       cout: rForm.cout || '',
-      nights: Number(rForm.nights) || 1,
+      nights: Number.isFinite(Number(rForm.nights)) ? Number(rForm.nights) : 0,
       guestIds: rForm.allocatedRooms 
         ? Array.from(new Set(rForm.allocatedRooms.flatMap(rm => rm.guestIds))) 
         : rForm.guestIds || [],
@@ -940,15 +956,21 @@ export const RoomingView: React.FC<RoomingViewProps> = ({
                 <div className="space-y-1.5">
                   <label className="text-[11px] text-gray-500 font-bold uppercase tracking-wider block">Settlement Status</label>
                   <select 
-                    value={rForm.pay === 'Fully Paid' ? 'Paid' : (rForm.pay || 'Unpaid')}
-                    onChange={e => setRForm({ ...rForm, pay: e.target.value as any })}
+                    value={['Unpaid', 'Deposit Paid', 'Paid', 'Negotiation / Pending Confirmation'].includes(String(rForm.pay || '')) ? String(rForm.pay) : ''}
+                    onChange={e => setRForm({ ...rForm, pay: e.target.value as Room['pay'], legacyPayStatus: rForm.legacyPayStatus || undefined })}
                     className="w-full h-11 px-4 rounded-xl border border-gray-200 text-xs font-semibold text-gray-700 bg-white hover:border-[#D4AF37] focus:border-[#D4AF37] transition duration-200"
                   >
+                    <option value="" disabled>{rForm.pay === 'Legacy Status — Review Required' ? 'Confirm a new status below' : 'Choose settlement status'}</option>
                     <option value="Unpaid">Unpaid</option>
                     <option value="Deposit Paid">Deposit Paid</option>
                     <option value="Paid">Paid</option>
                     <option value="Negotiation / Pending Confirmation">Negotiation / Pending Confirmation</option>
                   </select>
+                  {rForm.pay === 'Legacy Status — Review Required' && (
+                    <p className="text-[10px] text-amber-800 bg-amber-50 border border-amber-200 rounded-lg p-2">
+                      Legacy status “{rForm.legacyPayStatus || 'Unknown'}” is preserved for review. It has not been assumed to mean paid or unpaid. Select a replacement only after confirming the record.
+                    </p>
+                  )}
                 </div>
 
                 <div className="space-y-1.5">
@@ -962,6 +984,18 @@ export const RoomingView: React.FC<RoomingViewProps> = ({
                   />
                 </div>
 
+                <div className="space-y-1.5">
+                  <label className="text-[11px] text-gray-500 font-bold uppercase tracking-wider block">Deposit Received (R)</label>
+                  <input type="number" min="0" value={rForm.depositAmount ?? ''} onChange={e => setRForm({ ...rForm, depositAmount: e.target.value === '' ? undefined : Number(e.target.value) })} className="w-full h-11 px-4 rounded-xl border border-gray-200 text-xs font-semibold text-gray-800 focus:border-[#D4AF37] transition" placeholder="Leave blank if not confirmed" />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-[11px] text-gray-500 font-bold uppercase tracking-wider block">Balance Due (R)</label>
+                  <input type="number" min="0" value={rForm.balanceDue ?? ''} onChange={e => setRForm({ ...rForm, balanceDue: e.target.value === '' ? undefined : Number(e.target.value) })} className="w-full h-11 px-4 rounded-xl border border-gray-200 text-xs font-semibold text-gray-800 focus:border-[#D4AF37] transition" placeholder="Leave blank if not confirmed" />
+                </div>
+                <div className="space-y-1.5 md:col-span-2">
+                  <label className="text-[11px] text-gray-500 font-bold uppercase tracking-wider block">Settlement Notes</label>
+                  <input type="text" value={rForm.paymentNotes || ''} onChange={e => setRForm({ ...rForm, paymentNotes: e.target.value })} className="w-full h-11 px-4 rounded-xl border border-gray-200 text-xs font-semibold text-gray-800 focus:border-[#D4AF37] transition" placeholder="Reference, voucher details or terms — do not infer a paid state" />
+                </div>
               </div>
             </div>
 
