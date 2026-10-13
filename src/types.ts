@@ -89,7 +89,7 @@ export interface AttachmentItem {
   url: string;
   uploadedAt: string;
   uploadedBy?: string;
-  recordType: 'booking' | 'guest' | 'hotel' | 'flight';
+  recordType: 'booking' | 'guest' | 'hotel' | 'flight' | 'transfer' | 'activity' | 'driver';
   recordId?: string | number;
   storagePath?: string;
   notes?: string;
@@ -266,6 +266,7 @@ export interface Transfer {
   vehicleId?: string;
   vehiclePlate?: string;
   driverNotes?: string; // Role-specific notes
+  attachments?: AttachmentItem[];
 }
 
 export interface AllocatedRoom {
@@ -391,6 +392,7 @@ export interface Activity {
   guidePhone?: string;
   guideSourceAgentId?: string;
   guideSourceAgentName?: string;
+  attachments?: AttachmentItem[];
 }
 
 export interface ExperienceLibraryItem {
@@ -496,6 +498,7 @@ export interface Driver {
   emergencyContactPhone?: string;
   notes: string;
   photoUrl?: string;
+  attachments?: AttachmentItem[];
 }
 
 export type StaffRole = 'Driver' | 'Agent' | 'Employee' | 'Administrator';
