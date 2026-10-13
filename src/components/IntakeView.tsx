@@ -189,7 +189,7 @@ export const IntakeView: React.FC<IntakeViewProps> = ({
 
   // Quick Add creates one provisional traveller record per person, linked to the current lead where possible.
   const handleQuickAddTravellers = () => {
-    const total = Object.values(quickAddCounts).reduce<number>((sum, count) => sum + Math.max(0, Math.floor(count || 0)), 0);
+    const total = quickAddCounts.Adult + quickAddCounts.Elderly + quickAddCounts.Teen + quickAddCounts.Child + quickAddCounts.Infant;
     if (!total) return;
     const lead = state.guests.find(g => g.isLead);
     let nextId = Math.max(0, ...state.guests.map(g => Number(g.id) || 0)) + 1;
@@ -1377,7 +1377,7 @@ export const IntakeView: React.FC<IntakeViewProps> = ({
                   </div>
                 </div>
               ))}
-              <div className="flex items-center justify-between border-t border-gray-100 pt-4 text-xs"><span className="text-gray-500">Additional travellers</span><strong className="text-[#1A3326] text-base">{Object.values(quickAddCounts).reduce<number>((sum, count) => sum + count, 0)}</strong></div>
+              <div className="flex items-center justify-between border-t border-gray-100 pt-4 text-xs"><span className="text-gray-500">Additional travellers</span><strong className="text-[#1A3326] text-base">{quickAddCounts.Adult + quickAddCounts.Elderly + quickAddCounts.Teen + quickAddCounts.Child + quickAddCounts.Infant}</strong></div>
             </div>
             <div className="p-4 bg-slate-50 border-t border-gray-100 flex justify-end gap-2">
               <button type="button" onClick={() => setQuickAddOpen(false)} className="px-4 py-2 rounded-xl border border-gray-200 text-xs font-bold text-gray-600 hover:bg-white">Cancel</button>
