@@ -61,10 +61,10 @@ export const DriverPickupBoard: React.FC<DriverPickupBoardProps> = ({ state, onB
 
   const airlineName = selectedFlight?.airline || 'Airline to be confirmed';
   const flightNumber = selectedFlight?.flightNo || matchedTransfer?.flight || 'FLIGHT DETAILS TO BE CONFIRMED';
-  const arrivalDate = selectedFlight?.date || matchedTransfer?.date || state.client.startDate || 'Arrival Date';
-  const arrivalTime = selectedFlight?.arrTime || matchedTransfer?.time || 'Scheduled Time';
+  const arrivalDate = selectedFlight?.date || matchedTransfer?.date || 'Arrival date to be confirmed';
+  const arrivalTime = selectedFlight?.arrTime || 'Arrival time to be confirmed';
   const driverName = selectedDriver?.name || (selectedDriverId.startsWith('legacy:') ? selectedDriverId.slice(7) : '') || matchedTransfer?.driver || 'Driver to be assigned';
-  const vehicleName = matchedTransfer?.vehicle || state.vehicles?.[0]?.name || 'Vehicle to be assigned';
+  const vehicleName = matchedTransfer?.vehicle || 'Vehicle to be assigned';
 
   return (
     <div className="driver-pickup-board space-y-6">
