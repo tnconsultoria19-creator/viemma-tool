@@ -711,6 +711,8 @@ export interface AIImportFlight {
 
 export interface AIImportStay {
   hotel: string;
+  address?: string;
+  googleMapsUrl?: string;
   roomType?: string;
   meal?: string;
   cin?: string;
