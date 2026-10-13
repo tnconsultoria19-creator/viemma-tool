@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { AppState, ExperienceLibraryItem } from '../types';
 import { ClientView } from './ClientView';
+import { DriverPickupBoard } from './DriverPickupBoard';
 import { 
   generateSecureToken, 
   regenerateShareToken, 
@@ -128,6 +129,7 @@ export const PrintHubView: React.FC<PrintHubViewProps> = ({
   const [pubLogs, setPubLogs] = useState<string[]>([]);
   const [verNote, setVerNote] = useState<string>('');
   const [alertMsg, setAlertMsg] = useState<string>('');
+  const [showDriverPickupBoard, setShowDriverPickupBoard] = useState(false);
 
   // Auto-track changes: if we edited items but didn't republish, show "Changes Pending" warning
   const hasPendingChanges = useMemo(() => {
@@ -798,6 +800,13 @@ export const PrintHubView: React.FC<PrintHubViewProps> = ({
   return (
     <div id="publishing-center-workspace" className="space-y-8 max-w-[1500px] mx-auto animate-in fade-in duration-500 font-sans text-gray-800">
       
+      {/* Dedicated operational print desk. The board has a focused A4 print stylesheet. */}
+      <section className="no-print bg-white rounded-2xl border border-gray-200 p-4 md:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-xs">
+        <div className="flex items-start gap-3"><div className="w-10 h-10 rounded-xl bg-emerald-50 text-[#1A3326] flex items-center justify-center shrink-0"><Printer size={18} /></div><div><h2 className="text-sm font-bold text-[#1A3326]">Operations Print Desk</h2><p className="text-xs text-gray-500 mt-1">Prepare a focused A4 airport pickup board with the passenger/group name, flight details and chauffeur assignment.</p></div></div>
+        <button type="button" onClick={() => setShowDriverPickupBoard(value => !value)} className="shrink-0 px-4 py-2.5 rounded-xl bg-[#1A3326] text-white hover:bg-[#234433] text-xs font-bold inline-flex items-center justify-center gap-2"><Printer size={14} className="text-[#D4AF37]" />{showDriverPickupBoard ? 'Close Pickup Board' : 'Create A4 Pickup Board'}</button>
+      </section>
+      {showDriverPickupBoard && <DriverPickupBoard state={state} onBack={() => setShowDriverPickupBoard(false)} />}
+
       {/* Visual Status Alerts */}
       {alertMsg && (
         <div className="fixed top-24 right-8 z-[90] bg-[#1A3326] text-[#D4AF37] border border-[#D4AF37]/30 rounded-2xl p-4 shadow-2xl flex items-center gap-3 animate-in fade-in slide-in-from-top-6 duration-300">
@@ -1271,7 +1280,7 @@ export const PrintHubView: React.FC<PrintHubViewProps> = ({
               className="flex flex-col items-center justify-center p-4 rounded-2xl bg-slate-50 hover:bg-slate-100 border border-slate-100 hover:border-slate-200 text-gray-700 text-center space-y-2 transition"
             >
               <Printer className="text-gray-600" size={18} />
-              <span className="text-xs font-bold">Print Documents</span>
+              <span className="text-xs font-bold">Print Current Page</span>
             </button>
           </div>
         </div>
