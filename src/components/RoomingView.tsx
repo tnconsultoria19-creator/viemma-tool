@@ -38,6 +38,7 @@ interface RoomingViewProps {
   onAddRoom: (r: Room) => void;
   onRemoveRoom: (id: number) => void;
   onUpdateRoom: (id: number, updates: Partial<Room>) => void;
+  onOpenAIImport?: () => void;
 }
 
 export const RoomingView: React.FC<RoomingViewProps> = ({
@@ -45,7 +46,8 @@ export const RoomingView: React.FC<RoomingViewProps> = ({
   onUpdateState,
   onAddRoom,
   onRemoveRoom,
-  onUpdateRoom
+  onUpdateRoom,
+  onOpenAIImport
 }) => {
   const [editingRoomId, setEditingRoomId] = useState<number | null>(null);
   const [rForm, setRForm] = useState<Partial<Room>>({});
@@ -797,6 +799,7 @@ export const RoomingView: React.FC<RoomingViewProps> = ({
                 bookingRef={state.ref || 'draft'}
                 title="Upload hotel quotation or property images"
                 description="Attach PDF quotations, confirmations or property images (up to 15 MB)."
+                onExtractToAI={() => onOpenAIImport?.()}
               />
             </div>
 
