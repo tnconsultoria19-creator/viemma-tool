@@ -481,9 +481,10 @@ export interface Driver {
   preferredName?: string;
   phone: string;
   email: string;
-  licenseNo: string;
-  licenseCategory?: string; // e.g. Code 8 / B, Code 10 / C1, Code 14 / EC
-  prdpNumber?: string; // Professional Driving Permit number
+  // Legacy driver licence / permit-number fields remain optional for older saved records.
+  licenseNo?: string;
+  licenseCategory?: string;
+  prdpNumber?: string;
   prdpExpiryDate?: string; // Expiration date YYYY-MM-DD
   documentExpiryDates?: { docName: string; expiryDate: string }[];
   assignedVehicleId?: string;
