@@ -50,16 +50,6 @@ export function validateUploadFile(file: File): { valid: boolean; error?: string
   return { valid: true };
 }
 
-// Convert File to base64 Data URL for offline / local persistence fallback
-export function readFileAsDataUrl(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(reader.result as string);
-    reader.onerror = (err) => reject(err);
-    reader.readAsDataURL(file);
-  });
-}
-
 export interface UploadProgressCallback {
   (progressPercent: number): void;
 }
@@ -81,55 +71,48 @@ export async function uploadAttachment(
   const safeFilename = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
   const storagePath = `attachments/${cleanRef}/${recordType}_${recordId}_${timestamp}_${safeFilename}`;
 
+  if (!appFirebase) {
+    throw new Error('Secure file upload is unavailable because Firebase Storage is not configured. The file was not saved. Configure Storage, then try again.');
+  }
+
   let downloadUrl = '';
+  try {
+    const storage = getStorage(appFirebase);
+    const storageRef = ref(storage, storagePath);
+    const uploadTask = uploadBytesResumable(storageRef, file, {
+      contentType: file.type || 'application/octet-stream',
+      customMetadata: {
+        bookingRef: cleanRef,
+        recordType,
+        recordId: String(recordId),
+        originalName: file.name
+      }
+    });
 
-  // Try Firebase Storage first if Firebase app is initialized
-  if (appFirebase) {
-    try {
-      const storage = getStorage(appFirebase);
-      const storageRef = ref(storage, storagePath);
-      const uploadTask = uploadBytesResumable(storageRef, file, {
-        contentType: file.type || 'application/octet-stream',
-        customMetadata: {
-          bookingRef: cleanRef,
-          recordType,
-          recordId: String(recordId),
-          originalName: file.name
-        }
-      });
-
-      downloadUrl = await new Promise<string>((resolve, reject) => {
-        uploadTask.on(
-          'state_changed',
-          (snapshot) => {
-            const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
-            if (onProgress) onProgress(Math.round(progress));
-          },
-          (error) => {
-            console.warn('Firebase Storage upload error, falling back to local data URL:', error);
+    downloadUrl = await new Promise<string>((resolve, reject) => {
+      uploadTask.on(
+        'state_changed',
+        snapshot => {
+          const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+          if (onProgress) onProgress(Math.round(progress));
+        },
+        error => {
+          console.warn('Firebase Storage upload failed:', error);
+          reject(error);
+        },
+        async () => {
+          try {
+            const url = await getDownloadURL(uploadTask.snapshot.ref);
+            resolve(url);
+          } catch (error) {
             reject(error);
-          },
-          async () => {
-            try {
-              const url = await getDownloadURL(uploadTask.snapshot.ref);
-              resolve(url);
-            } catch (err) {
-              reject(err);
-            }
           }
-        );
-      });
-    } catch (firebaseErr) {
-      console.warn('Firebase Storage upload unavailable or failed, switching to local Data URL fallback:', firebaseErr);
-      if (onProgress) onProgress(50);
-      downloadUrl = await readFileAsDataUrl(file);
-      if (onProgress) onProgress(100);
-    }
-  } else {
-    // Standalone / offline mode
-    if (onProgress) onProgress(50);
-    downloadUrl = await readFileAsDataUrl(file);
-    if (onProgress) onProgress(100);
+        }
+      );
+    });
+  } catch (uploadError) {
+    console.error('Secure attachment upload failed. No local copy was saved:', uploadError);
+    throw new Error('Secure upload failed. Check connectivity and Firebase Storage permissions, then retry. The file contents were not stored in the workspace or Firestore.');
   }
 
   const attachment: AttachmentItem = {
@@ -148,7 +131,7 @@ export async function uploadAttachment(
 }
 
 export async function deleteAttachment(attachment: AttachmentItem): Promise<void> {
-  if (attachment.storagePath && appFirebase && !attachment.url.startsWith('data:')) {
+  if (attachment.storagePath && appFirebase) {
     try {
       const storage = getStorage(appFirebase);
       const storageRef = ref(storage, attachment.storagePath);
