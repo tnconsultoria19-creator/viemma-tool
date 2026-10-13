@@ -423,6 +423,7 @@ export const IntakeView: React.FC<IntakeViewProps> = ({
       provisionalLabel: remainsProvisional ? modalGuest.provisionalLabel : undefined,
       leadContactId: isMarkedLead ? undefined : (modalGuest.leadContactId || state.guests.find(g => g.isLead)?.id),
       notes: modalGuest.notes || '',
+      attachments: modalGuest.attachments || [],
       customFoodRequirements: modalGuest.customFoodRequirements || [],
       customAccessibilityRequirements: modalGuest.customAccessibilityRequirements || [],
       customAccommodationRequirements: modalGuest.customAccommodationRequirements || [],
