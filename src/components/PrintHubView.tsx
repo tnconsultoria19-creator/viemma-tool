@@ -188,7 +188,7 @@ export const PrintHubView: React.FC<PrintHubViewProps> = ({
         y = 45;
       };
       const nextPage = () => {
-        doc.addPage('p', 'a4');
+        doc.addPage();
         drawHeader();
       };
       const writeLine = (value: string, indent = 0, style: 'normal' | 'bold' = 'normal', size = 9) => {
