@@ -222,7 +222,7 @@ export const DriversView: React.FC<DriversViewProps> = ({ state, onUpdateState }
                           <span className="text-[10px] text-gray-400 font-medium italic">({d.preferredName})</span>
                         )}
                       </div>
-                      <p className="text-xs text-gray-500 font-mono">Lic: {d.licenseNo || 'PDP Certified'}</p>
+                      <p className="text-xs text-gray-500">Driver profile</p>
                     </div>
                   </div>
                   <div className="flex flex-col items-end gap-1">
