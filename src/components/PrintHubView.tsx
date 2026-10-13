@@ -1413,10 +1413,10 @@ export const PrintHubView: React.FC<PrintHubViewProps> = ({
                 <Users size={18} className="text-[#1A3326]" /><span><strong className="block text-xs text-gray-900">Passenger Manifest</strong><span className="block text-[10px] text-gray-500 mt-1">Guest names, contact, dietary and accessibility notes</span></span>
               </button>
               <button type="button" onClick={() => generatePDF('flightSchedule')} className="flex items-center gap-3 rounded-xl border border-gray-200 p-4 text-left hover:border-[#D4AF37] hover:bg-amber-50/30 transition">
-                <Plane size={18} className="text-[#1A3326]" /><span><strong className="block text-xs text-gray-900">Flight Schedule</strong><span className="block text-[10px] text-gray-500 mt-1">Routes, flight times, cabin, passenger assignments</span></span>
+                <Compass size={18} className="text-[#1A3326]" /><span><strong className="block text-xs text-gray-900">Flight Schedule</strong><span className="block text-[10px] text-gray-500 mt-1">Routes, flight times, cabin, passenger assignments</span></span>
               </button>
               <button type="button" onClick={() => generatePDF('rooming')} className="flex items-center gap-3 rounded-xl border border-gray-200 p-4 text-left hover:border-[#D4AF37] hover:bg-amber-50/30 transition">
-                <Hotel size={18} className="text-[#1A3326]" /><span><strong className="block text-xs text-gray-900">Hotel Rooming List</strong><span className="block text-[10px] text-gray-500 mt-1">Property, stay dates, room allocations and settlement</span></span>
+                <Layout size={18} className="text-[#1A3326]" /><span><strong className="block text-xs text-gray-900">Hotel Rooming List</strong><span className="block text-[10px] text-gray-500 mt-1">Property, stay dates, room allocations and settlement</span></span>
               </button>
               <button type="button" onClick={() => generatePDF('daily')} className="flex items-center gap-3 rounded-xl border border-gray-200 p-4 text-left hover:border-[#D4AF37] hover:bg-amber-50/30 transition">
                 <Calendar size={18} className="text-[#1A3326]" /><span><strong className="block text-xs text-gray-900">Daily Operations Schedule</strong><span className="block text-[10px] text-gray-500 mt-1">Only dated transfers, flights, activities and hotel events</span></span>
