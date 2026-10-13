@@ -68,7 +68,8 @@ import {
   Radio,
   Calendar,
   Lock,
-  ShieldAlert
+  ShieldAlert,
+  ArrowLeft
 } from 'lucide-react';
 
 export const INITIAL_STATE: AppState = {
