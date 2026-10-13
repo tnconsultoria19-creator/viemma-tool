@@ -560,8 +560,6 @@ export interface AppState {
   client: Client;
   groupConditions: GroupConditions;
   guests: Guest[];
-  /** Booking-level PDFs and image source documents uploaded by operations. */
-  attachments?: AttachmentItem[];
   flights: Flight[];
   transfers: Transfer[];
   rooms: Room[];
