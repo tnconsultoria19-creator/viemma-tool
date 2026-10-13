@@ -208,8 +208,8 @@ export const RoomingView: React.FC<RoomingViewProps> = ({
       cin: rForm.cin || '',
       cout: rForm.cout || '',
       nights: Number.isFinite(Number(rForm.nights)) ? Number(rForm.nights) : 0,
-      guestIds: rForm.allocatedRooms 
-        ? Array.from(new Set(rForm.allocatedRooms.flatMap(rm => rm.guestIds))) 
+      guestIds: rForm.allocatedRooms && rForm.allocatedRooms.length > 0
+        ? Array.from(new Set(rForm.allocatedRooms.flatMap(rm => rm.guestIds)))
         : rForm.guestIds || [],
       rate: totalRoomPrice,
       supp: Number(rForm.supp) || 0,
