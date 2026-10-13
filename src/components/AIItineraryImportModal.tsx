@@ -479,25 +479,37 @@ export const AIItineraryImportModal: React.FC<AIItineraryImportModalProps> = ({
     // 1. Resolve traveller names to existing people first, then create new IDs only when needed.
     const guestIdMap = new Map<string, number>();
     let nextGuestId = Math.max(0, ...currentState.guests.map(g => Number(g.id) || 0), ...payload.travellers.map(g => Number(g.id) || 0)) + 1;
+    const assignedImportIds = new Set<number>();
+    const anonymousLabelCounts = new Map<string, number>();
     const importedGuests: Guest[] = payload.travellers.map((tg, idx) => {
       const first = (tg.first || '').trim();
       const last = (tg.last || '').trim();
       const suppliedLabel = (tg.provisionalLabel || '').trim();
-      const fullName = normalizeIdentity(`${first} ${last}`);
-      const existingById = tg.id ? currentState.guests.find(g => g.id === tg.id) : undefined;
-      const existingByName = currentState.guests.find(g =>
-        Boolean(fullName) && normalizeIdentity(`${g.first} ${g.last}`) === fullName
-      );
-      const existingByLabel = suppliedLabel
-        ? currentState.guests.find(g => g.isProvisional && normalizeIdentity(g.provisionalLabel || g.first) === normalizeIdentity(suppliedLabel))
+      const fullName = normalizeIdentity(first + ' ' + last);
+      const ageKey = tg.age || 'Traveller';
+      const anonymousOrdinal = (anonymousLabelCounts.get(ageKey) || 0) + 1;
+      anonymousLabelCounts.set(ageKey, anonymousOrdinal);
+      const autoLabel = !first && !last ? (ageKey + ' ' + anonymousOrdinal) : '';
+      const matchingLabel = suppliedLabel || autoLabel;
+      const rawById = tg.id ? currentState.guests.find(g => g.id === tg.id) : undefined;
+      const idNameConflicts = Boolean(rawById && fullName && normalizeIdentity((rawById.first || '') + ' ' + (rawById.last || '')) !== fullName);
+      const existingById = !idNameConflicts && tg.id && !assignedImportIds.has(tg.id) ? rawById : undefined;
+      const existingByName = fullName
+        ? currentState.guests.find(g => normalizeIdentity((g.first || '') + ' ' + (g.last || '')) === fullName)
+        : undefined;
+      const existingByLabel = matchingLabel
+        ? currentState.guests.find(g => g.isProvisional && normalizeIdentity(g.provisionalLabel || g.first) === normalizeIdentity(matchingLabel))
         : undefined;
       const existingGuest = existingById || existingByName || existingByLabel;
-      const suppliedIdAvailable = Boolean(tg.id && !currentState.guests.some(g => g.id === tg.id));
-      const id = existingGuest?.id ?? (suppliedIdAvailable ? tg.id as number : nextGuestId++);
+      const suppliedIdAvailable = Boolean(tg.id && !currentState.guests.some(g => g.id === tg.id) && !assignedImportIds.has(tg.id));
+      let id = existingGuest?.id ?? (suppliedIdAvailable ? tg.id as number : nextGuestId++);
+      // Every traveller in the import gets a unique ID, even when an AI payload repeats one.
+      if (assignedImportIds.has(id)) id = nextGuestId++;
+      assignedImportIds.add(id);
       const mergedFirst = first || existingGuest?.first || '';
       const mergedLast = last || existingGuest?.last || '';
       const mergedIsAnonymous = !mergedFirst && !mergedLast;
-      const resolvedLabel = mergedIsAnonymous ? (suppliedLabel || existingGuest?.provisionalLabel || 'Traveller details pending') : undefined;
+      const resolvedLabel = mergedIsAnonymous ? (matchingLabel || existingGuest?.provisionalLabel || ('Traveller ' + (idx + 1))) : undefined;
       if (fullName) guestIdMap.set(fullName, id);
       if (resolvedLabel) guestIdMap.set(normalizeIdentity(resolvedLabel), id);
 
