@@ -343,12 +343,24 @@ export const AIItineraryImportModal: React.FC<AIItineraryImportModalProps> = ({
       const parsed = JSON.parse(clean) as AIItineraryPayload;
 
       // Validation
-      if (!parsed.client || !parsed.client.name) {
-        throw new Error('Missing client object or client.name in payload.');
+      const hasImportableData =
+        Boolean(parsed.client?.name) ||
+        Boolean(parsed.travellers?.length) ||
+        Boolean(parsed.flights?.length) ||
+        Boolean(parsed.accommodations?.length) ||
+        Boolean(parsed.transfers?.length) ||
+        Boolean(parsed.activities?.length) ||
+        Boolean(parsed.drivers?.length);
+      if (!hasImportableData) {
+        throw new Error('No importable records found. Include at least one client, traveller, flight, accommodation, transfer, activity, or driver section.');
       }
-      if (!parsed.travellers || !Array.isArray(parsed.travellers) || parsed.travellers.length === 0) {
-        throw new Error('At least one traveller must be listed in "travellers" array.');
-      }
+
+      // A section may be omitted for partial imports. Do not require dummy clients or travellers.
+      const clientSource = parsed.client || ({} as AIItineraryPayload['client']);
+      const hasClientSource = Boolean(parsed.client && (
+        parsed.client.name || parsed.client.email || parsed.client.phone || parsed.client.country ||
+        parsed.client.startDate || parsed.client.endDate || parsed.client.occasion || parsed.client.notes
+      ));
 
       // Pre-process items for review
       const processed: AIItineraryPayload = {
@@ -356,11 +368,19 @@ export const AIItineraryImportModal: React.FC<AIItineraryImportModalProps> = ({
         schemaVersion: parsed.schemaVersion || 'viemma-itinerary-v1',
         tripRef: parsed.tripRef || currentState.ref,
         client: {
-          ...parsed.client,
-          needsReview: Boolean(!parsed.client.email || !parsed.client.phone || !parsed.client.country || !parsed.client.startDate || !parsed.client.endDate || parsed.client.needsReview),
-          reviewReason: !parsed.client.email ? 'Missing client email' : !parsed.client.phone ? 'Missing client phone' : !parsed.client.country ? 'Missing client country' : !parsed.client.startDate ? 'Missing trip start date' : !parsed.client.endDate ? 'Missing trip end date' : parsed.client.reviewReason
+          ...clientSource,
+          name: clientSource.name || currentState.client.name || '',
+          email: clientSource.email || currentState.client.email || '',
+          phone: clientSource.phone || currentState.client.phone || '',
+          country: clientSource.country || currentState.client.country || '',
+          startDate: clientSource.startDate || currentState.client.startDate || '',
+          endDate: clientSource.endDate || currentState.client.endDate || '',
+          occasion: clientSource.occasion || currentState.client.occasion || '',
+          notes: clientSource.notes || currentState.client.notes || '',
+          needsReview: hasClientSource && Boolean(!clientSource.name || !clientSource.email || !clientSource.phone || !clientSource.country || !clientSource.startDate || !clientSource.endDate || clientSource.needsReview),
+          reviewReason: hasClientSource ? (!clientSource.name ? 'Missing client name' : !clientSource.email ? 'Missing client email' : !clientSource.phone ? 'Missing client phone' : !clientSource.country ? 'Missing client country' : !clientSource.startDate ? 'Missing trip start date' : !clientSource.endDate ? 'Missing trip end date' : clientSource.reviewReason) : ''
         },
-        travellers: parsed.travellers.map((g, idx) => ({
+        travellers: (parsed.travellers || []).map((g, idx) => ({
           ...g,
           isLead: g.isLead ?? false,
           age: g.age,
@@ -391,6 +411,11 @@ export const AIItineraryImportModal: React.FC<AIItineraryImportModalProps> = ({
           ...a,
           needsReview: !a.name || !a.day || !a.start || !a.dur || a.needsReview,
           reviewReason: !a.name ? 'Missing activity name' : !a.day ? 'Missing itinerary day' : !a.start ? 'Missing activity start time' : !a.dur ? 'Missing activity duration' : a.reviewReason
+        })),
+        drivers: (parsed.drivers || []).map(d => ({
+          ...d,
+          needsReview: !d.name || !d.prdpExpiryDate || (!(d.phone || d.email)) || d.needsReview,
+          reviewReason: !d.name ? 'Missing driver name' : !d.prdpExpiryDate ? 'PrDP/PDP expiry date not supplied' : (!(d.phone || d.email)) ? 'No driver phone or email supplied' : d.reviewReason
         }))
       };
 
