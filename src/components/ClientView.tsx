@@ -817,6 +817,13 @@ export const ClientView: React.FC<Props> = ({ state: rawState, onBackToWorkspace
                               ) : null;
                             })()}
 
+                            {act.supplier && (
+                              <div className="flex items-center gap-1.5 text-xs text-gray-600 font-medium pt-1">
+                                <Info size={13} className="text-[#D4AF37] shrink-0" />
+                                <span>Supplier: <strong>{act.supplier}</strong>{act.supPhone ? ` · ${act.supPhone}` : ''}</span>
+                              </div>
+                            )}
+
                             {/* Inclusions */}
                             {act.inc && act.inc.length > 0 && (
                               <div className="flex flex-wrap gap-1.5 pt-2">
