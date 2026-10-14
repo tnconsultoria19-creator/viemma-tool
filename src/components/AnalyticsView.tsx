@@ -82,13 +82,13 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
     <div className="space-y-12 max-w-[1500px] mx-auto animate-in fade-in duration-500">
       
       {/* Title Header with Spacious Breathing Room */}
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 pb-6 border-b border-gray-100">
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 p-5 md:p-6 bg-white/95 backdrop-blur-md border border-white/80 rounded-2xl shadow-sm">
         <div className="space-y-2">
-          <span className="text-xs uppercase tracking-[0.2em] font-bold text-[#D4AF37] flex items-center gap-2">
+          <span className="text-xs uppercase tracking-[0.2em] font-bold text-[#8A6A00] flex items-center gap-2">
             <TrendingUp size={14} /> Executive Business Intelligence
           </span>
-          <h1 className="text-3xl font-bold tracking-tight text-gray-900 font-sans">Operational Analytics Deck</h1>
-          <p className="text-gray-500 max-w-2xl text-sm leading-relaxed">
+          <h1 className="text-3xl font-bold tracking-tight text-[#10233F] font-sans">Operational Analytics Deck</h1>
+          <p className="text-slate-600 max-w-2xl text-sm leading-relaxed">
             Real-time financial synthesis, workspace integrity audits, service segment distribution, and critical path operational metrics.
           </p>
         </div>
