@@ -860,10 +860,11 @@ export const PrintHubView: React.FC<PrintHubViewProps> = (props) => {
                 </div>
                 {currentPublishing.settings.requirePassword && (
                   <input
-                    type="text"
+                    type="password"
+                    autoComplete="new-password"
                     value={currentPublishing.settings.password || ''}
                     onChange={(e) => handleToggleSetting('password', e.target.value)}
-                    placeholder="Enter access password..."
+                    placeholder="Enter a unique access password..."
                     className="w-full px-3 py-1.5 text-xs bg-white border border-slate-200 rounded-lg text-slate-800"
                   />
                 )}
