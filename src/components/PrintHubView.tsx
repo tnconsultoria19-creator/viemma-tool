@@ -168,7 +168,7 @@ export const PrintHubView: React.FC<PrintHubViewProps> = (props) => {
   }, [printGroup, scopedFlights, scopedHotels, scopedTransfers, scopedActivities, heroImageUrl, supportingImageUrl, customParagraphOverrides]);
 
   const insufficientPagesCount = editorialPages.filter((p) => p.insufficientContentFlag).length;
-  const leadPerson = group.travellers.find((t) => t.id === group.leadTravellerId) || group.travellers[0];
+  const leadPerson = printGroup.travellers.find((t) => t.id === printGroup.leadTravellerId) || printGroup.travellers[0];
 
   const handleEditPageParagraphs = (pageNumber: number, nextParagraphs: [string, string]) => {
     setCustomParagraphOverrides((prev) => ({
@@ -1054,11 +1054,11 @@ export const PrintHubView: React.FC<PrintHubViewProps> = (props) => {
                     <h2 className="text-xs font-bold uppercase tracking-wider text-slate-700 mb-2">
                       2. Accommodation & Settlement
                     </h2>
-                    {hotels.length === 0 ? (
+                    {scopedHotels.length === 0 ? (
                       <p className="text-xs text-slate-500">No hotel bookings recorded.</p>
                     ) : (
                       <div className="space-y-2 text-xs">
-                        {hotels.map((h) => (
+                        {scopedHotels.map((h) => (
                           <div key={h.id} className="p-2.5 border border-slate-200 rounded">
                             <div className="flex justify-between font-semibold">
                               <span>
@@ -1082,11 +1082,11 @@ export const PrintHubView: React.FC<PrintHubViewProps> = (props) => {
                     <h2 className="text-xs font-bold uppercase tracking-wider text-slate-700 mb-2">
                       3. Ground Logistics & Flight Connections
                     </h2>
-                    {transfers.length === 0 ? (
+                    {scopedTransfers.length === 0 ? (
                       <p className="text-xs text-slate-500">No ground transfers scheduled.</p>
                     ) : (
                       <div className="space-y-2 text-xs">
-                        {transfers.map((tr) => (
+                        {scopedTransfers.map((tr) => (
                           <div key={tr.id} className="p-2 border border-slate-200 rounded flex justify-between items-center">
                             <div>
                               <span className="font-bold text-slate-900">{tr.pickupTime}</span> — {tr.pickupLocation} → {tr.dropoffLocation}
