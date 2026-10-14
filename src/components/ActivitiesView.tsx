@@ -50,6 +50,42 @@ interface ActivitiesViewProps {
   onUpdateActivity: (id: number, updates: Partial<Activity>) => void;
 }
 
+// Shared scheduling helpers: validate clock values and derive ends from stated durations.
+const parseClockMinutes = (time?: string): number | null => {
+  const match = (time || '').trim().match(/^([01]?\d|2[0-3]):([0-5]\d)$/);
+  return match ? Number(match[1]) * 60 + Number(match[2]) : null;
+};
+
+const parseDurationMinutes = (duration?: string): number | null => {
+  const source = (duration || '').trim();
+  if (!source) return null;
+  const pattern = /(\d+(?:\.\d+)?)\s*(days?|d|hours?|hrs?|h|minutes?|mins?|m)\b/gi;
+  let total = 0;
+  let found = false;
+  for (const match of source.matchAll(pattern)) {
+    const amount = Number(match[1]);
+    const unit = match[2].toLowerCase();
+    const multiplier = unit.startsWith('d') ? 1440
+      : unit.startsWith('h') ? 60
+      : 1;
+    if (Number.isFinite(amount) && amount > 0) {
+      total += amount * multiplier;
+      found = true;
+    }
+  }
+  return found ? Math.round(total) : null;
+};
+
+const deriveEndTime = (startTime: string, duration?: string): string => {
+  const start = parseClockMinutes(startTime);
+  const durationMinutes = parseDurationMinutes(duration);
+  if (start === null || durationMinutes === null) return '';
+  const end = start + durationMinutes;
+  // This planner currently schedules within a single calendar day; do not silently wrap overnight.
+  if (end >= 1440) return '';
+  return `${String(Math.floor(end / 60)).padStart(2, '0')}:${String(end % 60).padStart(2, '0')}`;
+};
+
 export const ActivitiesView: React.FC<ActivitiesViewProps> = ({
   state,
   onUpdateState,
@@ -199,6 +235,8 @@ export const ActivitiesView: React.FC<ActivitiesViewProps> = ({
     };
 
     const times = slotTimes[slot] || slotTimes['Morning'];
+    const durationEndTime = deriveEndTime(times.start, catalogItem.duration);
+    const scheduledEndTime = durationEndTime || times.end;
     // Preserve explicit zero prices; missing values remain visibly unpriced until confirmed.
     const priceAd = Number(catalogItem.priceAdult ?? catalogItem.adPrice ?? 0);
     const priceCh = Number(catalogItem.priceChild ?? catalogItem.chPrice ?? Math.round(priceAd * 0.5));
@@ -213,8 +251,8 @@ export const ActivitiesView: React.FC<ActivitiesViewProps> = ({
       desc: catalogItem.shortDescription || catalogItem.luxuryDescription || catalogItem.desc || '',
       pickup: times.pickup,
       start: times.start,
-      endTime: times.end,
-      dur: catalogItem.duration || '3 hours',
+      endTime: scheduledEndTime,
+      dur: catalogItem.duration || '',
       venue: catalogItem.location || '',
       pickupLoc: catalogItem.pickupLoc || catalogItem.pickupLocation || '',
       responsiblePerson: catalogItem.responsiblePerson || '',
@@ -266,17 +304,15 @@ export const ActivitiesView: React.FC<ActivitiesViewProps> = ({
     const issues: string[] = [];
     const actDate = a.date || getDayIsoDate(a.day);
     
-    const parseMins = (t?: string) => {
-      if (!t) return null;
-      const parts = t.trim().split(':');
-      if (parts.length < 2) return null;
-      const h = parseInt(parts[0], 10);
-      const m = parseInt(parts[1], 10);
-      return (isNaN(h) || isNaN(m)) ? null : h * 60 + m;
-    };
-
+    const parseMins = parseClockMinutes;
     const aStart = parseMins(a.start);
-    const aEnd = a.endTime ? parseMins(a.endTime) : (aStart !== null ? aStart + 180 : null);
+    const aDuration = parseDurationMinutes(a.dur);
+    const aEnd = a.endTime
+      ? parseMins(a.endTime)
+      : (aStart !== null && aDuration !== null ? aStart + aDuration : null);
+    if (aStart !== null && aEnd === null) {
+      issues.push('Add an end time or a valid duration before schedule conflicts can be checked.');
+    }
 
     if (aStart !== null && aEnd !== null) {
       for (const other of state.activities) {
@@ -291,7 +327,10 @@ export const ActivitiesView: React.FC<ActivitiesViewProps> = ({
         const participantOverlap = aPax.length === 0 || otherPax.length === 0 || otherPax.some(id => aPax.includes(id));
         if (sameDay && participantOverlap) {
           const oStart = parseMins(other.start);
-          const oEnd = other.endTime ? parseMins(other.endTime) : (oStart !== null ? oStart + 180 : null);
+          const otherDuration = parseDurationMinutes(other.dur);
+          const oEnd = other.endTime
+            ? parseMins(other.endTime)
+            : (oStart !== null && otherDuration !== null ? oStart + otherDuration : null);
           if (oStart !== null && oEnd !== null) {
             if (aStart < oEnd && aEnd > oStart) {
               issues.push(`Overlaps with "${other.name}" (${other.start}${other.endTime ? `–${other.endTime}` : ''}) on Day ${other.day}`);
@@ -306,9 +345,13 @@ export const ActivitiesView: React.FC<ActivitiesViewProps> = ({
         }
       }
 
+      const activityPax = a.paxIds || [];
       for (const tr of state.transfers) {
         if (tr.status === 'Cancelled') continue;
-        if (actDate && tr.date === actDate) {
+        const transferPax = tr.paxIds || [];
+        const transferPassengerOverlap = activityPax.length === 0 || transferPax.length === 0
+          || transferPax.some(id => activityPax.includes(id));
+        if (actDate && tr.date === actDate && transferPassengerOverlap) {
           const trTime = parseMins(tr.time);
           if (trTime !== null) {
             if (trTime > aStart && trTime < aEnd) {
