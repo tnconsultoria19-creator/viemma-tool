@@ -841,7 +841,7 @@ export function subscribeToShareDoc(
         const parsed = JSON.parse(cached);
         const expiresAt = parsed?.accessPolicy?.expiresAt;
         const expired = expiresAt
-          ? Date.now() > new Date(/^\\d{4}-\\d{2}-\\d{2}$/.test(expiresAt) ? `${expiresAt}T23:59:59.999` : expiresAt).getTime()
+          ? Date.now() > new Date(/^\d{4}-\d{2}-\d{2}$/.test(expiresAt) ? `${expiresAt}T23:59:59.999` : expiresAt).getTime()
           : false;
         if (parsed.active !== false && parsed.accessPolicy?.enableOfflineAccess !== false && !expired) {
           onUpdate(parsed);
