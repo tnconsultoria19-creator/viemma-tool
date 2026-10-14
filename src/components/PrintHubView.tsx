@@ -87,6 +87,45 @@ export const PrintHubView: React.FC<PrintHubViewProps> = (props) => {
   const activities: ActivityRecord[] = props.activities || adapted?.activities || [];
   const heroImageUrl: string | undefined = props.heroImageUrl || adapted?.heroImageUrl;
   const supportingImageUrl: string | undefined = props.supportingImageUrl;
+  const [selectedGroupScope, setSelectedGroupScope] = useState<string>('ALL');
+  const availableNamedGroups = props.state?.namedGroups || [];
+  const selectedNamedGroup = availableNamedGroups.find(g => g.id === selectedGroupScope);
+
+  const printGroup: TripGroupStructure = useMemo(() => {
+    if (!selectedNamedGroup) return group;
+    const memberIds = new Set((selectedNamedGroup.memberIds || []).map(String));
+    const travellers = group.travellers.filter(t => memberIds.has(t.id));
+    const leaderId = selectedNamedGroup.leaderId ? String(selectedNamedGroup.leaderId) : '';
+    const lead = travellers.find(t => t.id === leaderId) || travellers.find(t => t.isLead) || travellers[0];
+    return { ...group, groupName: selectedNamedGroup.name, leadTravellerId: lead?.id || group.leadTravellerId, travellers };
+  }, [group, selectedNamedGroup]);
+
+  const scopedActivities: ActivityRecord[] = useMemo(() => {
+    if (selectedGroupScope === 'ALL') return activities;
+    if (!selectedNamedGroup) return [];
+    const memberIds = new Set((selectedNamedGroup.memberIds || []).map(String));
+    return activities.filter(activity => activity.groupIds?.length
+      ? activity.groupIds.includes(selectedGroupScope)
+      : (activity.participantTravellerIds || []).some(id => memberIds.has(id)));
+  }, [activities, selectedGroupScope, selectedNamedGroup]);
+
+  const scopedFlights: FlightRecord[] = useMemo(() => {
+    if (selectedGroupScope === 'ALL') return flights;
+    const memberIds = new Set((selectedNamedGroup?.memberIds || []).map(String));
+    return flights.filter(flight => (flight.travellerIds || []).some(id => memberIds.has(id)));
+  }, [flights, selectedGroupScope, selectedNamedGroup]);
+
+  const scopedHotels: HotelBookingRecord[] = useMemo(() => {
+    if (selectedGroupScope === 'ALL') return hotels;
+    const memberIds = new Set((selectedNamedGroup?.memberIds || []).map(String));
+    return hotels.filter(hotel => (hotel.travellerIds || []).some(id => memberIds.has(id)));
+  }, [hotels, selectedGroupScope, selectedNamedGroup]);
+
+  const scopedTransfers: TransferRecord[] = useMemo(() => {
+    if (selectedGroupScope === 'ALL') return transfers;
+    const memberIds = new Set((selectedNamedGroup?.memberIds || []).map(String));
+    return transfers.filter(transfer => (transfer.travellerIds || []).some(id => memberIds.has(id)));
+  }, [transfers, selectedGroupScope, selectedNamedGroup]);
 
   // Active top-level tab: PDF Quality Control vs Digital Publishing
   const [activeHubTab, setActiveHubTab] = useState<HubViewTab>('pdf-qc');
@@ -109,11 +148,11 @@ export const PrintHubView: React.FC<PrintHubViewProps> = (props) => {
 
   const editorialPages = useMemo(() => {
     const base = buildClientEditorialPages({
-      group,
-      flights,
-      hotels,
-      transfers,
-      activities,
+      group: printGroup,
+      flights: scopedFlights,
+      hotels: scopedHotels,
+      transfers: scopedTransfers,
+      activities: scopedActivities,
       heroImageUrl,
       supportingImageUrl,
     });
@@ -126,7 +165,7 @@ export const PrintHubView: React.FC<PrintHubViewProps> = (props) => {
           }
         : p
     );
-  }, [group, flights, hotels, transfers, activities, heroImageUrl, supportingImageUrl, customParagraphOverrides]);
+  }, [printGroup, scopedFlights, scopedHotels, scopedTransfers, scopedActivities, heroImageUrl, supportingImageUrl, customParagraphOverrides]);
 
   const insufficientPagesCount = editorialPages.filter((p) => p.insufficientContentFlag).length;
   const leadPerson = group.travellers.find((t) => t.id === group.leadTravellerId) || group.travellers[0];
@@ -365,6 +404,15 @@ export const PrintHubView: React.FC<PrintHubViewProps> = (props) => {
         {activeHubTab === 'pdf-qc' && (
           <div className="max-w-7xl mx-auto mt-3 pt-3 border-t border-slate-100 flex flex-wrap items-center justify-between gap-3 text-xs">
             <div className="flex flex-wrap items-center gap-1.5">
+              {availableNamedGroups.length > 0 && (
+                <label className="flex items-center gap-2 mr-2">
+                  <span className="font-semibold text-slate-500">Programme scope:</span>
+                  <select value={selectedGroupScope} onChange={e => { setSelectedGroupScope(e.target.value); setActivePageFilter('all'); }} className="px-3 py-1.5 rounded-lg border border-slate-200 bg-white text-xs font-semibold text-slate-800">
+                    <option value="ALL">All groups / whole trip</option>
+                    {availableNamedGroups.map(g => <option key={g.id} value={g.id}>{g.name} ({g.memberIds.length})</option>)}
+                  </select>
+                </label>
+              )}
               <span className="font-semibold text-slate-500 mr-1">Document Format:</span>
               <button
                 type="button"
@@ -922,7 +970,7 @@ export const PrintHubView: React.FC<PrintHubViewProps> = (props) => {
                     {transfers[0]?.pickupSignText || leadPerson?.fullName || group.groupName}
                   </div>
                   <p className="text-base text-slate-600 mt-4 font-medium">
-                    Party of {group.travellers.length} Traveller{group.travellers.length === 1 ? '' : 's'}
+                    Party of {printGroup.travellers.length} Traveller{printGroup.travellers.length === 1 ? '' : 's'}
                   </p>
                 </div>
 
@@ -953,12 +1001,12 @@ export const PrintHubView: React.FC<PrintHubViewProps> = (props) => {
                         INTERNAL OPERATIONS MANIFEST (CONFIDENTIAL)
                       </span>
                       <h1 className="text-xl font-bold text-slate-900">
-                        {group.tripId} — {group.groupName}
+                        {printGroup.tripId} — {printGroup.groupName}
                       </h1>
                     </div>
                     <div className="text-right text-xs text-slate-600">
-                      <div>Lead: {leadPerson?.fullName || 'Unassigned'}</div>
-                      <div>Total Pax: {group.travellers.length}</div>
+                      <div>Lead: {printGroup.travellers.find(t => t.id === printGroup.leadTravellerId)?.fullName || 'Unassigned'}</div>
+                      <div>Total Pax: {printGroup.travellers.length}</div>
                     </div>
                   </header>
 
@@ -1052,6 +1100,27 @@ export const PrintHubView: React.FC<PrintHubViewProps> = (props) => {
                       </div>
                     )}
                   </div>
+                  {/* Scheduled activities with groups and resources */}
+                  <div className="mb-6">
+                    <h2 className="text-xs font-bold uppercase tracking-wider text-slate-700 mb-2">4. Scheduled Activities & Group Assignments</h2>
+                    {scopedActivities.filter(a => a.status !== 'Cancelled').length === 0 ? (
+                      <p className="text-xs text-slate-500">No active activities assigned to this programme scope.</p>
+                    ) : (
+                      <div className="space-y-2 text-xs">
+                        {scopedActivities.filter(a => a.status !== 'Cancelled').slice().sort((a,b) => a.date.localeCompare(b.date) || a.startTime.localeCompare(b.startTime)).map(activity => (
+                          <div key={activity.id} className="p-2.5 border border-slate-200 rounded">
+                            <div className="flex flex-wrap justify-between gap-2"><strong className="text-slate-900">{activity.startTime}{activity.endTime ? `–${activity.endTime}` : ''} — {activity.title}</strong><span className="text-slate-500">{activity.date}</span></div>
+                            <div className="text-slate-700 mt-1">Venue: {activity.venue || activity.location || 'Not confirmed'}</div>
+                            <div className="text-slate-600 mt-0.5">Group(s): {(activity.groupNames || []).join(', ') || printGroup.groupName}</div>
+                            <div className="text-slate-600 mt-0.5">Responsible: {activity.responsiblePerson || 'Not assigned'} · Driver: {activity.driverName || 'Not assigned'} · Vehicle: {activity.vehicleName || 'Not assigned'}</div>
+                            {activity.internalNotes && <div className="text-rose-800 mt-1">Internal notes: {activity.internalNotes}</div>}
+                            {activity.cost !== undefined && <div className="text-slate-600 mt-0.5">Recorded activity cost: R {activity.cost.toLocaleString('en-ZA')}</div>}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
                 </div>
 
                 <footer className="pt-3 border-t border-slate-200 flex justify-between text-[10px] text-slate-500">
