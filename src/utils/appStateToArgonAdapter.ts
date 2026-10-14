@@ -159,8 +159,8 @@ export function adaptAppStateToArgon(state: AppState): {
       date: actDate || state.client?.startDate || new Date().toISOString().split('T')[0],
       startTime: a.start || a.pickup || '09:30',
       endTime: a.endTime,
-      location: a.pickupLoc || a.dropoffLoc || 'Cape Town',
-      isGroupWide: (a.paxIds || []).length === state.guests.length,
+      location: a.venue || a.pickupLoc || a.dropoffLoc || '',
+      isGroupWide: state.guests.length > 0 && (a.paxIds || []).length === state.guests.length,
       participantTravellerIds: (a.paxIds || []).map(String),
       excludedTravellerIds: a.excluded || [],
       status: (a.status === 'Requested'
