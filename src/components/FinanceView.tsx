@@ -75,13 +75,13 @@ export const FinanceView: React.FC<FinanceViewProps> = ({
     <div className="space-y-12 max-w-[1500px] mx-auto animate-in fade-in duration-500">
       
       {/* Header section with generous breathing room */}
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 pb-6 border-b border-gray-100">
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 p-5 md:p-6 bg-white/95 backdrop-blur-md border border-white/80 rounded-2xl shadow-sm">
         <div className="space-y-2">
-          <span className="text-xs uppercase tracking-[0.2em] font-bold text-[#D4AF37] flex items-center gap-2">
+          <span className="text-xs uppercase tracking-[0.2em] font-bold text-[#8A6A00] flex items-center gap-2">
             <Sparkles size={14} /> Stripe-Powered Financial System
           </span>
-          <h1 className="text-3xl font-bold tracking-tight text-gray-900 font-sans">Finance Workspace</h1>
-          <p className="text-gray-500 max-w-2xl text-sm leading-relaxed">
+          <h1 className="text-3xl font-bold tracking-tight text-[#10233F] font-sans">Finance Workspace</h1>
+          <p className="text-slate-600 max-w-2xl text-sm leading-relaxed">
             Manage margins, partner agency commission rules, exchange rate registrations, and multi-currency billing structures in Southern Africa.
           </p>
         </div>
