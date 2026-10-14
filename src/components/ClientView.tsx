@@ -186,47 +186,65 @@ export const ClientView: React.FC<Props> = ({ state: rawState, onBackToWorkspace
     };
   }, [dayActivities, destinationLibrary]);
 
-  // Distinct destination stops for the Trip Overview (Screen 3 style)
+  // Build the route overview only from destinations and stays saved on this trip.
+  // Never infer a route from trip length alone.
   const destinationStops = useMemo(() => {
-    const stops: { name: string; dayRange: string; img: string }[] = [];
-    const totalD = days.length;
-    
-    if (totalD <= 3) {
-      stops.push({
-        name: 'Cape Town & Peninsula',
-        dayRange: `Days 1–${totalD}`,
-        img: DESTINATION_DEFAULTS['cape town'].img
+    const byLocation = new Map<string, { name: string; minDay: number; maxDay: number; img: string; kind: 'Experience' | 'Stay' }>();
+    const addStop = (nameValue: string, dayValue: number, imageValue: string, kind: 'Experience' | 'Stay') => {
+      const name = (nameValue || '').trim();
+      if (!name) return;
+      const key = name.toLocaleLowerCase();
+      const current = byLocation.get(key);
+      const safeDay = Math.max(1, dayValue || 1);
+      if (current) {
+        current.minDay = Math.min(current.minDay, safeDay);
+        current.maxDay = Math.max(current.maxDay, safeDay);
+        if (!current.img && imageValue) current.img = imageValue;
+      } else {
+        byLocation.set(key, { name, minDay: safeDay, maxDay: safeDay, img: imageValue || '', kind });
+      }
+    };
+
+    (state.activities || [])
+      .filter(activity => activity.status !== 'Cancelled')
+      .forEach(activity => {
+        const location = activity.destination || activity.venue || '';
+        if (!location.trim()) return;
+        const dest = destinationLibrary.find(item => {
+          const a = location.toLowerCase();
+          const b = item.name.toLowerCase();
+          return a === b || a.includes(b) || b.includes(a);
+        });
+        const experience = experienceLibrary.find(item => item.name === activity.name);
+        const image = activity.heroImage || experience?.featuredImage || experience?.images?.[0] || dest?.featuredImage || dest?.images?.[0] || '';
+        addStop(location, activity.day || 1, image, 'Experience');
       });
-    } else if (totalD <= 6) {
-      stops.push({
-        name: 'Cape Town Atlantic Coast',
-        dayRange: 'Days 1–3',
-        img: DESTINATION_DEFAULTS['cape town'].img
+
+    (state.rooms || [])
+      .filter(room => room.status !== 'Cancelled' && Boolean(room.hotel?.trim()))
+      .forEach(room => {
+        let day = 1;
+        if (state.client?.startDate && room.cin) {
+          const startDate = new Date(state.client.startDate);
+          const checkInDate = new Date(room.cin);
+          if (!Number.isNaN(startDate.getTime()) && !Number.isNaN(checkInDate.getTime())) {
+            day = Math.floor((checkInDate.getTime() - startDate.getTime()) / 86400000) + 1;
+          }
+        }
+        const image = room.propertyImages?.[0] || '';
+        addStop(room.hotel, day, image, 'Stay');
       });
-      stops.push({
-        name: 'Cape Winelands Estates',
-        dayRange: `Days 4–${totalD}`,
-        img: DESTINATION_DEFAULTS.winelands.img
-      });
-    } else {
-      stops.push({
-        name: 'Cape Town & Atlantic Seaboard',
-        dayRange: 'Days 1–3',
-        img: DESTINATION_DEFAULTS['cape town'].img
-      });
-      stops.push({
-        name: 'Franschhoek Winelands',
-        dayRange: 'Days 4–5',
-        img: DESTINATION_DEFAULTS.winelands.img
-      });
-      stops.push({
-        name: 'Sabi Sand Private Big 5 Safari',
-        dayRange: `Days 6–${totalD}`,
-        img: DESTINATION_DEFAULTS.kruger.img
-      });
-    }
-    return stops;
-  }, [days]);
+
+    return Array.from(byLocation.values())
+      .filter(stop => Boolean(stop.img))
+      .sort((a, b) => a.minDay - b.minDay || a.name.localeCompare(b.name))
+      .slice(0, 6)
+      .map(stop => ({
+        name: stop.name,
+        dayRange: stop.minDay === stop.maxDay ? `Day ${stop.minDay} · ${stop.kind}` : `Days ${stop.minDay}–${stop.maxDay} · ${stop.kind}`,
+        img: stop.img
+      }));
+  }, [state.activities, state.rooms, state.client?.startDate, destinationLibrary, experienceLibrary]);
 
   // Hero carousel slides
   const heroSlides = useMemo(() => {
@@ -520,8 +538,13 @@ export const ClientView: React.FC<Props> = ({ state: rawState, onBackToWorkspace
                 Destination Route & Stays
               </span>
 
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                {destinationStops.map((stop, sIdx) => (
+              {destinationStops.length === 0 ? (
+                <div className="rounded-2xl border border-white/15 bg-white/5 p-4 text-xs text-gray-300">
+                  Destination stops will appear here when the programme contains confirmed venue or accommodation details.
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  {destinationStops.map((stop, sIdx) => (
                   <div 
                     key={sIdx}
                     onClick={() => openLightbox([stop.img], 0)}
@@ -542,8 +565,9 @@ export const ClientView: React.FC<Props> = ({ state: rawState, onBackToWorkspace
                       </span>
                     </div>
                   </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              )}
             </div>
 
             {/* Key Trip Metrics */}
