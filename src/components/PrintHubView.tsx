@@ -14,6 +14,7 @@ import {
 import { ClientEditorialPage } from './ClientEditorialPage';
 import { AppState } from '../types';
 import { adaptAppStateToArgon } from '../utils/appStateToArgonAdapter';
+import { isCloudConnected } from '../lib/firebase';
 import { 
   syncProjectionsToFirestore, 
   regenerateShareToken, 
@@ -237,9 +238,12 @@ export const PrintHubView: React.FC<PrintHubViewProps> = (props) => {
       setPublishFeedback('State synchronization unavailable.');
       return;
     }
+    if (!isCloudConnected) {
+      setPublishFeedback('Live publishing requires an active Firestore connection. Save locally, reconnect, and publish again.');
+      return;
+    }
     setIsPublishing(true);
     try {
-      const tokens = await syncProjectionsToFirestore(props.state);
       const nextVer = (currentPublishing.version || 1) + 1;
       const nowIso = new Date().toISOString();
       const updatedVersions = [
@@ -252,25 +256,36 @@ export const PrintHubView: React.FC<PrintHubViewProps> = (props) => {
         ...(currentPublishing.versions || []),
       ];
 
-      props.onUpdateState({
+      // Activate the projection before generating it; otherwise a previously revoked
+      // token could be written back as inactive and remain inaccessible after publish.
+      const stateForPublish: AppState = {
+        ...props.state,
+        version: nextVer,
         publishing: {
           ...currentPublishing,
           publishStatus: 'Published',
           version: nextVer,
           publishedAt: nowIso,
           lastUpdated: nowIso,
-          clientToken: tokens.clientToken,
-          agentToken: tokens.agentToken,
-          opsToken: tokens.opsToken,
           clientTokenActive: true,
           agentTokenActive: true,
           opsTokenActive: true,
           versions: updatedVersions,
         },
+      };
+      const tokens = await syncProjectionsToFirestore(stateForPublish);
+      props.onUpdateState({
+        version: nextVer,
+        publishing: {
+          ...stateForPublish.publishing!,
+          clientToken: tokens.clientToken,
+          agentToken: tokens.agentToken,
+          opsToken: tokens.opsToken,
+        },
       });
 
       setNewVersionNote('');
-      setPublishFeedback(`✨ Successfully published Itinerary v${nextVer} to live client and agent channels!`);
+      setPublishFeedback(`Successfully published itinerary v${nextVer} to live client, agent and operations channels.`);
       setTimeout(() => setPublishFeedback(null), 4000);
     } catch (err: any) {
       setPublishFeedback(`Publishing error: ${err?.message || 'Failed to sync projections.'}`);
@@ -305,9 +320,12 @@ export const PrintHubView: React.FC<PrintHubViewProps> = (props) => {
 
   const handleToggleSetting = (key: keyof typeof currentPublishing.settings, val: any) => {
     if (!props.state || !props.onUpdateState) return;
+    const nowIso = new Date().toISOString();
     props.onUpdateState({
       publishing: {
         ...currentPublishing,
+        lastUpdated: nowIso,
+        publishStatus: currentPublishing.publishedAt ? 'Changes Pending' : currentPublishing.publishStatus,
         settings: {
           ...currentPublishing.settings,
           [key]: val,
@@ -967,7 +985,7 @@ export const PrintHubView: React.FC<PrintHubViewProps> = (props) => {
                     className="text-4xl sm:text-5xl font-bold text-slate-900 tracking-tight break-words"
                     style={{ fontFamily: 'Georgia, serif' }}
                   >
-                    {transfers[0]?.pickupSignText || leadPerson?.fullName || group.groupName}
+                    {scopedTransfers[0]?.pickupSignText || leadPerson?.fullName || group.groupName}
                   </div>
                   <p className="text-base text-slate-600 mt-4 font-medium">
                     Party of {printGroup.travellers.length} Traveller{printGroup.travellers.length === 1 ? '' : 's'}
@@ -981,7 +999,7 @@ export const PrintHubView: React.FC<PrintHubViewProps> = (props) => {
                   </div>
                   <div>
                     <span className="font-semibold text-slate-900 block">Transfer Destination</span>
-                    {transfers[0]?.dropoffLocation || hotels[0]?.propertyName || group.defaults.destination}
+                    {scopedTransfers[0]?.dropoffLocation || scopedHotels[0]?.propertyName || group.defaults.destination}
                   </div>
                   <div className="text-right font-mono">Page 1 of 1</div>
                 </footer>
