@@ -1209,27 +1209,27 @@ export const PrintHubView: React.FC<PrintHubViewProps> = (props) => {
                 </footer>
               </article>
             )}
-            {/* MODE 4: FINAL FINANCIAL AUDIT — source-linked figures only */}
+            {/* MODE 4: FINAL FINANCIAL AUDIT — explicit summary page plus paginated reconciliation */}
             {mode === 'financial-audit' && (
-              <article
-                className="viemma-pdf-page bg-white text-slate-900 border border-slate-200 shadow-md mx-auto flex flex-col"
-                style={{ width: '210mm', minHeight: '297mm', padding: '15mm 16mm' }}
-              >
-                <header className="border-b-2 border-[#1A3326] pb-4 mb-5 flex items-start justify-between gap-4">
-                  <div>
-                    <span className="text-[10px] uppercase tracking-[0.25em] font-bold text-rose-700">Confidential · Internal Finance</span>
-                    <h1 className="text-2xl font-bold text-[#1A3326] mt-1">Final Financial Audit</h1>
-                    <p className="text-xs text-slate-600 mt-1">{props.state?.title || group.groupName} · {group.tripId}</p>
-                    <p className="text-[10px] text-slate-500 mt-1">{group.defaults.startDate || 'Start date TBC'} to {group.defaults.endDate || 'End date TBC'} · Generated {new Date().toLocaleDateString('en-ZA')}</p>
-                  </div>
-                  <div className="text-right text-xs text-slate-500 shrink-0">
-                    <div className="font-bold text-slate-900">Base currency: ZAR</div>
-                    <div>Cancelled items excluded from totals</div>
-                  </div>
-                </header>
+              financialAudit ? (
+                <>
+                  <article
+                    className="viemma-pdf-page bg-white text-slate-900 border border-slate-200 shadow-md mx-auto flex flex-col"
+                    style={{ width: '210mm', minHeight: '297mm', padding: '15mm 16mm' }}
+                  >
+                    <header className="border-b-2 border-[#1A3326] pb-4 mb-5 flex items-start justify-between gap-4">
+                      <div>
+                        <span className="text-[10px] uppercase tracking-[0.25em] font-bold text-rose-700">Confidential · Internal Finance</span>
+                        <h1 className="text-2xl font-bold text-[#1A3326] mt-1">Final Financial Audit</h1>
+                        <p className="text-xs text-slate-600 mt-1">{props.state?.title || group.groupName} · {group.tripId}</p>
+                        <p className="text-[10px] text-slate-500 mt-1">{group.defaults.startDate || 'Start date TBC'} to {group.defaults.endDate || 'End date TBC'} · Generated {new Date().toLocaleDateString('en-ZA')}</p>
+                      </div>
+                      <div className="text-right text-xs text-slate-500 shrink-0">
+                        <div className="font-bold text-slate-900">Base currency: ZAR</div>
+                        <div>Cancelled services excluded</div>
+                      </div>
+                    </header>
 
-                {financialAudit ? (
-                  <>
                     <div className="grid grid-cols-2 gap-3 mb-5">
                       {[
                         { label: 'Operating cost', value: financialAudit.totalCost },
@@ -1244,57 +1244,101 @@ export const PrintHubView: React.FC<PrintHubViewProps> = (props) => {
                       ))}
                     </div>
 
-                    <div className="grid grid-cols-2 gap-x-5 gap-y-2 mb-5 border-b border-slate-200 pb-4 text-xs">
-                      <div className="flex justify-between gap-3"><span className="text-slate-600">Flights</span><strong>R {financialAudit.flightCost.toLocaleString('en-ZA', { maximumFractionDigits: 2 })}</strong></div>
-                      <div className="flex justify-between gap-3"><span className="text-slate-600">Transfers / tolls / parking</span><strong>R {financialAudit.transferCost.toLocaleString('en-ZA', { maximumFractionDigits: 2 })}</strong></div>
-                      <div className="flex justify-between gap-3"><span className="text-slate-600">Accommodation</span><strong>R {financialAudit.accommodationCost.toLocaleString('en-ZA', { maximumFractionDigits: 2 })}</strong></div>
-                      <div className="flex justify-between gap-3"><span className="text-slate-600">Activities</span><strong>R {financialAudit.activityCost.toLocaleString('en-ZA', { maximumFractionDigits: 2 })}</strong></div>
+                    <h2 className="text-xs font-bold uppercase tracking-wider text-slate-700 mb-2">Cost by service category</h2>
+                    <div className="border border-slate-200 rounded-xl divide-y divide-slate-200 mb-5 text-xs">
+                      {[
+                        { label: 'Flights', value: financialAudit.flightCost },
+                        { label: 'Transfers, tolls and parking', value: financialAudit.transferCost },
+                        { label: 'Accommodation', value: financialAudit.accommodationCost },
+                        { label: 'Activities', value: financialAudit.activityCost },
+                      ].map(item => (
+                        <div key={item.label} className="p-3 flex items-center justify-between gap-4">
+                          <span className="text-slate-600">{item.label}</span>
+                          <strong className="text-slate-900">R {item.value.toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</strong>
+                        </div>
+                      ))}
+                      <div className="p-3 flex items-center justify-between gap-4 bg-slate-50 font-bold">
+                        <span>Operating cost subtotal</span>
+                        <strong>R {financialAudit.totalCost.toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</strong>
+                      </div>
                     </div>
 
-                    <h2 className="text-xs font-bold uppercase tracking-wider text-slate-700 mb-2">Service-level reconciliation</h2>
-                    <table className="w-full text-left border-collapse text-[10px]">
-                      <thead>
-                        <tr className="bg-slate-100 border-y border-slate-300">
-                          <th className="py-1.5 px-2">Category</th>
-                          <th className="py-1.5 px-2">Date / Day</th>
-                          <th className="py-1.5 px-2">Description</th>
-                          <th className="py-1.5 px-2">Status</th>
-                          <th className="py-1.5 px-2 text-right">Cost (ZAR)</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-slate-200">
-                        {financialAudit.rows.map(row => (
-                          <tr key={row.id} className={row.excluded ? 'text-slate-400' : 'text-slate-700'}>
-                            <td className="py-1.5 px-2 font-semibold">{row.category}</td>
-                            <td className="py-1.5 px-2">{row.date}</td>
-                            <td className="py-1.5 px-2">{row.description}</td>
-                            <td className="py-1.5 px-2">{row.excluded ? `${row.status} · excluded` : row.status}</td>
-                            <td className="py-1.5 px-2 text-right whitespace-nowrap">{row.excluded ? 'R 0.00' : `R ${row.amount.toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-
-                    <div className="mt-5 pt-4 border-t-2 border-slate-300 space-y-2 text-xs">
-                      <div className="flex justify-between"><span>Cost subtotal</span><strong>R {financialAudit.totalCost.toLocaleString('en-ZA', { maximumFractionDigits: 2 })}</strong></div>
-                      <div className="flex justify-between"><span>Markup</span><strong>R {financialAudit.markup.toLocaleString('en-ZA', { maximumFractionDigits: 2 })}</strong></div>
-                      <div className="flex justify-between"><span>Payment processing fee</span><strong>R {financialAudit.processingFee.toLocaleString('en-ZA', { maximumFractionDigits: 2 })}</strong></div>
-                      <div className="flex justify-between"><span>Buffer</span><strong>R {props.state?.finance.buffer.toLocaleString('en-ZA', { maximumFractionDigits: 2 })}</strong></div>
-                      <div className="flex justify-between"><span>Discount</span><strong>− R {props.state?.finance.discount.toLocaleString('en-ZA', { maximumFractionDigits: 2 })}</strong></div>
-                      <div className="flex justify-between border-t border-slate-200 pt-2 font-bold"><span>Estimated selling price</span><strong>R {financialAudit.sellingPrice.toLocaleString('en-ZA', { maximumFractionDigits: 2 })}</strong></div>
-                      <div className="flex justify-between font-bold text-emerald-800"><span>Target net profit after commission</span><strong>R {financialAudit.netProfit.toLocaleString('en-ZA', { maximumFractionDigits: 2 })}</strong></div>
+                    <h2 className="text-xs font-bold uppercase tracking-wider text-slate-700 mb-2">Commercial calculation</h2>
+                    <div className="border border-slate-200 rounded-xl divide-y divide-slate-200 text-xs">
+                      <div className="p-3 flex justify-between gap-4"><span className="text-slate-600">Markup</span><strong>R {financialAudit.markup.toLocaleString('en-ZA', { maximumFractionDigits: 2 })}</strong></div>
+                      <div className="p-3 flex justify-between gap-4"><span className="text-slate-600">Payment processing fee</span><strong>R {financialAudit.processingFee.toLocaleString('en-ZA', { maximumFractionDigits: 2 })}</strong></div>
+                      <div className="p-3 flex justify-between gap-4"><span className="text-slate-600">Buffer</span><strong>R {(props.state?.finance.buffer || 0).toLocaleString('en-ZA', { maximumFractionDigits: 2 })}</strong></div>
+                      <div className="p-3 flex justify-between gap-4"><span className="text-slate-600">Discount</span><strong>− R {(props.state?.finance.discount || 0).toLocaleString('en-ZA', { maximumFractionDigits: 2 })}</strong></div>
+                      <div className="p-3 flex justify-between gap-4 bg-slate-50 font-bold"><span>Estimated selling price</span><strong>R {financialAudit.sellingPrice.toLocaleString('en-ZA', { maximumFractionDigits: 2 })}</strong></div>
+                      <div className="p-3 flex justify-between gap-4 text-emerald-800 font-bold"><span>Target net profit after commission</span><strong>R {financialAudit.netProfit.toLocaleString('en-ZA', { maximumFractionDigits: 2 })}</strong></div>
                     </div>
-                    <p className="text-[9px] leading-relaxed text-slate-500 mt-4">Audit basis: saved service costs and current finance settings at the time of generation. Figures are estimates unless reconciled against supplier invoices and actual payments. No cancelled service contributes to the active operating-cost total.</p>
-                  </>
-                ) : (
-                  <p className="text-sm text-rose-800 bg-rose-50 border border-rose-200 rounded-xl p-4">Financial data is unavailable for this document. Reopen the Print Hub from the active trip workspace.</p>
-                )}
 
-                <footer className="mt-auto pt-3 border-t border-slate-200 flex justify-between text-[10px] text-slate-500">
-                  <span>{group.tripId} · Confidential Financial Audit</span>
-                  <span>Generated from saved trip data</span>
-                </footer>
-              </article>
+                    <p className="text-[9px] leading-relaxed text-slate-500 mt-auto pt-5">Audit basis: saved service costs and the finance settings in effect when this report was generated. Figures remain estimates unless reconciled against supplier invoices and actual payments. This report does not claim to be a completed statutory or external audit.</p>
+                    <footer className="pt-3 mt-3 border-t border-slate-200 flex justify-between text-[10px] text-slate-500">
+                      <span>{group.tripId} · Confidential Financial Audit</span>
+                      <span>Summary · Page 1</span>
+                    </footer>
+                  </article>
+
+                  {Array.from({ length: Math.max(1, Math.ceil(financialAudit.rows.length / 22)) }).map((_, pageIndex) => {
+                    const pageRows = financialAudit.rows.slice(pageIndex * 22, (pageIndex + 1) * 22);
+                    const detailPages = Math.max(1, Math.ceil(financialAudit.rows.length / 22));
+                    return (
+                      <article
+                        key={`financial-audit-detail-${pageIndex + 1}`}
+                        className="viemma-pdf-page bg-white text-slate-900 border border-slate-200 shadow-md mx-auto flex flex-col"
+                        style={{ width: '210mm', minHeight: '297mm', padding: '15mm 16mm' }}
+                      >
+                        <header className="border-b border-slate-300 pb-3 mb-4 flex items-start justify-between gap-4">
+                          <div>
+                            <span className="text-[10px] uppercase tracking-[0.2em] font-bold text-rose-700">Confidential · Internal Finance</span>
+                            <h2 className="text-lg font-bold text-[#1A3326] mt-1">Service-level Reconciliation</h2>
+                            <p className="text-[10px] text-slate-500 mt-1">{props.state?.title || group.groupName} · {group.tripId}</p>
+                          </div>
+                          <span className="text-[10px] text-slate-500">Detail page {pageIndex + 2} of {detailPages + 1}</span>
+                        </header>
+
+                        {financialAudit.rows.length === 0 ? (
+                          <p className="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-4 text-xs text-slate-600">No service cost records have been entered for this trip.</p>
+                        ) : (
+                          <table className="w-full text-left border-collapse text-[10px]">
+                            <thead>
+                              <tr className="bg-slate-100 border-y border-slate-300">
+                                <th className="py-2 px-2">Category</th>
+                                <th className="py-2 px-2">Date / Day</th>
+                                <th className="py-2 px-2">Description</th>
+                                <th className="py-2 px-2">Status</th>
+                                <th className="py-2 px-2 text-right">Cost (ZAR)</th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-slate-200">
+                              {pageRows.map(row => (
+                                <tr key={row.id} className={row.excluded ? 'text-slate-400' : 'text-slate-700'}>
+                                  <td className="py-2 px-2 font-semibold">{row.category}</td>
+                                  <td className="py-2 px-2">{row.date}</td>
+                                  <td className="py-2 px-2">{row.description}</td>
+                                  <td className="py-2 px-2">{row.excluded ? `${row.status} · excluded from cost` : row.status}</td>
+                                  <td className="py-2 px-2 text-right whitespace-nowrap">{row.excluded ? 'R 0.00' : `R ${row.amount.toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}</td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        )}
+
+                        <footer className="mt-auto pt-3 border-t border-slate-200 flex justify-between text-[10px] text-slate-500">
+                          <span>{group.tripId} · Internal Service Reconciliation</span>
+                          <span>Page {pageIndex + 2} of {detailPages + 1}</span>
+                        </footer>
+                      </article>
+                    );
+                  })}
+                </>
+              ) : (
+                <article className="viemma-pdf-page bg-white p-8 text-rose-800 border border-rose-200 rounded-xl mx-auto" style={{ width: '210mm', minHeight: '297mm' }}>
+                  <h1 className="text-xl font-bold">Financial data unavailable</h1>
+                  <p className="text-sm mt-2">Reopen the Print Hub from the active trip workspace.</p>
+                </article>
+              )
             )}
 
           </div>
