@@ -291,7 +291,7 @@ export interface EncryptedShareEnvelope {
   encryptedPayload: { iv: string; ciphertext: string };
 }
 
-async function encryptShareProjection(docData: any, password: string): Promise<EncryptedShareEnvelope> {
+export async function encryptShareProjection(docData: any, password: string): Promise<EncryptedShareEnvelope> {
   const policy: ShareAccessPolicy = docData.accessPolicy;
   if (!policy?.passwordRequired || !policy.passwordSalt) {
     throw new Error('Encrypted share payload requires an enabled password policy.');
