@@ -403,7 +403,11 @@ export function buildClientProjection(trip: AppState, token: string): ClientShar
   const finance = trip.finance;
   const margin = finance.marginType === '%' ? totalCost * finance.margin / 100 : finance.margin;
   const paymentRate = finance.paymentMethod === 'visa' || finance.paymentMethod === 'master' ? 0.025 : finance.paymentMethod === 'amex' ? 0.038 : 0;
-  const retailTotal = Math.max(0, totalCost + margin + finance.buffer + totalCost * paymentRate - finance.discount);
+  const retailTotalZAR = Math.max(0, totalCost + margin + finance.buffer + totalCost * paymentRate - finance.discount);
+  const requestedCurrency = (clientSettings.currency || finance.currency || 'ZAR').toUpperCase();
+  const pricingCurrency = (['ZAR', 'USD', 'EUR', 'BRL'].includes(requestedCurrency) ? requestedCurrency : 'ZAR') as 'ZAR' | 'USD' | 'EUR' | 'BRL';
+  const displayRate = pricingCurrency === 'ZAR' ? 1 : (finance.rates?.[pricingCurrency] || 1);
+  const clientRetailTotal = retailTotalZAR * displayRate;
 
   return {
     token,
@@ -486,7 +490,7 @@ export function buildClientProjection(trip: AppState, token: string): ClientShar
       vehicle: t.vehicle
     })),
     ...(clientSettings.showPricing !== false ? {
-      pricing: { currency: 'ZAR', total: Math.round(retailTotal), paymentTerms: 'As specified in the approved quotation.' }
+      pricing: { currency: pricingCurrency, total: Math.round(clientRetailTotal), paymentTerms: 'As specified in the approved quotation.' }
     } : {}),
     timeline,
     consultant: {
