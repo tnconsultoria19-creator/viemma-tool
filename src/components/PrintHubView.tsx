@@ -909,6 +909,23 @@ export const PrintHubView: React.FC<PrintHubViewProps> = (props) => {
                 />
               </div>
 
+              {/* Client-facing currency is presentation-only; accounting remains in the base ZAR ledger. */}
+              <div className="p-3.5 bg-slate-50 rounded-xl border border-slate-200 space-y-2">
+                <label htmlFor="viemma-share-currency" className="font-bold text-slate-900 block">Client Display Currency</label>
+                <p className="text-slate-500 text-[11px]">Choose the currency shown in the published itinerary price summary.</p>
+                <select
+                  id="viemma-share-currency"
+                  value={['ZAR', 'USD', 'EUR', 'BRL'].includes((currentPublishing.settings.currency || 'ZAR').toUpperCase()) ? currentPublishing.settings.currency : 'ZAR'}
+                  onChange={(e) => handleToggleSetting('currency', e.target.value)}
+                  className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-xs text-slate-800 font-semibold"
+                >
+                  <option value="ZAR">ZAR · South African rand</option>
+                  <option value="USD">USD · US dollar</option>
+                  <option value="EUR">EUR · Euro</option>
+                  <option value="BRL">BRL · Brazilian real</option>
+                </select>
+              </div>
+
               {/* Mandatory client confidentiality: internal notes and supplier cost data are never projected */}
               <div className="p-3.5 bg-emerald-50 rounded-xl border border-emerald-200 flex items-center justify-between">
                 <div>
