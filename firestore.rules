@@ -28,9 +28,9 @@ service cloud.firestore {
       return resource.data.active == true &&
         (
           !('accessPolicy' in resource.data) ||
-          !('expiresAtEpochMs' in resource.data.accessPolicy) ||
-          resource.data.accessPolicy.expiresAtEpochMs == null ||
-          request.time.toMillis() < resource.data.accessPolicy.expiresAtEpochMs
+          !('expiresAtTimestamp' in resource.data.accessPolicy) ||
+          resource.data.accessPolicy.expiresAtTimestamp == null ||
+          request.time < resource.data.accessPolicy.expiresAtTimestamp
         );
     }
 
