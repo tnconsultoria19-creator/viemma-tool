@@ -1,4 +1,4 @@
-import { doc, getDoc, setDoc, deleteDoc, onSnapshot } from 'firebase/firestore';
+import { Timestamp, doc, getDoc, setDoc, deleteDoc, onSnapshot } from 'firebase/firestore';
 import { db, isCloudConnected } from './firebase';
 import { AppState } from '../types';
 import { INITIAL_STATE } from '../App';
@@ -6,7 +6,7 @@ import { buildNormalizedTimeline, TimelineEvent } from '../utils/timelineEngine'
 
 export interface ShareAccessPolicy {
   expiresAt: string | null;
-  expiresAtEpochMs?: number | null;
+  expiresAtTimestamp?: Timestamp | null;
   passwordRequired: boolean;
   passwordSalt?: string;
   passwordIterations: number;
@@ -372,7 +372,7 @@ async function buildShareAccessPolicy(trip: AppState): Promise<ShareAccessPolicy
 
   return {
     expiresAt,
-    expiresAtEpochMs: expiresAt ? new Date(expiresAt).getTime() : null,
+    expiresAtTimestamp: expiresAt ? Timestamp.fromDate(new Date(expiresAt)) : null,
     passwordRequired,
     passwordSalt,
     passwordIterations: SHARE_PASSWORD_ITERATIONS,
