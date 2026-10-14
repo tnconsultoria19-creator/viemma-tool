@@ -131,7 +131,7 @@ export const ClientView: React.FC<Props> = ({ state: rawState, onBackToWorkspace
 
   // Group activities by day
   const days: number[] = useMemo(() => {
-    const dList = Array.from(new Set(state.activities.map(a => a.day)))
+    const dList = Array.from(new Set(state.activities.filter(a => a.status !== 'Cancelled').map(a => a.day)))
       .map(Number)
       .sort((a, b) => a - b);
     return dList.length > 0 ? dList : [1];
@@ -140,7 +140,7 @@ export const ClientView: React.FC<Props> = ({ state: rawState, onBackToWorkspace
   const currentDay = activeDay || days[0];
 
   const dayActivities = useMemo(() => {
-    return state.activities.filter(a => a.day === currentDay).sort((a, b) => {
+    return state.activities.filter(a => a.day === currentDay && a.status !== 'Cancelled').sort((a, b) => {
       return (a.start || '').localeCompare(b.start || '');
     });
   }, [currentDay, state.activities]);
@@ -754,7 +754,7 @@ export const ClientView: React.FC<Props> = ({ state: rawState, onBackToWorkspace
                             </h5>
                             
                             <p className="text-xs sm:text-sm text-gray-700 leading-relaxed">
-                              {act.desc || libMatch?.luxuryDescription || 'Exclusive private guided excursion customized for your party with premium access and dedicated specialist guide.'}
+                              {act.desc || libMatch?.luxuryDescription || 'Description to be confirmed by Viemma Tours.'}
                             </p>
 
                             {/* Meeting point */}
@@ -780,6 +780,18 @@ export const ClientView: React.FC<Props> = ({ state: rawState, onBackToWorkspace
                                 ))}
                               </div>
                             )}
+
+                            {(() => {
+                              const groupNames = act.groupNames?.length
+                                ? act.groupNames
+                                : (state.namedGroups || []).filter(g => (act.groupIds || []).includes(g.id)).map(g => g.name);
+                              return groupNames.length > 0 ? (
+                                <div className="flex flex-wrap gap-1.5 pt-1">
+                                  <span className="text-[10px] uppercase tracking-wider font-bold text-slate-500 self-center">Assigned group(s)</span>
+                                  {groupNames.map(groupName => <span key={groupName} className="text-[10px] px-2 py-1 rounded-md bg-emerald-50 border border-emerald-200 text-emerald-800 font-bold">{groupName}</span>)}
+                                </div>
+                              ) : null;
+                            })()}
 
                             {/* Inclusions */}
                             {act.inc && act.inc.length > 0 && (
