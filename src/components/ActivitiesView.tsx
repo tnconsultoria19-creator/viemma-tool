@@ -495,13 +495,18 @@ export const ActivitiesView: React.FC<ActivitiesViewProps> = ({
             const aPax = a.paxIds || [];
             const otherPax = other.paxIds || [];
             const overlappingPax = aPax.filter(id => otherPax.includes(id));
-            const hasPaxOverlap = aPax.length === 0 || otherPax.length === 0 || overlappingPax.length > 0;
 
             const aGroups = a.groupIds || [];
             const oGroups = other.groupIds || [];
-            const hasGroupOverlap = aGroups.length === 0 || oGroups.length === 0 || aGroups.some(gid => oGroups.includes(gid));
+            const explicitGroupOverlap = aGroups.some(gid => oGroups.includes(gid));
+            const missingGroupContext = aGroups.length === 0 || oGroups.length === 0;
+            // Different named groups may run parallel. If one record lacks a group or traveller roster,
+            // treat it as a potential conflict until the assignment is made explicit.
+            const participantConflict = overlappingPax.length > 0
+              || explicitGroupOverlap
+              || (missingGroupContext && (aPax.length === 0 || otherPax.length === 0));
 
-            if (hasTimeOverlap && (hasPaxOverlap || hasGroupOverlap)) {
+            if (hasTimeOverlap && participantConflict) {
               if (overlappingPax.length > 0) {
                 const names = state.guests.filter(g => overlappingPax.includes(g.id)).map(g => `${g.first} ${g.last}`).join(', ');
                 issues.push(`Traveller double-booked: ${names} assigned to simultaneous activities ("${a.name}" and "${other.name}").`);
