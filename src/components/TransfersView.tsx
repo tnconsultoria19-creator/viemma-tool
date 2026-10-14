@@ -197,13 +197,13 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
     <div className="space-y-8 max-w-[1500px] mx-auto animate-in fade-in duration-500">
       
       {/* Title Header */}
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 pb-6 border-b border-gray-100">
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 p-5 md:p-6 bg-white/95 backdrop-blur-md border border-white/80 rounded-2xl shadow-sm">
         <div className="space-y-2">
-          <span className="text-xs uppercase tracking-[0.2em] font-bold text-[#D4AF37] flex items-center gap-2">
+          <span className="text-xs uppercase tracking-[0.2em] font-bold text-[#8A6A00] flex items-center gap-2">
             <Car size={14} /> Ground Operations
           </span>
-          <h1 className="text-3xl font-bold tracking-tight text-gray-900 font-sans">Ground Logistics & Fleet Tracker</h1>
-          <p className="text-gray-500 max-w-2xl text-sm leading-relaxed">
+          <h1 className="text-3xl font-bold tracking-tight text-[#10233F] font-sans">Ground Logistics & Fleet Tracker</h1>
+          <p className="text-slate-600 max-w-2xl text-sm leading-relaxed">
             Schedule private chauffeured transfers, airport shuttle pickups, fleet vehicle capacities, driver dispatch and routing checkpoints.
           </p>
         </div>
