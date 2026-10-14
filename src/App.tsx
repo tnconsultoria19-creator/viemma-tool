@@ -1325,17 +1325,18 @@ export default function App() {
           </div>
 
           {/* CENTER: Navigation [HOME] [CLIENTS] [FLIGHTS] [HOTELS] [FINANCE] [ANALYTICS] */}
-          <div className="hidden md:flex flex-1 items-center justify-start gap-1 lg:gap-1.5 xl:gap-2 h-full min-w-0">
+          <div className="hidden xl:flex flex-1 items-center justify-start gap-1 lg:gap-1.5 xl:gap-2 h-full min-w-0">
             {!isClientView && (
               <nav className="flex items-center justify-start gap-1 lg:gap-1.5 xl:gap-2 h-full">
                 {/* Primary Navigation Tabs */}
                 {[
                   { id: 'home', label: 'Home', icon: <Home size={14} /> },
                   { id: 'guests', label: 'Clients', icon: <Users size={14} /> },
+                  { id: 'activities', label: 'Programme', icon: <Route size={14} /> },
+                  { id: 'timelines', label: 'Timelines', icon: <Calendar size={14} /> },
                   { id: 'flights', label: 'Flights', icon: <Plane size={14} /> },
+                  { id: 'transfers', label: 'Transfers', icon: <Car size={14} /> },
                   { id: 'rooming', label: 'Hotels', icon: <Hotel size={14} /> },
-                  { id: 'fleet', label: 'Transport Fleet', icon: <Truck size={14} /> },
-                  { id: 'drivers', label: 'Drivers', icon: <Users size={14} /> },
                 ].map(tab => (
                   <button
                     key={tab.id}
@@ -1360,7 +1361,7 @@ export default function App() {
 
           {/* RIGHT: Actions [SAVE & SYNC] [PRINT HUB] [SHARE] */}
           <div className="ml-auto shrink-0 flex items-center gap-1.5 xl:gap-2 justify-end">
-            {windowWidth >= 768 ? (
+            {windowWidth >= 1280 ? (
               <div className="flex items-center gap-1.5 xl:gap-2">
                 {/* [SAVE & SYNC] */}
                 {!isClientView && (
@@ -1468,7 +1469,6 @@ export default function App() {
                     alt="Viemma Tours" 
                     className="h-6 w-auto object-contain brightness-0 invert" 
                   />
-                  <span className="text-[10px] text-[#D4AF37] font-black uppercase tracking-widest block mt-1">FILE: {state.ref || 'VT-2026-1048'}</span>
                 </div>
                 <button
                   onClick={() => setIsDrawerOpen(false)}
@@ -1502,7 +1502,8 @@ export default function App() {
                   { id: 'timelines', label: 'Daily Timelines', icon: <Calendar size={15} /> },
                   { id: 'driver-itinerary', label: 'Driver Itinerary', icon: <FileText size={15} /> },
                   { id: 'rooming', label: 'Hotels', icon: <Hotel size={15} /> },
-                  { id: 'activities', label: 'Experiences', icon: <Route size={15} /> },
+                  { id: 'activities', label: 'Programme', icon: <Route size={15} /> },
+                  { id: 'library', label: 'Experience Library', icon: <BookOpen size={15} /> },
                   { id: 'finance', label: 'Finance', icon: <Coins size={15} /> },
                   { id: 'analytics', label: 'Analytics', icon: <TrendingUp size={15} /> },
                   { id: 'exporthub', label: 'Print Hub', icon: <Printer size={15} /> },
