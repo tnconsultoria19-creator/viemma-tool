@@ -111,8 +111,129 @@ export const ActivitiesView: React.FC<ActivitiesViewProps> = ({
   const [assigningActivityId, setAssigningActivityId] = useState<number | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [editingDayTitleId, setEditingDayTitleId] = useState<number | null>(null);
-  // Do not seed new trips with a sample itinerary; day titles are supplied by the user.
-  const [customDayTitles, setCustomDayTitles] = useState<Record<number, string>>({});
+  const [newGroupName, setNewGroupName] = useState('');
+  const [groupManagerOpen, setGroupManagerOpen] = useState((state.namedGroups || []).length === 0);
+  const [selectedGroupFilter, setSelectedGroupFilter] = useState<string>('ALL');
+  const [catalogTargetGroupIds, setCatalogTargetGroupIds] = useState<string[]>([]);
+  const namedGroups = state.namedGroups || [];
+  // Day titles are stored on the trip so they survive navigation and reloads.
+  const customDayTitles = state.dayTitles || {};
+
+  const getGroupRoster = (groupIds: string[]): number[] =>
+    Array.from(new Set(namedGroups.filter(g => groupIds.includes(g.id)).flatMap(g => g.memberIds || [])));
+
+  const countsForRoster = (paxIds: number[]) => {
+    const adults = state.guests.filter(g => paxIds.includes(g.id) && g.age !== 'Child' && g.age !== 'Infant').length;
+    const children = state.guests.filter(g => paxIds.includes(g.id) && (g.age === 'Child' || g.age === 'Infant')).length;
+    return { adults, children };
+  };
+
+  const totalForRoster = (activity: Partial<Activity>, paxIds: number[]) => {
+    if (activity.isFree) return 0;
+    if (Number(activity.flat) > 0) return Number(activity.flat);
+    const counts = countsForRoster(paxIds);
+    return (Number(activity.pAdult) || 0) * counts.adults + (Number(activity.pChild) || 0) * counts.children;
+  };
+
+  const handleCreateGroup = () => {
+    const name = newGroupName.trim();
+    if (!name) {
+      setToastMessage('Enter a name for the traveller group.');
+      return;
+    }
+    if (namedGroups.some(g => g.name.trim().toLowerCase() === name.toLowerCase())) {
+      setToastMessage('A group with that name already exists.');
+      return;
+    }
+    const group: TravellerGroup = {
+      id: `group_${Date.now()}`,
+      name,
+      color: '#1A3326',
+      memberIds: []
+    };
+    onUpdateState({ namedGroups: [...namedGroups, group] });
+    setNewGroupName('');
+    setSelectedGroupFilter(group.id);
+    setCatalogTargetGroupIds(current => [...new Set([...current, group.id])]);
+    setToastMessage(`Created group “${name}”. Select its members below.`);
+  };
+
+  const handleUpdateGroupMembers = (groupId: string, memberId: number, checked: boolean) => {
+    const nextGroups = namedGroups.map(group => {
+      if (group.id !== groupId) return group;
+      const memberIds = checked
+        ? Array.from(new Set([...(group.memberIds || []), memberId]))
+        : (group.memberIds || []).filter(id => id !== memberId);
+      return { ...group, memberIds, leaderId: !checked && group.leaderId === memberId ? undefined : group.leaderId };
+    });
+    const nextActivities = state.activities.map(activity => {
+      const assignedGroupIds = activity.groupIds || [];
+      if (!assignedGroupIds.includes(groupId)) return activity;
+      const paxIds = Array.from(new Set(nextGroups.filter(g => assignedGroupIds.includes(g.id)).flatMap(g => g.memberIds || [])));
+      const counts = countsForRoster(paxIds);
+      return {
+        ...activity,
+        paxIds,
+        nAdult: counts.adults,
+        nChild: counts.children,
+        total: totalForRoster(activity, paxIds),
+        updatedAt: new Date().toISOString()
+      };
+    });
+    onUpdateState({ namedGroups: nextGroups, activities: nextActivities });
+  };
+
+  const handleUpdateGroupLeader = (groupId: string, leaderValue: string) => {
+    const leaderId = leaderValue ? Number(leaderValue) : undefined;
+    onUpdateState({
+      namedGroups: namedGroups.map(group => group.id === groupId
+        ? { ...group, leaderId: leaderId && (group.memberIds || []).includes(leaderId) ? leaderId : undefined }
+        : group)
+    });
+  };
+
+  const handleDeleteGroup = (groupId: string) => {
+    const group = namedGroups.find(g => g.id === groupId);
+    if (!group) return;
+    if (typeof window !== 'undefined' && !window.confirm(`Delete “${group.name}”? Existing activity participant lists will be preserved.`)) return;
+    onUpdateState({
+      namedGroups: namedGroups.filter(g => g.id !== groupId),
+      activities: state.activities.map(activity => ({
+        ...activity,
+        groupIds: (activity.groupIds || []).filter(id => id !== groupId)
+      }))
+    });
+    setSelectedGroupFilter(current => current === groupId ? 'ALL' : current);
+    setCatalogTargetGroupIds(current => current.filter(id => id !== groupId));
+  };
+
+  const matchesSelectedGroup = (activity: Activity, groupId = selectedGroupFilter) => {
+    if (groupId === 'ALL') return true;
+    if (groupId === 'UNASSIGNED') return !(activity.groupIds || []).length;
+    const group = namedGroups.find(g => g.id === groupId);
+    if (!group) return false;
+    if (activity.groupIds?.length) return activity.groupIds.includes(groupId);
+    return (activity.paxIds || []).some(id => (group.memberIds || []).includes(id));
+  };
+
+  const visibleActivities = state.activities.filter(activity => matchesSelectedGroup(activity));
+
+  const handleToggleFormGroup = (groupId: string, checked: boolean) => {
+    const currentGroupIds = aForm.groupIds || [];
+    const groupIds = checked
+      ? Array.from(new Set([...currentGroupIds, groupId]))
+      : currentGroupIds.filter(id => id !== groupId);
+    const paxIds = getGroupRoster(groupIds);
+    const counts = countsForRoster(paxIds);
+    setAForm({
+      ...aForm,
+      groupIds,
+      paxIds,
+      nAdult: counts.adults,
+      nChild: counts.children,
+      total: totalForRoster(aForm, paxIds)
+    });
+  };
 
   const guides = state.guides?.length ? state.guides : DB_DEFAULT.guides as Guide[];
 
@@ -218,15 +339,37 @@ export const ActivitiesView: React.FC<ActivitiesViewProps> = ({
     
     onUpdateActivity(activityId, {
       paxIds,
+      groupIds: [],
       nAdult: adCount,
       nChild: chCount,
-      total: newTotal
+      total: newTotal,
+      updatedAt: new Date().toISOString()
     });
     setToastMessage(`Updated participant roster (${paxIds.length} travellers assigned)`);
     setTimeout(() => setToastMessage(null), 2500);
   };
 
-  const handleAddFromCatalog = (catalogItem: any, targetDayNum: number, slot: 'Morning' | 'Afternoon' | 'Evening' | 'Full Day') => {
+  const handleQuickAssignGroup = (activityId: number, groupId: string) => {
+    const activity = state.activities.find(a => a.id === activityId);
+    if (!activity) return;
+    const currentIds = activity.groupIds || [];
+    const nextIds = currentIds.includes(groupId) ? currentIds.filter(id => id !== groupId) : [...currentIds, groupId];
+    const paxIds = getGroupRoster(nextIds);
+    const counts = countsForRoster(paxIds);
+    onUpdateActivity(activityId, {
+      groupIds: nextIds,
+      paxIds,
+      nAdult: counts.adults,
+      nChild: counts.children,
+      total: totalForRoster(activity, paxIds),
+      updatedAt: new Date().toISOString()
+    });
+    setToastMessage(nextIds.length
+      ? `Assigned ${nextIds.map(id => namedGroups.find(g => g.id === id)?.name).filter(Boolean).join(', ')} to “${activity.name}”.`
+      : `Removed named group assignments from “${activity.name}”.`);
+  };
+
+  const handleAddFromCatalog = (catalogItem: any, targetDayNum: number, slot: 'Morning' | 'Afternoon' | 'Evening' | 'Full Day', targetGroupIds: string[] = []) => {
     const slotTimes: Record<string, { start: string; end: string; pickup: string }> = {
       'Morning': { start: '09:00', end: '12:30', pickup: '08:30' },
       'Afternoon': { start: '14:00', end: '17:30', pickup: '13:30' },
@@ -240,7 +383,10 @@ export const ActivitiesView: React.FC<ActivitiesViewProps> = ({
     // Preserve explicit zero prices; missing values remain visibly unpriced until confirmed.
     const priceAd = Number(catalogItem.priceAdult ?? catalogItem.adPrice ?? 0);
     const priceCh = Number(catalogItem.priceChild ?? catalogItem.chPrice ?? Math.round(priceAd * 0.5));
-    const calculatedTotal = 0; // Recalculated after participants are explicitly assigned.
+    const assignedGroupIds = Array.from(new Set(targetGroupIds)).filter(id => namedGroups.some(g => g.id === id));
+    const paxIds = getGroupRoster(assignedGroupIds);
+    const counts = countsForRoster(paxIds);
+    const calculatedTotal = (priceAd * counts.adults) + (priceCh * counts.children);
 
     const newActivity: Activity = {
       id: Date.now(),
@@ -260,11 +406,12 @@ export const ActivitiesView: React.FC<ActivitiesViewProps> = ({
       conf: '',
       supplier: catalogItem.supplier || '',
       supPhone: catalogItem.supplierPhone || catalogItem.supPhone || '',
-      paxIds: [],
+      paxIds,
+      groupIds: assignedGroupIds,
       pAdult: priceAd,
       pChild: priceCh,
-      nAdult: 0,
-      nChild: 0,
+      nAdult: counts.adults,
+      nChild: counts.children,
       flat: 0,
       total: calculatedTotal,
       inc: catalogItem.inclusions || [],
@@ -439,6 +586,7 @@ export const ActivitiesView: React.FC<ActivitiesViewProps> = ({
       supplier: '',
       supPhone: '',
       paxIds: [],
+      groupIds: [],
       pAdult: 0,
       pChild: 0,
       nAdult: 0,
@@ -572,6 +720,19 @@ export const ActivitiesView: React.FC<ActivitiesViewProps> = ({
       supplier: aForm.supplier || '',
       supPhone: aForm.supPhone || '',
       paxIds: aForm.paxIds || [],
+      groupIds: aForm.groupIds || [],
+      category: aForm.category || '',
+      driverId: aForm.driverId || '',
+      driverName: aForm.driverName || '',
+      vehicleId: aForm.vehicleId || '',
+      vehicleName: aForm.vehicleName || '',
+      destination: aForm.destination || '',
+      voucherRef: aForm.voucherRef || '',
+      clientDescription: aForm.clientDescription || '',
+      costSupplier: Number(aForm.costSupplier) || 0,
+      sellingPrice: Number(aForm.sellingPrice) || 0,
+      createdAt: aForm.createdAt || new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
       pAdult: Number(aForm.pAdult) || 0,
       pChild: Number(aForm.pChild) || 0,
       nAdult: Number(aForm.nAdult) || 0,
@@ -733,6 +894,111 @@ export const ActivitiesView: React.FC<ActivitiesViewProps> = ({
               </div>
             </div>
 
+            {/* Persistent named group management and programme scope */}
+            <div className="bg-white border border-slate-200 rounded-2xl p-3 md:p-4 space-y-3">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div className="flex flex-col sm:flex-row sm:items-center gap-2.5">
+                  <label className="text-xs font-bold text-slate-700" htmlFor="viemma-group-filter">Programme view</label>
+                  <select
+                    id="viemma-group-filter"
+                    value={selectedGroupFilter}
+                    onChange={e => setSelectedGroupFilter(e.target.value)}
+                    className="h-10 px-3 rounded-xl border border-slate-200 bg-white text-xs font-semibold text-slate-800 min-w-[190px]"
+                  >
+                    <option value="ALL">All traveller groups</option>
+                    {namedGroups.map(group => (
+                      <option key={group.id} value={group.id}>{group.name} ({group.memberIds.length} travellers)</option>
+                    ))}
+                    <option value="UNASSIGNED">Unassigned activities</option>
+                  </select>
+                  <span className="text-[11px] text-slate-500">{namedGroups.length} groups · {state.guests.length} travellers</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setGroupManagerOpen(open => !open)}
+                  className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 text-slate-800 text-xs font-bold"
+                >
+                  <Users size={14} />
+                  {groupManagerOpen ? 'Hide Group Manager' : 'Manage Traveller Groups'}
+                  {groupManagerOpen ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
+                </button>
+              </div>
+              {groupManagerOpen && (
+                <div className="border-t border-slate-100 pt-3 space-y-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-[1fr_auto] gap-2">
+                    <input
+                      type="text"
+                      value={newGroupName}
+                      onChange={e => setNewGroupName(e.target.value)}
+                      onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleCreateGroup(); } }}
+                      placeholder="New group name, e.g. Group A / Family Smith"
+                      className="h-10 px-3 rounded-xl border border-slate-200 text-sm text-slate-800"
+                      aria-label="New traveller group name"
+                    />
+                    <button
+                      type="button"
+                      onClick={handleCreateGroup}
+                      className="h-10 px-4 rounded-xl bg-[#1A3326] text-white text-xs font-bold flex items-center justify-center gap-2"
+                    >
+                      <Plus size={13} /> Create Group
+                    </button>
+                  </div>
+                  {namedGroups.length === 0 ? (
+                    <div className="rounded-xl bg-slate-50 border border-dashed border-slate-300 p-4 text-sm text-slate-600">
+                      No traveller groups yet. Create a group, then select which travellers belong to it.
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-1 xl:grid-cols-2 gap-3">
+                      {namedGroups.map(group => (
+                        <section key={group.id} className="rounded-xl border border-slate-200 p-4 space-y-3">
+                          <div className="flex flex-wrap items-center justify-between gap-2">
+                            <div>
+                              <h3 className="text-sm font-bold text-slate-900">{group.name}</h3>
+                              <p className="text-[11px] text-slate-500">{group.memberIds.length} traveller(s) · {state.activities.filter(a => (a.groupIds || []).includes(group.id) && a.status !== 'Cancelled').length} active activities</p>
+                            </div>
+                            <button type="button" onClick={() => handleDeleteGroup(group.id)} className="px-2.5 py-1.5 rounded-lg text-[11px] font-bold text-rose-700 border border-rose-200 hover:bg-rose-50">Delete Group</button>
+                          </div>
+                          <div className="space-y-1.5">
+                            <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Group leader</label>
+                            <select
+                              value={group.leaderId && group.memberIds.includes(group.leaderId) ? String(group.leaderId) : ''}
+                              onChange={e => handleUpdateGroupLeader(group.id, e.target.value)}
+                              className="w-full h-9 px-3 rounded-lg border border-slate-200 bg-white text-xs text-slate-800"
+                            >
+                              <option value="">No group leader selected</option>
+                              {state.guests.filter(g => group.memberIds.includes(g.id)).map(guest => (
+                                <option key={guest.id} value={guest.id}>{guest.first} {guest.last}</option>
+                              ))}
+                            </select>
+                          </div>
+                          <div>
+                            <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-2">Group members</p>
+                            {state.guests.length === 0 ? (
+                              <p className="text-xs text-slate-500">Add travellers in the Clients module first.</p>
+                            ) : (
+                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-44 overflow-y-auto pr-1">
+                                {state.guests.map(guest => (
+                                  <label key={guest.id} className="flex items-center gap-2 rounded-lg bg-slate-50 px-2.5 py-2 text-xs text-slate-700">
+                                    <input
+                                      type="checkbox"
+                                      checked={group.memberIds.includes(guest.id)}
+                                      onChange={e => handleUpdateGroupMembers(group.id, guest.id, e.target.checked)}
+                                      className="accent-[#1A3326]"
+                                    />
+                                    <span className="min-w-0 truncate">{guest.first} {guest.last}</span>
+                                  </label>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        </section>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+
             {/* Day Selector Pills */}
             <div className="flex items-center gap-1.5 overflow-x-auto pb-1.5 pt-0.5 scrollbar-thin">
               <button
@@ -745,14 +1011,14 @@ export const ActivitiesView: React.FC<ActivitiesViewProps> = ({
               >
                 <span>All Days ({tripDaysCount} Days)</span>
                 <span className={`px-1.5 py-0.2 rounded-full text-[10px] ${selectedDayFilter === 'ALL' ? 'bg-[#D4AF37] text-[#1A3326]' : 'bg-gray-100 text-gray-600'}`}>
-                  {state.activities.length}
+                  {visibleActivities.length}
                 </span>
               </button>
 
               {Array.from({ length: tripDaysCount }).map((_, idx) => {
                 const dayNum = idx + 1;
                 const isSelected = selectedDayFilter === dayNum;
-                const dayActs = state.activities.filter(a => a.day === dayNum);
+                const dayActs = state.activities.filter(a => a.day === dayNum && matchesSelectedGroup(a));
                 const hasConflicts = dayActs.some(a => getActivityConflicts(a).length > 0);
 
                 return (
@@ -880,6 +1146,25 @@ export const ActivitiesView: React.FC<ActivitiesViewProps> = ({
             {/* TAB 1: BASIC OUTING DETAILS */}
             {activeTab === 'basic' && (
               <div className="space-y-6 animate-in fade-in duration-150">
+                <div className="bg-white rounded-[20px] p-6 border border-slate-200 shadow-sm space-y-3">
+                  <div className="flex items-center justify-between gap-2 border-b border-slate-100 pb-2">
+                    <h3 className="text-xs uppercase font-bold text-[#1A3326] tracking-wider flex items-center gap-2"><Users size={14} className="text-[#D4AF37]" /> Traveller Group Assignment</h3>
+                    <span className="text-[11px] text-slate-500">{(aForm.groupIds || []).length} group(s) selected</span>
+                  </div>
+                  {namedGroups.length === 0 ? (
+                    <p className="text-xs text-slate-600">No named groups exist yet. Use “Manage Traveller Groups” above to create groups and assign travellers.</p>
+                  ) : (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+                      {namedGroups.map(group => (
+                        <label key={group.id} className="flex items-start gap-2.5 rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs text-slate-700 cursor-pointer">
+                          <input type="checkbox" checked={(aForm.groupIds || []).includes(group.id)} onChange={e => handleToggleFormGroup(group.id, e.target.checked)} className="mt-0.5 accent-[#1A3326]" />
+                          <span className="min-w-0"><strong className="block text-slate-900">{group.name}</strong><span className="text-[11px] text-slate-500">{group.memberIds.length} member(s)</span></span>
+                        </label>
+                      ))}
+                    </div>
+                  )}
+                  <p className="text-[11px] text-slate-500">Selecting groups assigns their current members. Fine-tune the roster in Traveler Alignment.</p>
+                </div>
                 <div className="bg-gradient-to-r from-yellow-500/5 to-yellow-500/10 rounded-[20px] p-6 border border-[#D4AF37]/20 shadow-xs space-y-3">
                   <label className="text-[11px] text-[#1A3326] font-bold uppercase tracking-wider block">Autofill from Master Experience Presets (Optional)</label>
                   <select 
@@ -1548,7 +1833,7 @@ export const ActivitiesView: React.FC<ActivitiesViewProps> = ({
                     if (selectedDayFilter !== 'ALL' && selectedDayFilter !== dayNum) return null;
 
                     const dayActs = state.activities
-                      .filter(a => a.day === dayNum)
+                      .filter(a => a.day === dayNum && matchesSelectedGroup(a))
                       .sort((a, b) => (a.start || '00:00').localeCompare(b.start || '00:00'));
 
                     const dayIsoDate = getDayIsoDate(dayNum);
@@ -1594,7 +1879,7 @@ export const ActivitiesView: React.FC<ActivitiesViewProps> = ({
                                   <input
                                     type="text"
                                     value={customDayTitles[dayNum] || ''}
-                                    onChange={(e) => setCustomDayTitles({ ...customDayTitles, [dayNum]: e.target.value })}
+                                    onChange={(e) => onUpdateState({ dayTitles: { ...(state.dayTitles || {}), [dayNum]: e.target.value } })}
                                     className="px-3 py-1 bg-white/20 text-white rounded-lg text-sm font-bold border border-white/30 focus:outline-none focus:ring-2 focus:ring-[#D4AF37]"
                                     autoFocus
                                   />
@@ -1767,6 +2052,15 @@ export const ActivitiesView: React.FC<ActivitiesViewProps> = ({
                                         <h4 className="font-extrabold text-gray-950 text-base font-sans mt-1">
                                           {a.name}
                                         </h4>
+                                        {(a.groupIds || []).length > 0 && (
+                                          <div className="flex flex-wrap gap-1.5 mt-1">
+                                            {(a.groupIds || []).map(id => namedGroups.find(g => g.id === id)).filter(Boolean).map(group => (
+                                              <span key={group!.id} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-emerald-50 border border-emerald-200 text-emerald-800 text-[10px] font-bold">
+                                                <Users size={10} /> {group!.name}
+                                              </span>
+                                            ))}
+                                          </div>
+                                        )}
                                         <p className="text-gray-600 text-xs leading-relaxed max-w-3xl">
                                           {a.desc}
                                         </p>
@@ -2087,7 +2381,7 @@ export const ActivitiesView: React.FC<ActivitiesViewProps> = ({
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-gray-100 font-medium text-gray-700">
-                        {[...state.activities].sort((a, b) => a.day - b.day || (a.start || '').localeCompare(b.start || '')).map(a => (
+                        {visibleActivities.sort((a, b) => a.day - b.day || (a.start || '').localeCompare(b.start || '')).map(a => (
                           <tr key={a.id} className="hover:bg-slate-50/80 transition">
                             <td className="py-3 px-4 font-bold text-[#1A3326]">Day {a.day}</td>
                             <td className="py-3 px-4 font-mono font-bold text-gray-900">{a.start || 'TBD'}</td>
@@ -2217,6 +2511,21 @@ export const ActivitiesView: React.FC<ActivitiesViewProps> = ({
                 </div>
               </div>
 
+              {namedGroups.length > 0 && (
+                <div className="space-y-2 rounded-xl border border-slate-200 bg-white p-3">
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-slate-600">Assign this experience to groups</p>
+                  <div className="flex flex-wrap gap-2">
+                    {namedGroups.map(group => (
+                      <label key={group.id} className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-700">
+                        <input type="checkbox" checked={catalogTargetGroupIds.includes(group.id)} onChange={e => setCatalogTargetGroupIds(current => e.target.checked ? Array.from(new Set([...current, group.id])) : current.filter(id => id !== group.id))} className="accent-[#1A3326]" />
+                        <span>{group.name}</span><span className="text-[10px] text-slate-500">({group.memberIds.length})</span>
+                      </label>
+                    ))}
+                  </div>
+                  <p className="text-[10px] text-slate-500">Selected group members will be assigned to the activity. Leave groups unchecked to assign individuals afterward.</p>
+                </div>
+              )}
+
               {/* Category Filter Pills */}
               <div className="flex items-center gap-1.5 overflow-x-auto pb-1 text-xs">
                 <button
@@ -2280,8 +2589,9 @@ export const ActivitiesView: React.FC<ActivitiesViewProps> = ({
                       </span>
                       <button
                         onClick={() => {
-                          handleAddFromCatalog(item, catalogTargetDay, catalogTargetSlot);
+                          handleAddFromCatalog(item, catalogTargetDay, catalogTargetSlot, catalogTargetGroupIds);
                           setIsCatalogOpen(false);
+                          setCatalogTargetGroupIds([]);
                         }}
                         className="px-3 py-1.5 rounded-lg bg-[#1A3326] text-white hover:bg-[#12241b] text-[11px] font-bold flex items-center gap-1 transition shadow-2xs active:scale-95 cursor-pointer"
                         title={`Add to Day ${catalogTargetDay} (${catalogTargetSlot})`}
@@ -2368,6 +2678,26 @@ export const ActivitiesView: React.FC<ActivitiesViewProps> = ({
                   </button>
                 </div>
               </div>
+
+              {namedGroups.length > 0 && (
+                <div className="space-y-2">
+                  <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Assign by named group</label>
+                  <div className="flex flex-wrap gap-2">
+                    {namedGroups.map(group => (
+                      <button
+                        key={group.id}
+                        type="button"
+                        onClick={() => handleQuickAssignGroup(act.id, group.id)}
+                        className={`px-3 py-2 rounded-lg border text-[11px] font-bold transition ${(act.groupIds || []).includes(group.id) ? 'bg-[#1A3326] text-white border-[#1A3326]' : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'}`}
+                        title={`Assign ${group.memberIds.length} members from ${group.name}`}
+                      >
+                        {group.name} ({group.memberIds.length})
+                      </button>
+                    ))}
+                  </div>
+                  <p className="text-[10px] text-slate-500">Choose one or more groups. The traveller roster is recalculated from their current membership.</p>
+                </div>
+              )}
 
               {/* Travellers Checkboxes */}
               <div className="space-y-2 max-h-56 overflow-y-auto pr-1">
