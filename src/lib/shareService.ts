@@ -60,6 +60,7 @@ export interface ClientShareDoc {
     heroImage?: string;
     gallery?: string[];
     inc: string[];
+    groupNames?: string[];
   }>;
   accommodations: Array<{
     id: number;
@@ -331,7 +332,7 @@ async function buildShareAccessPolicy(trip: AppState): Promise<ShareAccessPolicy
  * Projection builders - strictly strip internal confidential data
  */
 export function buildClientProjection(trip: AppState, token: string): ClientShareDoc {
-  const timeline = buildNormalizedTimeline(trip);
+  const timeline = buildNormalizedTimeline(trip).filter(event => event.status !== 'Cancelled');
   const activeFlights = (trip.flights || []).filter(item => item.status !== 'Cancelled');
   const activeTransfers = (trip.transfers || []).filter(item => item.status !== 'Cancelled');
   const activeRooms = (trip.rooms || []).filter(item => item.status !== 'Cancelled');
@@ -388,7 +389,8 @@ export function buildClientProjection(trip: AppState, token: string): ClientShar
       pickupLoc: a.pickupLoc || a.pickup,
       heroImage: a.heroImage,
       gallery: a.gallery,
-      inc: a.inc || []
+      inc: a.inc || [],
+      groupNames: (trip.namedGroups || []).filter(g => (a.groupIds || []).includes(g.id)).map(g => g.name)
     })),
     accommodations: activeRooms.map(r => ({
       id: r.id,
@@ -440,15 +442,16 @@ export function buildAgentProjection(trip: AppState, token: string): AgentShareD
   const timeline = buildNormalizedTimeline(trip);
 
   // Compute retail totals
-  const flightCosts = (trip.flights || []).reduce((sum, f) => sum + (f.cost * f.qty), 0);
-  const transferCosts = (trip.transfers || []).reduce((sum, tr) => sum + tr.cost + tr.tolls + tr.parking, 0);
-  const roomCosts = (trip.rooms || []).reduce((sum, r) => sum + (r.rate * r.nights) + r.supp, 0);
-  const activityCosts = (trip.activities || []).reduce((sum, a) => sum + (a.isFree ? 0 : a.total), 0);
+  const flightCosts = (trip.flights || []).reduce((sum, f) => sum + (f.status === 'Cancelled' ? 0 : f.cost * f.qty), 0);
+  const transferCosts = (trip.transfers || []).reduce((sum, tr) => sum + (tr.status === 'Cancelled' ? 0 : tr.cost + tr.tolls + tr.parking), 0);
+  const roomCosts = (trip.rooms || []).reduce((sum, r) => sum + (r.status === 'Cancelled' ? 0 : (r.rate * r.nights) + r.supp), 0);
+  const activityCosts = (trip.activities || []).reduce((sum, a) => sum + (a.isFree || a.status === 'Cancelled' ? 0 : a.total), 0);
   const totalCost = flightCosts + transferCosts + roomCosts + activityCosts;
 
   const f = trip.finance || { margin: 15, marginType: '%', comm: 10, commType: '%', buffer: 0, discount: 0, paymentMethod: 'eft' };
   const markupTotal = f.marginType === '%' ? totalCost * (f.margin / 100) : (f.margin || 0);
-  const retailTotalZAR = Math.max(0, totalCost + markupTotal + (f.buffer || 0) - (f.discount || 0));
+  const cardRate = f.paymentMethod === 'visa' || f.paymentMethod === 'master' ? 0.025 : f.paymentMethod === 'amex' ? 0.038 : 0;
+  const retailTotalZAR = Math.max(0, totalCost + markupTotal + (f.buffer || 0) + totalCost * cardRate - (f.discount || 0));
   const commTotal = f.commType === '%' ? (totalCost + markupTotal) * ((f.comm || 0) / 100) : (f.comm || 0);
   const netPayable = Math.max(0, retailTotalZAR - commTotal);
 
@@ -457,6 +460,7 @@ export function buildAgentProjection(trip: AppState, token: string): AgentShareD
     tripRef: trip.ref,
     role: 'agent',
     active: trip.publishing?.agentTokenActive ?? true,
+    accessPolicy: {} as ShareAccessPolicy,
     version: trip.version || 1,
     lastUpdated: new Date().toISOString(),
     title: trip.title || `Bespoke Proposal for ${trip.client.name}`,
@@ -521,7 +525,7 @@ export function buildOpsProjection(trip: AppState, token: string): OpsShareDoc {
   const services: OpsShareDoc['services'] = [];
 
   // Transfer services
-  (trip.transfers || []).forEach(t => {
+  (trip.transfers || []).filter(t => t.status !== 'Cancelled').forEach(t => {
     services.push({
       id: `tr_${t.id}`,
       category: 'transfer',
@@ -546,11 +550,17 @@ export function buildOpsProjection(trip: AppState, token: string): OpsShareDoc {
   });
 
   // Activity services
-  (trip.activities || []).forEach(a => {
+  (trip.activities || []).filter(a => a.status !== 'Cancelled').forEach(a => {
+    const activityDate = a.date || (() => {
+      if (!trip.client.startDate) return '';
+      const date = new Date(trip.client.startDate);
+      date.setDate(date.getDate() + Math.max(1, a.day || 1) - 1);
+      return date.toISOString().split('T')[0];
+    })();
     services.push({
       id: `act_${a.id}`,
       category: 'activity',
-      date: trip.client.startDate, // will be matched to day in timeline
+      date: activityDate,
       time: a.start,
       title: a.name,
       pickupLocation: a.pickupLoc || a.pickup || 'Hotel Lobby',
@@ -570,6 +580,7 @@ export function buildOpsProjection(trip: AppState, token: string): OpsShareDoc {
     tripRef: trip.ref,
     role: 'ops',
     active: trip.publishing?.opsTokenActive ?? true,
+    accessPolicy: {} as ShareAccessPolicy,
     version: trip.version || 1,
     lastUpdated: new Date().toISOString(),
     tripTitle: trip.title || `Viemma Operations: ${trip.client.name}`,
@@ -895,8 +906,21 @@ export function clientDocToAppState(doc: ClientShareDoc): AppState {
       comm: 0,
       buffer: 0
     },
+    clientPricing: doc.pricing,
     publishing: {
       ...base.publishing,
+      settings: {
+        ...base.publishing.settings,
+        requirePassword: Boolean(doc.accessPolicy?.passwordRequired),
+        enableExpiryDate: Boolean(doc.accessPolicy?.expiresAt),
+        expiresAt: doc.accessPolicy?.expiresAt || null,
+        allowDownloads: doc.accessPolicy?.allowDownloads !== false,
+        allowPrinting: doc.accessPolicy?.allowPrinting !== false,
+        showPricing: doc.accessPolicy?.showPricing !== false,
+        showSupplierDetails: Boolean(doc.accessPolicy?.showSupplierDetails),
+        hideInternalNotes: doc.accessPolicy?.hideInternalNotes !== false,
+        enableOfflineAccess: doc.accessPolicy?.enableOfflineAccess !== false
+      },
       tripId: doc.tripRef,
       publicUrl: '',
       version: doc.version,
