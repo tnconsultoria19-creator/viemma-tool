@@ -847,7 +847,8 @@ export function subscribeToShareDoc(
         const expired = expiresAt
           ? Date.now() > new Date(/^\d{4}-\d{2}-\d{2}$/.test(expiresAt) ? `${expiresAt}T23:59:59.999` : expiresAt).getTime()
           : false;
-        if (parsed.active !== false && parsed.accessPolicy?.enableOfflineAccess !== false && !expired) {
+        const protectedPayloadMissing = Boolean(parsed.accessPolicy?.passwordRequired && !parsed.encryptedPayload);
+        if (parsed.active !== false && parsed.accessPolicy?.enableOfflineAccess !== false && !expired && !protectedPayloadMissing) {
           onUpdate(parsed);
         } else {
           onUpdate(null);
