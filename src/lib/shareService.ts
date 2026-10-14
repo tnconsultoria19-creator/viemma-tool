@@ -232,14 +232,14 @@ export interface OpsShareDoc {
  * Generate cryptographically secure unguessable tokens
  */
 export function generateSecureToken(prefix: 'cli' | 'agt' | 'ops'): string {
-  if (typeof window !== 'undefined' && window.crypto && window.crypto.getRandomValues) {
-    const buffer = new Uint8Array(16);
-    window.crypto.getRandomValues(buffer);
-    const hex = Array.from(buffer).map(b => b.toString(16).padStart(2, '0')).join('');
-    return `${prefix}_${hex}`;
+  const cryptoApi = globalThis.crypto;
+  if (!cryptoApi?.getRandomValues) {
+    throw new Error('Secure token generation is unavailable. Use a supported browser context with Web Crypto (HTTPS).');
   }
-  // Fallback using randomUUID or high-entropy crypto
-  return `${prefix}_${Date.now().toString(36)}_${Math.random().toString(36).substring(2, 12)}`;
+  const buffer = new Uint8Array(16);
+  cryptoApi.getRandomValues(buffer);
+  const hex = Array.from(buffer).map(b => b.toString(16).padStart(2, '0')).join('');
+  return `${prefix}_${hex}`;
 }
 
 const SHARE_PASSWORD_ITERATIONS = 120000;
@@ -735,6 +735,13 @@ export async function syncProjectionsToFirestore(trip: AppState): Promise<{
  * Regenerates a share token for a specific role and deletes the old token projection
  */
 export async function regenerateShareToken(trip: AppState, role: 'client' | 'agent' | 'ops'): Promise<AppState> {
+  if (!db || !isCloudConnected) {
+    throw new Error('Reconnect to Firestore before regenerating a live share token. Local-only token changes cannot invalidate an existing live link.');
+  }
+
+  // Validate password and expiry settings before touching the currently published link.
+  await buildShareAccessPolicy(trip);
+
   const oldToken = role === 'client'
     ? trip.publishing?.clientToken
     : role === 'agent'
@@ -743,24 +750,20 @@ export async function regenerateShareToken(trip: AppState, role: 'client' | 'age
 
   const newToken = generateSecureToken(role === 'client' ? 'cli' : role === 'agent' ? 'agt' : 'ops');
 
-  // 1. Delete old projection in cloud & local
+  // Remove old live access before replacing the token. Any deletion failure is surfaced.
   if (oldToken) {
+    const collectionName = role === 'client' ? 'clientShares' : role === 'agent' ? 'agentShares' : 'opsShares';
+    try {
+      await deleteDoc(doc(db, collectionName, oldToken));
+    } catch (err) {
+      throw new Error(`Could not invalidate the previous ${role} share token. The token was not rotated: ${String(err)}`);
+    }
     try {
       const cachePrefix = role === 'client' ? 'cli' : role === 'agent' ? 'agt' : 'ops';
       localStorage.removeItem(`viemma_share_${cachePrefix}_${oldToken}`);
     } catch {}
-
-    if (db && isCloudConnected) {
-      try {
-        const collectionName = role === 'client' ? 'clientShares' : role === 'agent' ? 'agentShares' : 'opsShares';
-        await deleteDoc(doc(db, collectionName, oldToken));
-      } catch (err) {
-        console.warn(`Could not delete old ${role} share doc:`, err);
-      }
-    }
   }
 
-  // 2. Update trip state with new token
   const updatedTrip: AppState = {
     ...trip,
     publishing: {
@@ -771,17 +774,15 @@ export async function regenerateShareToken(trip: AppState, role: 'client' | 'age
       clientTokenActive: role === 'client' ? true : trip.publishing?.clientTokenActive ?? true,
       agentTokenActive: role === 'agent' ? true : trip.publishing?.agentTokenActive ?? true,
       opsTokenActive: role === 'ops' ? true : trip.publishing?.opsTokenActive ?? true,
-      lastUpdated: new Date().toISOString()
+      lastUpdated: new Date().toISOString(),
+      publishStatus: trip.publishing?.publishedAt ? 'Changes Pending' : trip.publishing?.publishStatus
     }
   };
 
-  // 3. Write new projection to Firestore
+  // If this fails, the old token remains revoked and the owner is shown the failure.
   await syncProjectionsToFirestore(updatedTrip);
-
   return updatedTrip;
-}
-
-/**
+}/**
  * Revokes a share token (sets active = false and deletes public projection)
  */
 export async function revokeShareToken(trip: AppState, role: 'client' | 'agent' | 'ops'): Promise<AppState> {
@@ -792,37 +793,33 @@ export async function revokeShareToken(trip: AppState, role: 'client' | 'agent' 
     : trip.publishing?.opsToken;
 
   if (token) {
+    if (!db || !isCloudConnected) {
+      throw new Error('Reconnect to Firestore before revoking a live share link. Local cache removal alone cannot invalidate a link already shared.');
+    }
+    const collectionName = role === 'client' ? 'clientShares' : role === 'agent' ? 'agentShares' : 'opsShares';
+    try {
+      await deleteDoc(doc(db, collectionName, token));
+    } catch (err) {
+      throw new Error(`Could not confirm live access revocation for ${role}. Please retry after reconnecting: ${String(err)}`);
+    }
     try {
       const cachePrefix = role === 'client' ? 'cli' : role === 'agent' ? 'agt' : 'ops';
       localStorage.removeItem(`viemma_share_${cachePrefix}_${token}`);
     } catch {}
-
-    if (db && isCloudConnected) {
-      try {
-        const collectionName = role === 'client' ? 'clientShares' : role === 'agent' ? 'agentShares' : 'opsShares';
-        // Set document to revoked / active: false
-        await setDoc(doc(db, collectionName, token), { active: false, revokedAt: new Date().toISOString() }, { merge: true });
-      } catch (err) {
-        console.warn(`Could not revoke ${role} token doc:`, err);
-      }
-    }
   }
 
-  const updatedTrip: AppState = {
+  return {
     ...trip,
     publishing: {
       ...trip.publishing!,
       clientTokenActive: role === 'client' ? false : trip.publishing?.clientTokenActive ?? true,
       agentTokenActive: role === 'agent' ? false : trip.publishing?.agentTokenActive ?? true,
       opsTokenActive: role === 'ops' ? false : trip.publishing?.opsTokenActive ?? true,
-      lastUpdated: new Date().toISOString()
+      lastUpdated: new Date().toISOString(),
+      publishStatus: trip.publishing?.publishedAt ? 'Changes Pending' : trip.publishing?.publishStatus
     }
   };
-
-  return updatedTrip;
-}
-
-/**
+}/**
  * Subscribe to real-time updates for a single share projection document
  */
 export function subscribeToShareDoc(
