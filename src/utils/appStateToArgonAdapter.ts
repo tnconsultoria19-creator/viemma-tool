@@ -178,9 +178,31 @@ export function adaptAppStateToArgon(state: AppState): {
       internalNotes: a.notes || '',
       responsiblePerson: a.responsiblePerson || a.guideName || '',
       venue: a.venue || a.pickupLoc || '',
-      durationMinutes: parseInt(a.dur || '180', 10) || 180,
-      cost: a.total || 0,
-      updatedAt: new Date().toISOString(),
+      durationMinutes: (() => {
+        const duration = (a.dur || '').trim().toLowerCase();
+        const matches = [...duration.matchAll(/(\d+(?:\.\d+)?)\s*(days?|d|hours?|hrs?|h|minutes?|mins?|m)\b/g)];
+        if (matches.length) {
+          return Math.round(matches.reduce((sum, match) => {
+            const amount = Number(match[1]);
+            const unit = match[2];
+            return sum + amount * (unit.startsWith('d') ? 1440 : unit.startsWith('h') ? 60 : 1);
+          }, 0));
+        }
+        if (a.start && a.endTime) {
+          const [sh, sm] = a.start.split(':').map(Number);
+          const [eh, em] = a.endTime.split(':').map(Number);
+          if ([sh,sm,eh,em].every(Number.isFinite)) return (eh * 60 + em) - (sh * 60 + sm);
+        }
+        return undefined;
+      })(),
+      groupIds: a.groupIds || [],
+      groupNames: (state.namedGroups || []).filter(g => (a.groupIds || []).includes(g.id)).map(g => g.name),
+      driverId: a.driverId,
+      driverName: a.driverName,
+      vehicleId: a.vehicleId,
+      vehicleName: a.vehicleName,
+      cost: a.isFree || a.status === 'Cancelled' ? 0 : (a.costSupplier ?? a.total ?? 0),
+      updatedAt: a.updatedAt || new Date().toISOString(),
     };
   });
 
