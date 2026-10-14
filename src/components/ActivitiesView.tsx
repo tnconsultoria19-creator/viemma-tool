@@ -169,7 +169,10 @@ export const ActivitiesView: React.FC<ActivitiesViewProps> = ({
     const nextActivities = state.activities.map(activity => {
       const assignedGroupIds = activity.groupIds || [];
       if (!assignedGroupIds.includes(groupId)) return activity;
-      const paxIds = Array.from(new Set(nextGroups.filter(g => assignedGroupIds.includes(g.id)).flatMap(g => g.memberIds || [])));
+      const memberIdsForAssignedGroups: number[] = nextGroups
+        .filter((g: TravellerGroup) => assignedGroupIds.includes(g.id))
+        .flatMap((g: TravellerGroup) => g.memberIds || []);
+      const paxIds: number[] = Array.from(new Set<number>(memberIdsForAssignedGroups));
       const counts = countsForRoster(paxIds);
       return {
         ...activity,
