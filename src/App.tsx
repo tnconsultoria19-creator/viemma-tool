@@ -19,7 +19,8 @@ import { OperatorGroundSheetView } from './components/OperatorGroundSheetView';
 import { INITIAL_TRIPS } from './data/sampleTrips';
 import { saveTripToCloud, subscribeToTrip, listAllTrips, getTripById } from './lib/tripService';
 import { 
-  subscribeToShareDoc, 
+  subscribeToShareDoc,
+  verifySharePassword,
   clientDocToAppState, 
   agentDocToAppState, 
   opsDocToAppState 
@@ -471,6 +472,27 @@ export default function App() {
   });
 
   const [shareDocData, setShareDocData] = useState<any | null>(undefined); // undefined: loading, null: revoked/not found
+  const [sharePasswordInput, setSharePasswordInput] = useState('');
+  const [sharePasswordVerified, setSharePasswordVerified] = useState(false);
+  const [sharePasswordError, setSharePasswordError] = useState('');
+
+  useEffect(() => {
+    setSharePasswordInput('');
+    setSharePasswordVerified(false);
+    setSharePasswordError('');
+  }, [publicShare?.token]);
+
+  const handleSharePasswordSubmit = async (event: React.FormEvent) => {
+    event.preventDefault();
+    setSharePasswordError('');
+    const verified = await verifySharePassword(sharePasswordInput, shareDocData?.accessPolicy);
+    if (verified) {
+      setSharePasswordVerified(true);
+      setSharePasswordInput('');
+    } else {
+      setSharePasswordError('That password was not accepted. Please try again or contact Viemma Tours.');
+    }
+  };
 
   // Real-time listener for public share projection
   useEffect(() => {
@@ -1135,6 +1157,46 @@ export default function App() {
               </button>
             </div>
           </div>
+        </div>
+      );
+    }
+
+    const publicAccessPolicy = shareDocData.accessPolicy;
+    const expiryValue = publicAccessPolicy?.expiresAt;
+    const expiryTime = expiryValue
+      ? new Date(/^\\d{4}-\\d{2}-\\d{2}$/.test(expiryValue) ? `${expiryValue}T23:59:59.999` : expiryValue).getTime()
+      : null;
+    const isShareExpired = expiryTime !== null && Number.isFinite(expiryTime) && Date.now() > expiryTime;
+
+    if (isShareExpired) {
+      return (
+        <div className="min-h-screen bg-[#1A3326] flex items-center justify-center p-6 text-white text-center font-sans">
+          <div className="max-w-md bg-white/10 backdrop-blur-md p-8 rounded-3xl border border-white/20 space-y-4 shadow-2xl">
+            <div className="w-12 h-12 rounded-2xl bg-amber-500/20 text-amber-200 flex items-center justify-center mx-auto"><Lock size={24} /></div>
+            <h2 className="text-xl font-bold">This itinerary link has expired</h2>
+            <p className="text-xs text-gray-200 leading-relaxed">For your protection, this presentation is no longer available. Please contact Viemma Tours for a current link.</p>
+            <button onClick={handleExitShareToWorkspace} className="px-4 py-2 rounded-xl bg-white/15 hover:bg-white/25 text-white text-xs font-bold">Return</button>
+          </div>
+        </div>
+      );
+    }
+
+    if (publicAccessPolicy?.passwordRequired && !sharePasswordVerified) {
+      return (
+        <div className="min-h-screen bg-[#1A3326] flex items-center justify-center p-6 text-white font-sans">
+          <form onSubmit={handleSharePasswordSubmit} className="w-full max-w-md bg-white rounded-3xl border border-white/20 shadow-2xl p-7 md:p-8 space-y-5 text-slate-900">
+            <div className="w-12 h-12 rounded-2xl bg-emerald-50 text-[#1A3326] flex items-center justify-center"><Lock size={22} /></div>
+            <div>
+              <h2 className="text-xl font-bold text-[#1A3326]">Password-protected itinerary</h2>
+              <p className="text-sm text-slate-600 mt-1">Enter the password provided by Viemma Tours to view this presentation.</p>
+            </div>
+            <label className="block space-y-1.5">
+              <span className="text-xs font-bold uppercase tracking-wider text-slate-600">Access password</span>
+              <input type="password" autoComplete="current-password" required value={sharePasswordInput} onChange={e => setSharePasswordInput(e.target.value)} className="w-full h-11 px-3 rounded-xl border border-slate-300 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#D4AF37]" />
+            </label>
+            {sharePasswordError && <p role="alert" className="text-sm text-rose-700">{sharePasswordError}</p>}
+            <button type="submit" className="w-full h-11 rounded-xl bg-[#1A3326] hover:bg-[#244a37] text-white text-sm font-bold">Unlock itinerary</button>
+          </form>
         </div>
       );
     }
