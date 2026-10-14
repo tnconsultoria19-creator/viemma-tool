@@ -267,9 +267,11 @@ export const PrintHubView: React.FC<PrintHubViewProps> = (props) => {
           version: nextVer,
           publishedAt: nowIso,
           lastUpdated: nowIso,
-          clientTokenActive: true,
-          agentTokenActive: true,
-          opsTokenActive: true,
+          // Preserve explicit revocations. A normal publish must not silently reactivate
+          // a role whose link was revoked; use Regenerate Token to issue a new link.
+          clientTokenActive: currentPublishing.clientTokenActive ?? true,
+          agentTokenActive: currentPublishing.agentTokenActive ?? true,
+          opsTokenActive: currentPublishing.opsTokenActive ?? true,
           versions: updatedVersions,
         },
       };
