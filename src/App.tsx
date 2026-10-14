@@ -517,7 +517,15 @@ export default function App() {
         return;
       }
 
-      if (data.accessPolicy?.passwordRequired && data.encryptedPayload) {
+      if (data.accessPolicy?.passwordRequired) {
+        // Fail closed for old or malformed password-protected documents that still contain
+        // plaintext fields instead of an encrypted payload.
+        if (!data.encryptedPayload) {
+          sharePasswordSecretRef.current = '';
+          setSharePasswordVerified(false);
+          setShareDocData(null);
+          return;
+        }
         const secret = sharePasswordSecretRef.current;
         if (secret) {
           const decrypted = await decryptShareProjection(secret, data);
