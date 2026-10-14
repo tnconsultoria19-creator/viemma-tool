@@ -145,7 +145,7 @@ export const ExperienceLibraryView: React.FC<ExperienceLibraryViewProps> = ({
       setAddedToastMessage('The activity end time must be later than its start time.');
       return;
     }
-    const assignedGroupIds = Array.from(new Set(targetGroupIds)).filter(id => namedGroups.some(group => group.id === id));
+    const assignedGroupIds: string[] = Array.from(new Set<string>(targetGroupIds)).filter((id: string) => namedGroups.some(group => group.id === id));
     const paxIds = Array.from(new Set<number>(namedGroups
       .filter(group => assignedGroupIds.includes(group.id))
       .flatMap(group => group.memberIds || [])));
