@@ -93,8 +93,8 @@ export function getClientTripView(trip: AppState): AppState {
     flat: 0,
     total: 0,
     guideNotes: undefined,
-    supplier: '',
-    supPhone: ''
+    supplier: cloned.publishing?.settings?.showSupplierDetails ? a.supplier : '',
+    supPhone: cloned.publishing?.settings?.showSupplierDetails ? a.supPhone : ''
   }));
 
   // Hide internal finance calculations
