@@ -64,6 +64,12 @@ export const ExperienceLibraryView: React.FC<ExperienceLibraryViewProps> = ({
   const [activeAddToTripExp, setActiveAddToTripExp] = useState<ExperienceLibraryItem | null>(null);
   const [targetDay, setTargetDay] = useState<number>(1);
   const [targetSlot, setTargetSlot] = useState<'Morning' | 'Afternoon' | 'Evening' | 'Full Day'>('Morning');
+  const [targetGroupIds, setTargetGroupIds] = useState<string[]>([]);
+  const [targetStartTime, setTargetStartTime] = useState('09:00');
+  const [targetEndTime, setTargetEndTime] = useState('12:30');
+  const [targetPickupTime, setTargetPickupTime] = useState('08:30');
+  const [targetVenue, setTargetVenue] = useState('');
+  const namedGroups = state.namedGroups || [];
   const [addedToastMessage, setAddedToastMessage] = useState<string | null>(null);
 
   // Calculate trip days
@@ -94,19 +100,30 @@ export const ExperienceLibraryView: React.FC<ExperienceLibraryViewProps> = ({
     return !isNaN(d.getTime()) ? d.toISOString().split('T')[0] : '';
   };
 
-  const handleConfirmAddToTrip = (item: ExperienceLibraryItem) => {
-    const slotTimes: Record<string, { start: string; end: string; pickup: string }> = {
-      'Morning': { start: '09:00', end: '12:30', pickup: '08:30' },
-      'Afternoon': { start: '14:00', end: '17:30', pickup: '13:30' },
-      'Evening': { start: '18:30', end: '21:30', pickup: '18:00' },
-      'Full Day': { start: '08:30', end: '17:00', pickup: '08:00' },
-    };
+  const slotTimeDefaults: Record<'Morning' | 'Afternoon' | 'Evening' | 'Full Day', { start: string; end: string; pickup: string }> = {
+    Morning: { start: '09:00', end: '12:30', pickup: '08:30' },
+    Afternoon: { start: '14:00', end: '17:30', pickup: '13:30' },
+    Evening: { start: '18:30', end: '21:30', pickup: '18:00' },
+    'Full Day': { start: '08:30', end: '17:00', pickup: '08:00' },
+  };
 
-    const times = slotTimes[targetSlot] || slotTimes['Morning'];
-    const adCount = state.guests.filter(g => g.age !== 'Child' && g.age !== 'Infant').length;
-    const chCount = state.guests.filter(g => g.age === 'Child' || g.age === 'Infant').length;
-    const priceAd = item.priceAdult || 0;
-    const priceCh = item.priceChild || Math.round(priceAd * 0.5);
+  const handleTargetSlotChange = (slot: 'Morning' | 'Afternoon' | 'Evening' | 'Full Day') => {
+    const defaults = slotTimeDefaults[slot];
+    setTargetSlot(slot);
+    setTargetStartTime(defaults.start);
+    setTargetEndTime(defaults.end);
+    setTargetPickupTime(defaults.pickup);
+  };
+
+  const handleConfirmAddToTrip = (item: ExperienceLibraryItem) => {
+    const assignedGroupIds = Array.from(new Set(targetGroupIds)).filter(id => namedGroups.some(group => group.id === id));
+    const paxIds = Array.from(new Set<number>(namedGroups
+      .filter(group => assignedGroupIds.includes(group.id))
+      .flatMap(group => group.memberIds || [])));
+    const adCount = state.guests.filter(g => paxIds.includes(g.id) && g.age !== 'Child' && g.age !== 'Infant').length;
+    const chCount = state.guests.filter(g => paxIds.includes(g.id) && (g.age === 'Child' || g.age === 'Infant')).length;
+    const priceAd = Number(item.priceAdult ?? 0);
+    const priceCh = Number(item.priceChild ?? Math.round(priceAd * 0.5));
     const calculatedTotal = (priceAd * adCount) + (priceCh * chCount);
 
     const newActivity: Activity = {
@@ -116,52 +133,58 @@ export const ExperienceLibraryView: React.FC<ExperienceLibraryViewProps> = ({
       slot: targetSlot,
       name: item.name,
       desc: item.shortDescription || item.luxuryDescription || '',
-      pickup: times.pickup,
-      start: times.start,
-      endTime: times.end,
-      dur: item.duration || '3 hours',
-      venue: item.location || item.destination || 'Cape Town',
-      pickupLoc: 'Hotel Reception',
-      responsiblePerson: 'Lead Tour Leader / Guide',
+      pickup: targetPickupTime,
+      start: targetStartTime,
+      endTime: targetEndTime,
+      dur: item.duration || '',
+      venue: targetVenue.trim() || item.location || '',
+      pickupLoc: '',
+      responsiblePerson: '',
       status: 'Planned',
       conf: '',
-      supplier: item.supplier || 'Viemma Selected Operator',
+      supplier: item.supplier || '',
       supPhone: '',
-      paxIds: state.guests.map(g => g.id),
+      paxIds,
+      groupIds: assignedGroupIds,
+      category: item.category || '',
+      destination: item.destination || '',
       pAdult: priceAd,
       pChild: priceCh,
       nAdult: adCount,
       nChild: chCount,
       flat: 0,
       total: calculatedTotal,
-      inc: item.highlights || ["Entrance Tickets", "Viemma Bottled Water"],
-      backup: 'In case of inclement weather, pivot to indoor cultural art & museum gallery excursion.',
-      notes: `Curated from Viemma Experience Library. ${item.destination} focus.`,
+      inc: item.highlights || [],
+      backup: '',
+      notes: `Selected from the Viemma Experience Library. Destination: ${item.destination || 'not specified'}.`,
       isFree: false,
       heroImage: item.featuredImage || item.images?.[0] || '',
       gallery: item.images || [],
-      difficulty: (item.difficulty as any) || 'Easy',
-      suitableAges: 'All Ages',
-      accessibility: ['Stroller Accessible'],
-      weatherDependency: item.name.toLowerCase().includes('mountain') || item.name.toLowerCase().includes('cruise') ? 'High' : 'Low',
-      dropoffLoc: 'Return to Hotel Lobby',
-      excluded: ["Personal Curios", "Driver Gratuities"],
-      packingAdvice: 'Comfortable footwear, weather-appropriate layers, sunglasses, and camera.',
-      dressCode: 'Casual Outdoor Luxury',
-      safetyNotes: 'Follow guide instructions at all times. Stay with the group.',
-      photographyOpportunities: item.highlights?.[0] || 'Spectacular scenic and wildlife photo opportunities.',
-      seasonalAvailability: 'Year-round',
+      difficulty: item.difficulty || '',
+      suitableAges: '',
+      accessibility: [],
+      weatherDependency: '',
+      dropoffLoc: '',
+      excluded: [],
+      packingAdvice: '',
+      dressCode: '',
+      safetyNotes: '',
+      photographyOpportunities: '',
+      seasonalAvailability: '',
       faqs: item.faqs || [],
-      guideNotes: 'Confirm group entry tickets 24 hours prior to excursion departure.'
+      guideNotes: '',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
     };
 
-    onUpdateState({
-      activities: [...(state.activities || []), newActivity]
-    });
-
-    setAddedToastMessage(`✨ "${item.name}" added to Day ${targetDay} (${getDayFormattedDate(targetDay)})!`);
+    onUpdateState({ activities: [...(state.activities || []), newActivity] });
+    const groupLabel = assignedGroupIds.length
+      ? namedGroups.filter(group => assignedGroupIds.includes(group.id)).map(group => group.name).join(', ')
+      : 'no group assigned';
+    setAddedToastMessage(`“${item.name}” added to Day ${targetDay} (${getDayFormattedDate(targetDay)}) · ${groupLabel}. Complete unassigned details in Activities.`);
     setActiveAddToTripExp(null);
-    setTimeout(() => setAddedToastMessage(null), 4000);
+    setTargetGroupIds([]);
+    setTimeout(() => setAddedToastMessage(null), 5000);
   };
 
   // Filtering
@@ -1298,7 +1321,9 @@ export const ExperienceLibraryView: React.FC<ExperienceLibraryViewProps> = ({
                       onClick={() => {
                         setActiveAddToTripExp(item);
                         setTargetDay(1);
-                        setTargetSlot('Morning');
+                        setTargetGroupIds([]);
+                        setTargetVenue(item.location || '');
+                        handleTargetSlotChange('Morning');
                       }}
                       className="px-2.5 py-1 rounded-lg bg-[#1A3326] text-white hover:bg-[#12241b] text-[11px] font-bold flex items-center gap-1 transition shadow-xs cursor-pointer active:scale-95"
                       title="Add this experience to current trip daily programme"
@@ -1461,7 +1486,7 @@ export const ExperienceLibraryView: React.FC<ExperienceLibraryViewProps> = ({
                     <button
                       key={slot}
                       type="button"
-                      onClick={() => setTargetSlot(slot)}
+                      onClick={() => handleTargetSlotChange(slot)}
                       className={`py-2 px-1 rounded-xl border text-center text-xs font-bold transition ${
                         targetSlot === slot 
                           ? 'bg-[#D4AF37] text-[#1A3326] border-[#D4AF37]' 
@@ -1474,18 +1499,66 @@ export const ExperienceLibraryView: React.FC<ExperienceLibraryViewProps> = ({
                 </div>
               </div>
 
+              <div className="space-y-3 rounded-xl border border-slate-200 bg-white p-3">
+                <div>
+                  <label className="text-[11px] font-bold text-slate-600 uppercase tracking-wider block mb-2">Assign traveller groups</label>
+                  {namedGroups.length === 0 ? (
+                    <p className="text-xs text-slate-600">No named groups are configured. Create groups in the Activities module first, or add this experience without a group and assign travellers later.</p>
+                  ) : (
+                    <div className="flex flex-wrap gap-2">
+                      {namedGroups.map(group => (
+                        <label key={group.id} className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-700">
+                          <input
+                            type="checkbox"
+                            checked={targetGroupIds.includes(group.id)}
+                            onChange={event => setTargetGroupIds(current => event.target.checked
+                              ? Array.from(new Set([...current, group.id]))
+                              : current.filter(id => id !== group.id))}
+                            className="accent-[#1A3326]"
+                          />
+                          <span>{group.name}</span>
+                          <span className="text-[10px] text-slate-500">({group.memberIds.length})</span>
+                        </label>
+                      ))}
+                    </div>
+                  )}
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <label className="space-y-1">
+                    <span className="text-[11px] font-bold text-slate-600 uppercase tracking-wider block">Start time</span>
+                    <input type="time" value={targetStartTime} onChange={event => setTargetStartTime(event.target.value)} required className="w-full h-9 px-3 rounded-lg border border-slate-200 text-xs text-slate-800" />
+                  </label>
+                  <label className="space-y-1">
+                    <span className="text-[11px] font-bold text-slate-600 uppercase tracking-wider block">End time</span>
+                    <input type="time" value={targetEndTime} onChange={event => setTargetEndTime(event.target.value)} required className="w-full h-9 px-3 rounded-lg border border-slate-200 text-xs text-slate-800" />
+                  </label>
+                  <label className="space-y-1">
+                    <span className="text-[11px] font-bold text-slate-600 uppercase tracking-wider block">Pickup time</span>
+                    <input type="time" value={targetPickupTime} onChange={event => setTargetPickupTime(event.target.value)} required className="w-full h-9 px-3 rounded-lg border border-slate-200 text-xs text-slate-800" />
+                  </label>
+                  <label className="space-y-1">
+                    <span className="text-[11px] font-bold text-slate-600 uppercase tracking-wider block">Venue / facility</span>
+                    <input type="text" value={targetVenue} onChange={event => setTargetVenue(event.target.value)} placeholder="Confirm venue" className="w-full h-9 px-3 rounded-lg border border-slate-200 text-xs text-slate-800" />
+                  </label>
+                </div>
+                <p className="text-[10px] text-slate-500">Time slots set suggested times; adjust them to the supplier’s actual schedule before confirming the programme.</p>
+              </div>
+
               <div className="bg-emerald-50/60 p-3 rounded-xl border border-emerald-100 space-y-1">
                 <div className="flex justify-between font-bold text-gray-800">
                   <span>Assigned Travellers:</span>
-                  <span className="text-emerald-800">{state.guests.length} Guests (Entire Group)</span>
+                  <span className="text-emerald-800">{namedGroups.filter(group => targetGroupIds.includes(group.id)).reduce((sum, group) => sum + group.memberIds.length, 0)} travellers in selected groups</span>
                 </div>
                 <div className="flex justify-between text-gray-600">
                   <span>Estimated Total:</span>
                   <strong className="text-gray-900 font-bold">
-                    R {((activeAddToTripExp.priceAdult || 0) * state.guests.filter(g => g.age !== 'Child' && g.age !== 'Infant').length + 
-                        (activeAddToTripExp.priceChild || Math.round((activeAddToTripExp.priceAdult || 0) * 0.5)) * state.guests.filter(g => g.age === 'Child' || g.age === 'Infant').length).toLocaleString()}
+                    R {(
+                      Number(activeAddToTripExp.priceAdult ?? 0) * state.guests.filter(g => namedGroups.filter(group => targetGroupIds.includes(group.id)).some(group => group.memberIds.includes(g.id)) && g.age !== 'Child' && g.age !== 'Infant').length +
+                      Number(activeAddToTripExp.priceChild ?? Math.round(Number(activeAddToTripExp.priceAdult ?? 0) * 0.5)) * state.guests.filter(g => namedGroups.filter(group => targetGroupIds.includes(group.id)).some(group => group.memberIds.includes(g.id)) && (g.age === 'Child' || g.age === 'Infant')).length
+                    ).toLocaleString()}
                   </strong>
                 </div>
+                {targetGroupIds.length === 0 && <p className="text-[10px] text-amber-800">No group selected. Participant totals will remain zero until travellers are assigned.</p>}
               </div>
             </div>
 
