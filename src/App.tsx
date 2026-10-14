@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { AppState, Guest, Flight, Transfer, Room, Activity } from './types';
 import { HomeView } from './components/HomeView';
 import { ExperienceLibraryView } from './components/ExperienceLibraryView';
@@ -20,7 +20,7 @@ import { INITIAL_TRIPS } from './data/sampleTrips';
 import { saveTripToCloud, subscribeToTrip, listAllTrips, getTripById } from './lib/tripService';
 import { 
   subscribeToShareDoc,
-  verifySharePassword,
+  decryptShareProjection,
   clientDocToAppState, 
   agentDocToAppState, 
   opsDocToAppState 
@@ -475,8 +475,10 @@ export default function App() {
   const [sharePasswordInput, setSharePasswordInput] = useState('');
   const [sharePasswordVerified, setSharePasswordVerified] = useState(false);
   const [sharePasswordError, setSharePasswordError] = useState('');
+  const sharePasswordSecretRef = useRef('');
 
   useEffect(() => {
+    sharePasswordSecretRef.current = '';
     setSharePasswordInput('');
     setSharePasswordVerified(false);
     setSharePasswordError('');
@@ -485,8 +487,11 @@ export default function App() {
   const handleSharePasswordSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
     setSharePasswordError('');
-    const verified = await verifySharePassword(sharePasswordInput, shareDocData?.accessPolicy);
-    if (verified) {
+    const secret = sharePasswordInput;
+    const decrypted = await decryptShareProjection(secret, shareDocData);
+    if (decrypted) {
+      sharePasswordSecretRef.current = secret;
+      setShareDocData(decrypted);
       setSharePasswordVerified(true);
       setSharePasswordInput('');
     } else {
@@ -497,7 +502,31 @@ export default function App() {
   // Real-time listener for public share projection
   useEffect(() => {
     if (!publicShare) return;
-    const unsubscribe = subscribeToShareDoc(publicShare.role, publicShare.token, (data) => {
+    const unsubscribe = subscribeToShareDoc(publicShare.role, publicShare.token, async (data) => {
+      if (!data) {
+        setShareDocData(null);
+        sharePasswordSecretRef.current = '';
+        setSharePasswordVerified(false);
+        return;
+      }
+
+      if (data.accessPolicy?.passwordRequired && data.encryptedPayload) {
+        const secret = sharePasswordSecretRef.current;
+        if (secret) {
+          const decrypted = await decryptShareProjection(secret, data);
+          if (decrypted && publicShare.token === data.token) {
+            setShareDocData(decrypted);
+            setSharePasswordVerified(true);
+            return;
+          }
+          // If an owner changes the password while this page is open, lock it again.
+          sharePasswordSecretRef.current = '';
+          setSharePasswordVerified(false);
+        }
+        setShareDocData(data);
+        return;
+      }
+
       setShareDocData(data);
     });
     return () => unsubscribe();
