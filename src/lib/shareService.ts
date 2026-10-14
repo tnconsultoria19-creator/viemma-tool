@@ -309,8 +309,6 @@ async function buildShareAccessPolicy(trip: AppState): Promise<ShareAccessPolicy
     if (Number.isNaN(expiry.getTime())) throw new Error('The itinerary expiry date is invalid.');
     if (expiry.getTime() < Date.now()) throw new Error('The itinerary expiry date is in the past.');
     expiresAt = expiry.toISOString();
-  } else if (settings.expiresAt) {
-    expiresAt = settings.expiresAt;
   }
 
   return {
@@ -439,7 +437,7 @@ export function buildClientProjection(trip: AppState, token: string): ClientShar
 }
 
 export function buildAgentProjection(trip: AppState, token: string): AgentShareDoc {
-  const timeline = buildNormalizedTimeline(trip);
+  const timeline = buildNormalizedTimeline(trip).filter(event => event.status !== 'Cancelled');
 
   // Compute retail totals
   const flightCosts = (trip.flights || []).reduce((sum, f) => sum + (f.status === 'Cancelled' ? 0 : f.cost * f.qty), 0);
@@ -482,7 +480,7 @@ export function buildAgentProjection(trip: AppState, token: string): AgentShareD
       paymentTerms: '30% deposit upon confirmation, 70% balance 45 days prior to arrival. Commission deductible at source.'
     },
     timeline,
-    flights: (trip.flights || []).map(fl => ({
+    flights: (trip.flights || []).filter(fl => fl.status !== 'Cancelled').map(fl => ({
       id: fl.id,
       airline: fl.airline,
       flightNo: fl.flightNo,
@@ -494,7 +492,7 @@ export function buildAgentProjection(trip: AppState, token: string): AgentShareD
       cabin: fl.cabin,
       status: fl.status
     })),
-    accommodations: (trip.rooms || []).map(r => ({
+    accommodations: (trip.rooms || []).filter(r => r.status !== 'Cancelled').map(r => ({
       id: r.id,
       hotel: r.hotel,
       roomType: r.roomType,
@@ -504,7 +502,7 @@ export function buildAgentProjection(trip: AppState, token: string): AgentShareD
       meal: r.meal,
       confirmationRef: (r as any).confirmationRef
     })),
-    transfers: (trip.transfers || []).map(t => ({
+    transfers: (trip.transfers || []).filter(t => t.status !== 'Cancelled').map(t => ({
       id: t.id,
       type: t.type,
       date: t.date,
@@ -520,7 +518,7 @@ export function buildAgentProjection(trip: AppState, token: string): AgentShareD
 }
 
 export function buildOpsProjection(trip: AppState, token: string): OpsShareDoc {
-  const timeline = buildNormalizedTimeline(trip);
+  const timeline = buildNormalizedTimeline(trip).filter(event => event.status !== 'Cancelled');
 
   const services: OpsShareDoc['services'] = [];
 
