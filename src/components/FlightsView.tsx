@@ -270,13 +270,13 @@ export const FlightsView: React.FC<FlightsViewProps> = ({
     <div className="space-y-8 max-w-[1500px] mx-auto animate-in fade-in duration-500 pb-16">
       
       {/* Title Header with Spacious Breathing Room */}
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 pb-6 border-b border-gray-100">
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 p-5 md:p-6 bg-white/95 backdrop-blur-md border border-white/80 rounded-2xl shadow-sm">
         <div className="space-y-2">
-          <span className="text-xs uppercase tracking-[0.2em] font-bold text-[#D4AF37] flex items-center gap-2">
+          <span className="text-xs uppercase tracking-[0.2em] font-bold text-[#8A6A00] flex items-center gap-2">
             <Plane size={14} /> Global Transit System
           </span>
-          <h1 className="text-3xl font-bold tracking-tight text-gray-900 font-sans">Aviation & Flight Corridors</h1>
-          <p className="text-gray-500 max-w-2xl text-sm leading-relaxed">
+          <h1 className="text-3xl font-bold tracking-tight text-[#10233F] font-sans">Aviation & Flight Corridors</h1>
+          <p className="text-slate-600 max-w-2xl text-sm leading-relaxed">
             Link international long-haul flights, regional air transfers, layover routing waypoints, verified airline carriers, booking references, and live airport flight trackers.
           </p>
         </div>
