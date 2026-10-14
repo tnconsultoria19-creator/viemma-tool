@@ -107,15 +107,44 @@ export const ExperienceLibraryView: React.FC<ExperienceLibraryViewProps> = ({
     'Full Day': { start: '08:30', end: '17:00', pickup: '08:00' },
   };
 
-  const handleTargetSlotChange = (slot: 'Morning' | 'Afternoon' | 'Evening' | 'Full Day') => {
+  const handleTargetSlotChange = (
+    slot: 'Morning' | 'Afternoon' | 'Evening' | 'Full Day',
+    durationText?: string
+  ) => {
     const defaults = slotTimeDefaults[slot];
+    const [startHour, startMinute] = defaults.start.split(':').map(Number);
+    const durationMatch = (durationText || '').trim().match(/(\\d+(?:\\.\\d+)?)\\s*(days?|d|hours?|hrs?|h|minutes?|mins?|m)\\b/i);
+    let endTime = defaults.end;
+    if (durationMatch && Number.isFinite(startHour) && Number.isFinite(startMinute)) {
+      const amount = Number(durationMatch[1]);
+      const unit = durationMatch[2].toLowerCase();
+      const durationMinutes = Math.round(amount * (unit.startsWith('d') ? 1440 : unit.startsWith('h') ? 60 : 1));
+      const endMinutes = startHour * 60 + startMinute + durationMinutes;
+      if (Number.isFinite(durationMinutes) && durationMinutes > 0 && endMinutes < 1440) {
+        endTime = `${String(Math.floor(endMinutes / 60)).padStart(2, '0')}:${String(endMinutes % 60).padStart(2, '0')}`;
+      }
+    }
     setTargetSlot(slot);
     setTargetStartTime(defaults.start);
-    setTargetEndTime(defaults.end);
+    setTargetEndTime(endTime);
     setTargetPickupTime(defaults.pickup);
   };
 
   const handleConfirmAddToTrip = (item: ExperienceLibraryItem) => {
+    const clockPattern = /^([01]?\\d|2[0-3]):([0-5]\\d)$/;
+    const startMatch = targetStartTime.match(clockPattern);
+    const endMatch = targetEndTime.match(clockPattern);
+    const pickupMatch = targetPickupTime.match(clockPattern);
+    if (!startMatch || !endMatch || !pickupMatch) {
+      setAddedToastMessage('Enter valid start, end and pickup times before adding the activity.');
+      return;
+    }
+    const startMinutes = Number(startMatch[1]) * 60 + Number(startMatch[2]);
+    const endMinutes = Number(endMatch[1]) * 60 + Number(endMatch[2]);
+    if (endMinutes <= startMinutes) {
+      setAddedToastMessage('The activity end time must be later than its start time.');
+      return;
+    }
     const assignedGroupIds = Array.from(new Set(targetGroupIds)).filter(id => namedGroups.some(group => group.id === id));
     const paxIds = Array.from(new Set<number>(namedGroups
       .filter(group => assignedGroupIds.includes(group.id))
@@ -1323,7 +1352,7 @@ export const ExperienceLibraryView: React.FC<ExperienceLibraryViewProps> = ({
                         setTargetDay(1);
                         setTargetGroupIds([]);
                         setTargetVenue(item.location || '');
-                        handleTargetSlotChange('Morning');
+                        handleTargetSlotChange('Morning', item.duration);
                       }}
                       className="px-2.5 py-1 rounded-lg bg-[#1A3326] text-white hover:bg-[#12241b] text-[11px] font-bold flex items-center gap-1 transition shadow-xs cursor-pointer active:scale-95"
                       title="Add this experience to current trip daily programme"
@@ -1486,7 +1515,7 @@ export const ExperienceLibraryView: React.FC<ExperienceLibraryViewProps> = ({
                     <button
                       key={slot}
                       type="button"
-                      onClick={() => handleTargetSlotChange(slot)}
+                      onClick={() => handleTargetSlotChange(slot, activeAddToTripExp?.duration)}
                       className={`py-2 px-1 rounded-xl border text-center text-xs font-bold transition ${
                         targetSlot === slot 
                           ? 'bg-[#D4AF37] text-[#1A3326] border-[#D4AF37]' 
@@ -1547,7 +1576,7 @@ export const ExperienceLibraryView: React.FC<ExperienceLibraryViewProps> = ({
               <div className="bg-emerald-50/60 p-3 rounded-xl border border-emerald-100 space-y-1">
                 <div className="flex justify-between font-bold text-gray-800">
                   <span>Assigned Travellers:</span>
-                  <span className="text-emerald-800">{namedGroups.filter(group => targetGroupIds.includes(group.id)).reduce((sum, group) => sum + group.memberIds.length, 0)} travellers in selected groups</span>
+                  <span className="text-emerald-800">{new Set(namedGroups.filter(group => targetGroupIds.includes(group.id)).flatMap(group => group.memberIds || [])).size} unique travellers in selected groups</span>
                 </div>
                 <div className="flex justify-between text-gray-600">
                   <span>Estimated Total:</span>
