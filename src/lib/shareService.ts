@@ -647,7 +647,10 @@ export async function syncProjectionsToFirestore(trip: AppState): Promise<{
       throw new Error('The share links could not be synchronized with Firestore. Nothing has been confirmed as published.');
     }
   } else {
-    throw new Error('Live publishing is unavailable because Firestore is not connected. A local preview may be cached, but the live share links were not published.');
+    // Keep local preview projections available for offline workspace use.
+    // PrintHub blocks "live publish" when Firestore is disconnected, so this
+    // fallback cannot be reported as a successful live publication.
+    console.info('Share projections were cached locally; Firestore is not connected.');
   }
 
   return { clientToken, agentToken, opsToken };
