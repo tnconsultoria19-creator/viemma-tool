@@ -61,6 +61,8 @@ export interface ClientShareDoc {
     gallery?: string[];
     inc: string[];
     groupNames?: string[];
+    supplierName?: string;
+    supplierPhone?: string;
   }>;
   accommodations: Array<{
     id: number;
@@ -388,7 +390,11 @@ export function buildClientProjection(trip: AppState, token: string): ClientShar
       heroImage: a.heroImage,
       gallery: a.gallery,
       inc: a.inc || [],
-      groupNames: (trip.namedGroups || []).filter(g => (a.groupIds || []).includes(g.id)).map(g => g.name)
+      groupNames: (trip.namedGroups || []).filter(g => (a.groupIds || []).includes(g.id)).map(g => g.name),
+      ...(clientSettings.showSupplierDetails ? {
+        supplierName: a.supplier || '',
+        supplierPhone: a.supPhone || ''
+      } : {})
     })),
     accommodations: activeRooms.map(r => ({
       id: r.id,
@@ -623,13 +629,20 @@ export async function syncProjectionsToFirestore(trip: AppState): Promise<{
   agentDoc.accessPolicy = accessPolicy;
   opsDoc.accessPolicy = accessPolicy;
 
-  // Sync to local fallback storage
+  // Local caching follows the owner's offline-access setting.
   try {
-    localStorage.setItem(`viemma_share_cli_${clientToken}`, JSON.stringify(clientDoc));
-    localStorage.setItem(`viemma_share_agt_${agentToken}`, JSON.stringify(agentDoc));
-    localStorage.setItem(`viemma_share_ops_${opsToken}`, JSON.stringify(opsDoc));
+    const cacheEntries: Array<[string, string]> = [
+      [`viemma_share_cli_${clientToken}`, JSON.stringify(clientDoc)],
+      [`viemma_share_agt_${agentToken}`, JSON.stringify(agentDoc)],
+      [`viemma_share_ops_${opsToken}`, JSON.stringify(opsDoc)]
+    ];
+    if (accessPolicy.enableOfflineAccess) {
+      cacheEntries.forEach(([key, value]) => localStorage.setItem(key, value));
+    } else {
+      cacheEntries.forEach(([key]) => localStorage.removeItem(key));
+    }
   } catch (e) {
-    console.warn('Could not cache share projections locally:', e);
+    console.warn('Could not apply local share cache policy:', e);
   }
 
   // Cloud Firestore Sync
