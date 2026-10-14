@@ -29,6 +29,7 @@ import {
   normalizeHotelSettlementStatus,
 } from '../operationalValidators';
 import { parseAndMapItineraryInput, commitImportPreviewToGroup } from '../itineraryExtractor';
+import { encryptShareProjection, decryptShareProjection } from '../../lib/shareService';
 import {
   formatApprovedContentIntoTwoParagraphs,
   buildClientEditorialPages,
@@ -265,7 +266,48 @@ export async function runArgonRegressionSuite(): Promise<{
     'Multi-page Client Editorial builder produces 1 Hero + 1 Supporting + 2 Paragraphs per page and strips internalNotes'
   );
 
-  // Test 12: PDF Blob Integrity Verifier
+  // Test 12: password-protected shares encrypt their payload before public storage.
+  const protectedShareDoc = {
+    token: 'cli_test_token_001',
+    role: 'client' as const,
+    active: true,
+    version: 2,
+    lastUpdated: '2026-10-14T12:00:00.000Z',
+    title: 'CONFIDENTIAL SAMPLE ITINERARY TEXT',
+    clientName: 'Test Client',
+    accessPolicy: {
+      expiresAt: null,
+      passwordRequired: true,
+      passwordSalt: '00112233445566778899aabbccddeeff',
+      passwordIterations: 1000,
+      allowDownloads: true,
+      allowPrinting: true,
+      showPricing: true,
+      showSupplierDetails: false,
+      hideInternalNotes: true,
+      enableOfflineAccess: true,
+    },
+  };
+
+  try {
+    const encryptedShare = await encryptShareProjection(protectedShareDoc, 'strong-test-password');
+    const envelopeJson = JSON.stringify(encryptedShare);
+    assert(
+      !envelopeJson.includes('CONFIDENTIAL SAMPLE ITINERARY TEXT') && Boolean(encryptedShare.encryptedPayload?.ciphertext),
+      'Password-protected share envelope stores ciphertext, not plaintext itinerary content'
+    );
+    const decryptedShare = await decryptShareProjection('strong-test-password', encryptedShare);
+    assert(
+      decryptedShare?.title === 'CONFIDENTIAL SAMPLE ITINERARY TEXT',
+      'Correct share password decrypts the itinerary content'
+    );
+    const rejectedShare = await decryptShareProjection('incorrect-password', encryptedShare);
+    assert(rejectedShare === null, 'Incorrect share password cannot decrypt the protected itinerary');
+  } catch (error) {
+    assert(false, `Share encryption regression test executed (${String(error)})`);
+  }
+
+  // Test 13: PDF Blob Integrity Verifier
   const validPdfBytes = new Uint8Array([
     0x25, 0x50, 0x44, 0x46, 0x2d, 0x31, 0x2e, 0x37, ...new Array(100).fill(0x20),
   ]);
