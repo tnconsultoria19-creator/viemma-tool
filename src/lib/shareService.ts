@@ -4,7 +4,22 @@ import { AppState } from '../types';
 import { INITIAL_STATE } from '../App';
 import { buildNormalizedTimeline, TimelineEvent } from '../utils/timelineEngine';
 
+export interface ShareAccessPolicy {
+  expiresAt: string | null;
+  passwordRequired: boolean;
+  passwordSalt?: string;
+  passwordVerifier?: string;
+  passwordIterations: number;
+  allowDownloads: boolean;
+  allowPrinting: boolean;
+  showPricing: boolean;
+  showSupplierDetails: boolean;
+  hideInternalNotes: boolean;
+  enableOfflineAccess: boolean;
+}
+
 export interface ClientShareDoc {
+  accessPolicy: ShareAccessPolicy;
   token: string;
   tripRef: string;
   role: 'client';
@@ -36,8 +51,11 @@ export interface ClientShareDoc {
     name: string;
     desc: string;
     slot: string;
+    date?: string;
     start: string;
+    endTime?: string;
     dur: string;
+    venue?: string;
     pickupLoc: string;
     heroImage?: string;
     gallery?: string[];
@@ -75,6 +93,7 @@ export interface ClientShareDoc {
     to: string;
     vehicle: string;
   }>;
+  pricing?: { currency: string; total: number; paymentTerms?: string };
   timeline: TimelineEvent[];
   consultant: {
     name: string;
@@ -86,6 +105,7 @@ export interface ClientShareDoc {
 }
 
 export interface AgentShareDoc {
+  accessPolicy: ShareAccessPolicy;
   token: string;
   tripRef: string;
   role: 'agent';
@@ -154,6 +174,7 @@ export interface AgentShareDoc {
 }
 
 export interface OpsShareDoc {
+  accessPolicy: ShareAccessPolicy;
   token: string;
   tripRef: string;
   role: 'ops';
@@ -218,17 +239,120 @@ export function generateSecureToken(prefix: 'cli' | 'agt' | 'ops'): string {
   return `${prefix}_${Date.now().toString(36)}_${Math.random().toString(36).substring(2, 12)}`;
 }
 
+const SHARE_PASSWORD_ITERATIONS = 120000;
+
+function bytesToHex(bytes: Uint8Array): string {
+  return Array.from(bytes).map(value => value.toString(16).padStart(2, '0')).join('');
+}
+
+function hexToBytes(value: string): Uint8Array {
+  if (!/^(?:[0-9a-f]{2})+$/i.test(value)) throw new Error('Invalid password verifier data.');
+  return new Uint8Array(value.match(/.{2}/g)!.map(byte => parseInt(byte, 16)));
+}
+
+async function derivePasswordVerifier(password: string, saltHex: string, iterations: number): Promise<string> {
+  const cryptoApi = globalThis.crypto;
+  if (!cryptoApi?.subtle) throw new Error('Secure password verification is unavailable in this browser. Use HTTPS and try again.');
+  const key = await cryptoApi.subtle.importKey('raw', new TextEncoder().encode(password), 'PBKDF2', false, ['deriveBits']);
+  const bits = await cryptoApi.subtle.deriveBits(
+    { name: 'PBKDF2', salt: hexToBytes(saltHex), iterations, hash: 'SHA-256' },
+    key,
+    256
+  );
+  return bytesToHex(new Uint8Array(bits));
+}
+
+export async function verifySharePassword(
+  password: string,
+  policy?: Partial<ShareAccessPolicy> | null
+): Promise<boolean> {
+  if (!policy?.passwordRequired) return true;
+  if (!password || !policy.passwordSalt || !policy.passwordVerifier) return false;
+  try {
+    const iterations = Number(policy.passwordIterations) || SHARE_PASSWORD_ITERATIONS;
+    const candidate = await derivePasswordVerifier(password, policy.passwordSalt, iterations);
+    if (candidate.length !== policy.passwordVerifier.length) return false;
+    // Constant-work byte comparison for the public password gate.
+    let difference = 0;
+    for (let i = 0; i < candidate.length; i++) difference |= candidate.charCodeAt(i) ^ policy.passwordVerifier.charCodeAt(i);
+    return difference === 0;
+  } catch {
+    return false;
+  }
+}
+
+async function buildShareAccessPolicy(trip: AppState): Promise<ShareAccessPolicy> {
+  const settings = trip.publishing?.settings || {};
+  const passwordRequired = Boolean(settings.requirePassword);
+  let passwordSalt: string | undefined;
+  let passwordVerifier: string | undefined;
+  if (passwordRequired) {
+    const password = (settings.password || '').trim();
+    if (!password) throw new Error('Password protection is enabled, but no access password has been configured.');
+    if (!globalThis.crypto?.getRandomValues || !globalThis.crypto?.subtle) {
+      throw new Error('Secure password protection requires a browser with Web Crypto (normally an HTTPS deployment).');
+    }
+    const salt = new Uint8Array(16);
+    globalThis.crypto.getRandomValues(salt);
+    passwordSalt = bytesToHex(salt);
+    passwordVerifier = await derivePasswordVerifier(password, passwordSalt, SHARE_PASSWORD_ITERATIONS);
+  }
+
+  let expiresAt: string | null = null;
+  if (settings.enableExpiryDate) {
+    const dateValue = (settings.expiresAt || '').trim();
+    if (!dateValue) throw new Error('Itinerary expiry is enabled, but no expiry date has been selected.');
+    const expiry = /^\d{4}-\d{2}-\d{2}$/.test(dateValue)
+      ? new Date(`${dateValue}T23:59:59.999`)
+      : new Date(dateValue);
+    if (Number.isNaN(expiry.getTime())) throw new Error('The itinerary expiry date is invalid.');
+    if (expiry.getTime() < Date.now()) throw new Error('The itinerary expiry date is in the past.');
+    expiresAt = expiry.toISOString();
+  } else if (settings.expiresAt) {
+    expiresAt = settings.expiresAt;
+  }
+
+  return {
+    expiresAt,
+    passwordRequired,
+    passwordSalt,
+    passwordVerifier,
+    passwordIterations: SHARE_PASSWORD_ITERATIONS,
+    allowDownloads: settings.allowDownloads !== false,
+    allowPrinting: settings.allowPrinting !== false,
+    showPricing: settings.showPricing !== false,
+    showSupplierDetails: Boolean(settings.showSupplierDetails),
+    hideInternalNotes: settings.hideInternalNotes !== false,
+    enableOfflineAccess: settings.enableOfflineAccess !== false
+  };
+}
+
 /**
  * Projection builders - strictly strip internal confidential data
  */
 export function buildClientProjection(trip: AppState, token: string): ClientShareDoc {
   const timeline = buildNormalizedTimeline(trip);
+  const activeFlights = (trip.flights || []).filter(item => item.status !== 'Cancelled');
+  const activeTransfers = (trip.transfers || []).filter(item => item.status !== 'Cancelled');
+  const activeRooms = (trip.rooms || []).filter(item => item.status !== 'Cancelled');
+  const activeActivities = (trip.activities || []).filter(item => item.status !== 'Cancelled');
+  const clientSettings = trip.publishing?.settings || {};
+  const flightCosts = activeFlights.reduce((sum, item) => sum + item.cost * item.qty, 0);
+  const transferCosts = activeTransfers.reduce((sum, item) => sum + item.cost + item.tolls + item.parking, 0);
+  const roomCosts = activeRooms.reduce((sum, item) => sum + item.rate * item.nights + item.supp, 0);
+  const activityCosts = activeActivities.reduce((sum, item) => sum + (item.isFree ? 0 : item.total), 0);
+  const totalCost = flightCosts + transferCosts + roomCosts + activityCosts;
+  const finance = trip.finance;
+  const margin = finance.marginType === '%' ? totalCost * finance.margin / 100 : finance.margin;
+  const paymentRate = finance.paymentMethod === 'visa' || finance.paymentMethod === 'master' ? 0.025 : finance.paymentMethod === 'amex' ? 0.038 : 0;
+  const retailTotal = Math.max(0, totalCost + margin + finance.buffer + totalCost * paymentRate - finance.discount);
 
   return {
     token,
     tripRef: trip.ref,
     role: 'client',
     active: trip.publishing?.clientTokenActive ?? true,
+    accessPolicy: {} as ShareAccessPolicy, // Attached after secure policy generation in syncProjectionsToFirestore.
     version: trip.version || 1,
     lastUpdated: new Date().toISOString(),
     title: trip.title || `Bespoke African Journey for ${trip.client.name}`,
@@ -250,20 +374,23 @@ export function buildClientProjection(trip: AppState, token: string): ClientShar
       imageUrl: d.featuredImage || (d.images && d.images[0]) || '',
       bestTimeToVisit: d.climate || ''
     })),
-    activities: (trip.activities || []).map(a => ({
+    activities: activeActivities.map(a => ({
       id: a.id,
       day: a.day,
       name: a.name,
-      desc: a.desc,
+      desc: a.clientDescription || a.desc,
       slot: a.slot,
+      date: a.date || '',
       start: a.start,
+      endTime: a.endTime || '',
       dur: a.dur,
+      venue: a.venue || '',
       pickupLoc: a.pickupLoc || a.pickup,
       heroImage: a.heroImage,
       gallery: a.gallery,
       inc: a.inc || []
     })),
-    accommodations: (trip.rooms || []).map(r => ({
+    accommodations: activeRooms.map(r => ({
       id: r.id,
       hotel: r.hotel,
       roomType: r.roomType,
@@ -275,7 +402,7 @@ export function buildClientProjection(trip: AppState, token: string): ClientShar
       amenities: r.amenities,
       gpsLocation: r.gpsLocation
     })),
-    flights: (trip.flights || []).map(f => ({
+    flights: activeFlights.map(f => ({
       id: f.id,
       airline: f.airline,
       flightNo: f.flightNo,
@@ -286,7 +413,7 @@ export function buildClientProjection(trip: AppState, token: string): ClientShar
       arrTime: f.arrTime,
       cabin: f.cabin
     })),
-    transfers: (trip.transfers || []).map(t => ({
+    transfers: activeTransfers.map(t => ({
       id: t.id,
       type: t.type,
       date: t.date,
@@ -295,6 +422,9 @@ export function buildClientProjection(trip: AppState, token: string): ClientShar
       to: t.to,
       vehicle: t.vehicle
     })),
+    ...(clientSettings.showPricing !== false ? {
+      pricing: { currency: 'ZAR', total: Math.round(retailTotal), paymentTerms: 'As specified in the approved quotation.' }
+    } : {}),
     timeline,
     consultant: {
       name: trip.consultant || 'Elena Rostova',
@@ -479,6 +609,10 @@ export async function syncProjectionsToFirestore(trip: AppState): Promise<{
   const clientDoc = buildClientProjection(trip, clientToken);
   const agentDoc = buildAgentProjection(trip, agentToken);
   const opsDoc = buildOpsProjection(trip, opsToken);
+  const accessPolicy = await buildShareAccessPolicy(trip);
+  clientDoc.accessPolicy = accessPolicy;
+  agentDoc.accessPolicy = accessPolicy;
+  opsDoc.accessPolicy = accessPolicy;
 
   // Sync to local fallback storage
   try {
@@ -499,7 +633,10 @@ export async function syncProjectionsToFirestore(trip: AppState): Promise<{
       ]);
     } catch (err) {
       console.warn('Firestore share projections sync warning:', err);
+      throw new Error('The share links could not be synchronized with Firestore. Nothing has been confirmed as published.');
     }
+  } else {
+    throw new Error('Live publishing is unavailable because Firestore is not connected. A local preview may be cached, but the live share links were not published.');
   }
 
   return { clientToken, agentToken, opsToken };
@@ -520,7 +657,8 @@ export async function regenerateShareToken(trip: AppState, role: 'client' | 'age
   // 1. Delete old projection in cloud & local
   if (oldToken) {
     try {
-      localStorage.removeItem(`viemma_share_${role}_${oldToken}`);
+      const cachePrefix = role === 'client' ? 'cli' : role === 'agent' ? 'agt' : 'ops';
+      localStorage.removeItem(`viemma_share_${cachePrefix}_${oldToken}`);
     } catch {}
 
     if (db && isCloudConnected) {
@@ -566,7 +704,8 @@ export async function revokeShareToken(trip: AppState, role: 'client' | 'agent' 
 
   if (token) {
     try {
-      localStorage.removeItem(`viemma_share_${role}_${token}`);
+      const cachePrefix = role === 'client' ? 'cli' : role === 'agent' ? 'agt' : 'ops';
+      localStorage.removeItem(`viemma_share_${cachePrefix}_${token}`);
     } catch {}
 
     if (db && isCloudConnected) {
