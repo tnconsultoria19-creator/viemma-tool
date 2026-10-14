@@ -113,7 +113,7 @@ export const ExperienceLibraryView: React.FC<ExperienceLibraryViewProps> = ({
   ) => {
     const defaults = slotTimeDefaults[slot];
     const [startHour, startMinute] = defaults.start.split(':').map(Number);
-    const durationMatch = (durationText || '').trim().match(/(\\d+(?:\\.\\d+)?)\\s*(days?|d|hours?|hrs?|h|minutes?|mins?|m)\\b/i);
+    const durationMatch = (durationText || '').trim().match(/(\d+(?:\.\d+)?)\s*(days?|d|hours?|hrs?|h|minutes?|mins?|m)\b/i);
     let endTime = defaults.end;
     if (durationMatch && Number.isFinite(startHour) && Number.isFinite(startMinute)) {
       const amount = Number(durationMatch[1]);
@@ -131,7 +131,7 @@ export const ExperienceLibraryView: React.FC<ExperienceLibraryViewProps> = ({
   };
 
   const handleConfirmAddToTrip = (item: ExperienceLibraryItem) => {
-    const clockPattern = /^([01]?\\d|2[0-3]):([0-5]\\d)$/;
+    const clockPattern = /^([01]?\d|2[0-3]):([0-5]\d)$/;
     const startMatch = targetStartTime.match(clockPattern);
     const endMatch = targetEndTime.match(clockPattern);
     const pickupMatch = targetPickupTime.match(clockPattern);
