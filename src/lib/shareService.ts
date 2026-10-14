@@ -350,6 +350,7 @@ async function buildShareAccessPolicy(trip: AppState): Promise<ShareAccessPolicy
   if (passwordRequired) {
     const password = (settings.password || '').trim();
     if (!password) throw new Error('Password protection is enabled, but no access password has been configured.');
+    if (password.length < 12) throw new Error('Use a unique share password with at least 12 characters before publishing.');
     if (!globalThis.crypto?.getRandomValues || !globalThis.crypto?.subtle) {
       throw new Error('Secure password protection requires a browser with Web Crypto (normally an HTTPS deployment).');
     }
