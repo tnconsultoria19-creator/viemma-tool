@@ -57,7 +57,7 @@ Please craft highly detailed, evocative, sensory descriptions suited for high-ne
 5. Adventure Version: Energetic, focused on thrills, photography, and raw exploration.`;
 
     const response = await ai.models.generateContent({
-      model: "gemini-3.5-flash",
+      model: "gemini-3.8-flash",
       contents: prompt,
       config: {
         responseMimeType: "application/json",
@@ -95,6 +95,44 @@ Please craft highly detailed, evocative, sensory descriptions suited for high-ne
   } catch (error: any) {
     console.error("Gemini Generation Error:", error);
     res.status(500).json({ error: error.message || "Failed to generate description" });
+  }
+});
+
+app.post("/api/gemini/parse-itinerary", async (req, res) => {
+  try {
+    const { rawText } = req.body;
+    if (!rawText || !rawText.trim()) {
+      res.status(400).json({ error: "rawText is required" });
+      return;
+    }
+
+    const ai = getGeminiClient();
+
+    const prompt = `You are a specialist Travel Operations parser for Viemma Tours (Bespoke Southern Africa Luxury Travel OS).
+Transform the provided travel brief, email, or unformatted itinerary into a strict JSON payload matching the "viemma-itinerary-v1" schema.
+
+Raw travel text:
+${rawText}
+
+Instructions:
+1. Extract any client info, travellers, flights, accommodations/hotels, transfers, activities, and drivers found.
+2. If certain sections (e.g. drivers, flights, or accommodations) are not present in the source text, omit them or provide empty arrays. Do NOT invent fake data.
+3. For travellers, do NOT assume a missing age is Adult; leave age empty or 'Adult' only if known. Do NOT designate lead traveller unless explicitly noted.
+4. Output strict JSON matching the schema.`;
+
+    const response = await ai.models.generateContent({
+      model: "gemini-3.8-flash",
+      contents: prompt,
+      config: {
+        responseMimeType: "application/json",
+      },
+    });
+
+    const parsed = JSON.parse(response.text?.trim() || "{}");
+    res.json(parsed);
+  } catch (error: any) {
+    console.error("Itinerary Parsing Error:", error);
+    res.status(500).json({ error: error.message || "Failed to parse itinerary text with Gemini" });
   }
 });
 

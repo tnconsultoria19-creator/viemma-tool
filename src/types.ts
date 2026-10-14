@@ -89,7 +89,7 @@ export interface AttachmentItem {
   url: string;
   uploadedAt: string;
   uploadedBy?: string;
-  recordType: 'booking' | 'guest' | 'hotel' | 'flight';
+  recordType: 'booking' | 'guest' | 'hotel' | 'flight' | 'transfer' | 'activity' | 'driver';
   recordId?: string | number;
   storagePath?: string;
   notes?: string;
@@ -102,7 +102,7 @@ export interface Guest {
   preferredName?: string;
   nationality?: string;
   country?: string;
-  age: 'Adult' | 'Elderly' | 'Teen' | 'Child' | 'Infant';
+  age?: 'Adult' | 'Elderly' | 'Teen' | 'Child' | 'Infant';
   exactAge?: number;
   dob?: string; // Date of birth
   passportNo?: string;
@@ -266,6 +266,7 @@ export interface Transfer {
   vehicleId?: string;
   vehiclePlate?: string;
   driverNotes?: string; // Role-specific notes
+  attachments?: AttachmentItem[];
 }
 
 export interface AllocatedRoom {
@@ -390,6 +391,7 @@ export interface Activity {
   guidePhone?: string;
   guideSourceAgentId?: string;
   guideSourceAgentName?: string;
+  attachments?: AttachmentItem[];
 }
 
 export interface ExperienceLibraryItem {
@@ -481,7 +483,7 @@ export interface Driver {
   preferredName?: string;
   phone: string;
   email: string;
-  licenseNo: string;
+  licenseNo?: string;
   licenseCategory?: string; // e.g. Code 8 / B, Code 10 / C1, Code 14 / EC
   prdpNumber?: string; // Professional Driving Permit number
   prdpExpiryDate?: string; // Expiration date YYYY-MM-DD
@@ -494,6 +496,7 @@ export interface Driver {
   emergencyContactPhone?: string;
   notes: string;
   photoUrl?: string;
+  attachments?: AttachmentItem[];
 }
 
 export type StaffRole = 'Driver' | 'Agent' | 'Employee' | 'Administrator';
@@ -752,11 +755,26 @@ export interface AIImportActivity {
   isReviewed?: boolean;
 }
 
+export interface AIImportDriver {
+  id?: string;
+  name: string;
+  preferredName?: string;
+  phone?: string;
+  email?: string;
+  prdpExpiryDate?: string;
+  status?: 'Available' | 'Assigned' | 'Off Duty' | 'Unavailable';
+  operationalAvailability?: 'Full-time' | 'Part-time' | 'On-Call' | 'Weekend Only';
+  notes?: string;
+  needsReview?: boolean;
+  reviewReason?: string;
+  isReviewed?: boolean;
+}
+
 export interface AIItineraryPayload {
-  schemaVersion: string; // e.g. "viemma-itinerary-v1"
+  schemaVersion: string; // e.g. "viemma-itinerary-v1" or "viemma-itinerary-v2"
   tripRef?: string;
   tripTitle?: string;
-  client: {
+  client?: {
     name: string;
     preferredName?: string;
     email?: string;
@@ -770,11 +788,12 @@ export interface AIItineraryPayload {
     needsReview?: boolean;
     reviewReason?: string;
   };
-  travellers: AIImportGuest[];
+  travellers?: AIImportGuest[];
   flights?: AIImportFlight[];
   accommodations?: AIImportStay[];
   transfers?: AIImportTransfer[];
   activities?: AIImportActivity[];
+  drivers?: AIImportDriver[];
   generalNotes?: string;
   warnings?: string[];
 }

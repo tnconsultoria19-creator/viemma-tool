@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { AppState, Flight, Stop } from '../types';
+import { AppState, Flight, Stop, AttachmentItem } from '../types';
 import { fetchAirlinesCatalogue, addCustomAirlineToCatalogue } from '../lib/catalogueService';
+import { AttachmentManager } from './AttachmentManager';
 import { 
   Plane, 
   Plus, 
@@ -22,7 +23,9 @@ import {
   Radio,
   RefreshCw,
   ShieldAlert,
-  Info
+  Info,
+  AlertTriangle,
+  X
 } from 'lucide-react';
 
 interface FlightsViewProps {
@@ -119,24 +122,34 @@ export const FlightsView: React.FC<FlightsViewProps> = ({
     setEditingFlightId(f.id);
   };
 
-  const handleSaveFlight = () => {
+  // Missing Flight Information Confirmation State
+  const [missingModalOpen, setMissingModalOpen] = useState(false);
+  const [pendingMissingFields, setPendingMissingFields] = useState<string[]>([]);
+
+  const handleSaveFlight = (bypassConfirmation = false) => {
     setValidationError(null);
     const chosenAirline = (airlineSearch || fForm.airline || '').trim();
-    if (!chosenAirline) {
-      setValidationError('Airline carrier is required.');
-      return;
-    }
-    if (!fForm.flightNo?.trim()) {
-      setValidationError('Flight Number is required (e.g. EK772, SA042).');
-      return;
-    }
-    if (!fForm.from?.trim() || !fForm.to?.trim()) {
-      setValidationError('Origin airport (From) and Destination airport (To) are required.');
+
+    // Check all optional & recommended flight details dynamically
+    const missing: string[] = [];
+    if (!chosenAirline) missing.push('Airline');
+    if (!fForm.flightNo?.trim()) missing.push('Flight number');
+    if (!fForm.from?.trim()) missing.push('Origin airport (From)');
+    if (!fForm.to?.trim()) missing.push('Destination airport (To)');
+    if (!fForm.date) missing.push('Departure date');
+    if (!fForm.depTime) missing.push('Departure time');
+    if (!fForm.arrTime) missing.push('Arrival time');
+    if (!fForm.pnr?.trim()) missing.push('PNR / Booking reference');
+
+    if (missing.length > 0 && !bypassConfirmation) {
+      setPendingMissingFields(missing);
+      setMissingModalOpen(true);
       return;
     }
 
-    // Save custom airline into catalogue if not present
-    if (!airlineCatalog.includes(chosenAirline)) {
+    const finalAirline = chosenAirline || 'TBD Airline';
+    // Save custom airline into catalogue if present
+    if (chosenAirline && !airlineCatalog.includes(chosenAirline)) {
       const updated = addCustomAirlineToCatalogue(chosenAirline);
       setAirlineCatalog(updated);
     }
@@ -144,15 +157,15 @@ export const FlightsView: React.FC<FlightsViewProps> = ({
     const savedFlight: Flight = {
       id: fForm.id || Date.now(),
       direction: fForm.direction || 'Inbound',
-      airline: chosenAirline,
-      flightNo: fForm.flightNo.trim().toUpperCase(),
+      airline: finalAirline,
+      flightNo: (fForm.flightNo || 'TBD').trim().toUpperCase(),
       pnr: (fForm.pnr || '').trim().toUpperCase(),
       confirmationRef: (fForm.confirmationRef || '').trim().toUpperCase(),
       bookingUrl: (fForm.bookingUrl || '').trim(),
       referenceLinks: fForm.referenceLinks || [],
       supplierContact: (fForm.supplierContact || '').trim(),
-      from: fForm.from.trim().toUpperCase(),
-      to: fForm.to.trim().toUpperCase(),
+      from: (fForm.from || 'TBD').trim().toUpperCase(),
+      to: (fForm.to || 'TBD').trim().toUpperCase(),
       date: fForm.date || '',
       depTime: fForm.depTime || '',
       arrTime: fForm.arrTime || '',
@@ -167,7 +180,10 @@ export const FlightsView: React.FC<FlightsViewProps> = ({
       markup: Number(fForm.markup) || 0,
       qty: Number(fForm.qty) || 1,
       notes: fForm.notes || '',
-      stops: stopsList
+      stops: stopsList,
+      isIncomplete: missing.length > 0,
+      missingFields: missing.length > 0 ? missing : undefined,
+      attachments: fForm.attachments || []
     };
 
     if (editingFlightId === -1) {
@@ -179,6 +195,8 @@ export const FlightsView: React.FC<FlightsViewProps> = ({
     setFForm({});
     setStopsList([]);
     setValidationError(null);
+    setMissingModalOpen(false);
+    setPendingMissingFields([]);
   };
 
   const handleAddStop = () => {
@@ -798,6 +816,26 @@ export const FlightsView: React.FC<FlightsViewProps> = ({
               />
             </div>
 
+            {/* GROUP 9: Supporting Documents & Flight Attachments */}
+            <div className="bg-white rounded-[20px] p-6 border border-gray-100 shadow-sm space-y-4">
+              <AttachmentManager
+                attachments={fForm.attachments || []}
+                onAddAttachment={(item) => setFForm(prev => ({
+                  ...prev,
+                  attachments: [...(prev.attachments || []), item]
+                }))}
+                onRemoveAttachment={(id) => setFForm(prev => ({
+                  ...prev,
+                  attachments: (prev.attachments || []).filter(a => a.id !== id)
+                }))}
+                recordType="flight"
+                recordId={fForm.id || Date.now()}
+                bookingRef={state.ref}
+                title="Flight E-Tickets, Boarding Passes & PNR Documents"
+                description="Upload airline booking PDFs, ticket vouchers, or e-ticket receipts (PDF, JPEG, PNG, WebP up to 15MB)."
+              />
+            </div>
+
           </div>
 
           {/* Sticky footer for action buttons */}
@@ -869,7 +907,19 @@ export const FlightsView: React.FC<FlightsViewProps> = ({
                       <Plane size={18} />
                     </div>
                     <div>
-                      <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest block">{f.direction} Sector Connection</span>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{f.direction} Sector Connection</span>
+                        {f.isIncomplete && (
+                          <span className="text-[9px] bg-amber-50 text-amber-800 border border-amber-200 px-2 py-0.5 rounded-full font-bold flex items-center gap-1">
+                            <AlertTriangle size={10} className="text-amber-600" /> Provisional (Missing details)
+                          </span>
+                        )}
+                        {f.attachments && f.attachments.length > 0 && (
+                          <span className="text-[9px] bg-slate-100 text-slate-700 border border-slate-200 px-2 py-0.5 rounded-full font-bold flex items-center gap-1">
+                            📎 {f.attachments.length} {f.attachments.length === 1 ? 'doc' : 'docs'}
+                          </span>
+                        )}
+                      </div>
                       <h3 className="font-bold text-gray-900 text-sm mt-0.5">
                         {f.airline} {f.flightNo} • <span className="font-mono text-xs text-[#065f46] font-bold tracking-wide">PNR: {f.pnr || 'NOT SET'}</span>
                         {f.confirmationRef && <span className="ml-2 font-mono text-xs text-gray-500 font-normal">Conf: {f.confirmationRef}</span>}
@@ -1160,6 +1210,58 @@ export const FlightsView: React.FC<FlightsViewProps> = ({
                 className="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-xs cursor-pointer"
               >
                 Save Airline
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Missing Flight Information Confirmation Modal */}
+      {missingModalOpen && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in">
+          <div className="bg-white rounded-3xl max-w-md w-full p-6 space-y-5 shadow-2xl border border-amber-200 animate-in zoom-in-95">
+            <div className="flex items-start gap-3">
+              <div className="w-10 h-10 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center shrink-0 border border-amber-200">
+                <AlertTriangle size={20} />
+              </div>
+              <div className="space-y-1">
+                <h3 className="text-base font-bold text-gray-900">
+                  Some flight information is missing
+                </h3>
+                <p className="text-xs text-gray-600 leading-relaxed font-medium">
+                  The following information has not been provided:
+                </p>
+              </div>
+            </div>
+
+            <div className="bg-amber-50/60 border border-amber-200/80 rounded-2xl p-4 space-y-2">
+              <ul className="space-y-1">
+                {pendingMissingFields.map((field, i) => (
+                  <li key={i} className="text-xs text-amber-950 flex items-center gap-2 font-semibold">
+                    <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
+                    {field}
+                  </li>
+                ))}
+              </ul>
+              <p className="text-xs font-bold text-amber-900 pt-2 border-t border-amber-200/60">
+                Would you like to save this flight without the missing information?
+              </p>
+            </div>
+
+            <div className="flex flex-col sm:flex-row items-center justify-end gap-2.5 pt-1">
+              <button
+                type="button"
+                onClick={() => setMissingModalOpen(false)}
+                className="w-full sm:w-auto px-4 py-2.5 rounded-xl border border-gray-300 text-xs font-bold text-gray-700 hover:bg-gray-50 transition cursor-pointer"
+              >
+                Go Back and Complete
+              </button>
+              <button
+                type="button"
+                onClick={() => handleSaveFlight(true)}
+                className="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-[#1A3326] text-white hover:bg-[#12241b] text-xs font-extrabold shadow-md transition cursor-pointer"
+              >
+                Save Anyway
               </button>
             </div>
           </div>

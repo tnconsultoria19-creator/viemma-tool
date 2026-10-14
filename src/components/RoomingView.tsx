@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { AppState, Room, AllocatedRoom } from '../types';
+import { AppState, Room, AllocatedRoom, AttachmentItem } from '../types';
+import { AttachmentManager } from './AttachmentManager';
 import { DB_DEFAULT, ROOM_TYPE_OPTIONS, MEAL_PLAN_OPTIONS, ROOM_REQUEST_OPTIONS } from '../dbDefaults';
 import { fetchHotelsCatalogue, addCustomHotelToCatalogue } from '../lib/catalogueService';
 import { 
@@ -28,8 +29,59 @@ import {
   Heart,
   FileText,
   Search,
+  ExternalLink,
   X
 } from 'lucide-react';
+
+export function parseGoogleMapsUrl(rawUrl: string): {
+  originalUrl: string;
+  extractedAddress?: string;
+  extractedGps?: string;
+  isShortLink: boolean;
+  message?: string;
+} {
+  const trimmed = rawUrl.trim();
+  if (!trimmed) {
+    return { originalUrl: '', isShortLink: false };
+  }
+
+  const isShort = trimmed.includes('goo.gl') || trimmed.includes('maps.app.goo.gl');
+  let extractedGps: string | undefined;
+  let extractedAddress: string | undefined;
+
+  const atCoordsMatch = trimmed.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/);
+  if (atCoordsMatch) {
+    extractedGps = `${atCoordsMatch[1]}, ${atCoordsMatch[2]}`;
+  } else {
+    const qCoordsMatch = trimmed.match(/[?&](?:q|ll)=(-?\d+\.\d+),(-?\d+\.\d+)/);
+    if (qCoordsMatch) {
+      extractedGps = `${qCoordsMatch[1]}, ${qCoordsMatch[2]}`;
+    }
+  }
+
+  const placeMatch = trimmed.match(/\/place\/([^/@?]+)/);
+  if (placeMatch) {
+    try {
+      extractedAddress = decodeURIComponent(placeMatch[1].replace(/\+/g, ' '));
+    } catch {
+      extractedAddress = placeMatch[1].replace(/\+/g, ' ');
+    }
+  }
+
+  const message = isShort
+    ? 'Short link preserved. Physical address can be entered or edited manually below.'
+    : extractedGps || extractedAddress
+      ? 'Location coordinates identified from link.'
+      : 'URL preserved. Enter or refine physical address manually below.';
+
+  return {
+    originalUrl: trimmed,
+    extractedAddress,
+    extractedGps,
+    isShortLink: isShort,
+    message
+  };
+}
 
 interface RoomingViewProps {
   state: AppState;
@@ -56,6 +108,7 @@ export const RoomingView: React.FC<RoomingViewProps> = ({
   const [showHotelDropdown, setShowHotelDropdown] = useState(false);
   const [customReqInput, setCustomReqInput] = useState('');
   const [roomValidationError, setRoomValidationError] = useState<string | null>(null);
+  const [mapsNotice, setMapsNotice] = useState<string | null>(null);
 
   useEffect(() => {
     fetchHotelsCatalogue().then(list => setHotelCatalog(list));
@@ -68,6 +121,8 @@ export const RoomingView: React.FC<RoomingViewProps> = ({
 
   // Quick Book sub-form presets
   const [qbHotel, setQbHotel] = useState("The Silo Hotel (Cape Town)");
+  const [qbCustomHotel, setQbCustomHotel] = useState("");
+  const [isQbCustom, setIsQbCustom] = useState(false);
   const [qbRoomType, setQbRoomType] = useState("Deluxe Suite");
   const [qbMeal, setQbMeal] = useState("B&B");
   const [qbGuestsCount, setQbGuestsCount] = useState(2);
@@ -195,6 +250,9 @@ export const RoomingView: React.FC<RoomingViewProps> = ({
       hotel: chosenHotel,
       conf: rForm.conf || '',
       pay: rForm.pay || 'Unpaid',
+      depositAmount: rForm.depositAmount !== undefined ? Number(rForm.depositAmount) : undefined,
+      balanceDue: rForm.balanceDue !== undefined ? Number(rForm.balanceDue) : undefined,
+      paymentNotes: rForm.paymentNotes || '',
       roomType: rForm.allocatedRooms?.[0]?.roomType || rForm.roomType || 'Standard',
       bed: rForm.allocatedRooms?.[0]?.roomName || rForm.bed || 'King',
       meal: rForm.allocatedRooms?.[0]?.mealBasis || rForm.meal || 'B&B',
@@ -226,7 +284,8 @@ export const RoomingView: React.FC<RoomingViewProps> = ({
       emergencyContact: rForm.emergencyContact || '',
       nightManager: rForm.nightManager || '',
       cancellationPolicy: rForm.cancellationPolicy || '',
-      internalNotesHotel: rForm.internalNotesHotel || ''
+      internalNotesHotel: rForm.internalNotesHotel || '',
+      attachments: rForm.attachments || []
     };
 
     if (editingRoomId === -1) {
@@ -238,10 +297,13 @@ export const RoomingView: React.FC<RoomingViewProps> = ({
     setRForm({});
   };
 
+  const [qbError, setQbError] = useState<string | null>(null);
+
   // QUICK BOOK INTEGRATION
   const handleQuickBookSave = () => {
+    setQbError(null);
     if (!state.client.startDate || !state.client.endDate) {
-      alert("Please establish trip start/end dates in the Intake section first.");
+      setQbError("Please establish trip start/end dates in the Intake section first.");
       return;
     }
     const cin = state.client.startDate;
@@ -250,9 +312,15 @@ export const RoomingView: React.FC<RoomingViewProps> = ({
 
     const selectedGuestsIds = state.guests.slice(0, qbGuestsCount).map(g => g.id);
 
+    const resolvedHotel = isQbCustom && qbCustomHotel.trim() ? qbCustomHotel.trim() : qbHotel;
+    if (isQbCustom && qbCustomHotel.trim()) {
+      const updated = addCustomHotelToCatalogue(qbCustomHotel.trim());
+      setHotelCatalog(updated);
+    }
+
     const newR: Room = {
       id: Date.now(),
-      hotel: qbHotel,
+      hotel: resolvedHotel,
       conf: `QB-${Math.floor(10000 + Math.random() * 90000)}`,
       pay: 'Deposit Paid',
       roomType: qbRoomType,
@@ -545,16 +613,42 @@ export const RoomingView: React.FC<RoomingViewProps> = ({
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-6 text-xs">
             <div className="space-y-1.5 lg:col-span-2">
-              <label className="text-gray-300 font-semibold uppercase tracking-wider block">Hotel Property</label>
-              <select 
-                value={qbHotel} 
-                onChange={e => setQbHotel(e.target.value)}
-                className="w-full h-11 px-4 rounded-xl border border-white/10 bg-white/5 text-white focus:ring-1 focus:ring-[#D4AF37] transition font-medium"
-              >
-                {DB_DEFAULT.hotels.map(h => (
-                  <option key={h.id} value={h.name} className="text-[#1A3326] font-medium">{h.name}</option>
-                ))}
-              </select>
+              <div className="flex items-center justify-between">
+                <label className="text-gray-300 font-semibold uppercase tracking-wider block">Hotel Property</label>
+                <button
+                  type="button"
+                  onClick={() => setIsQbCustom(!isQbCustom)}
+                  className="text-[10px] text-[#D4AF37] hover:underline font-bold cursor-pointer"
+                >
+                  {isQbCustom ? 'Select from list' : '+ Enter custom property'}
+                </button>
+              </div>
+              {isQbCustom ? (
+                <input
+                  type="text"
+                  value={qbCustomHotel}
+                  onChange={e => setQbCustomHotel(e.target.value)}
+                  placeholder="Type custom lodge, villa, or hotel name..."
+                  className="w-full h-11 px-4 rounded-xl border border-[#D4AF37]/50 bg-white/10 text-white placeholder-gray-400 focus:ring-1 focus:ring-[#D4AF37] transition font-medium"
+                />
+              ) : (
+                <select 
+                  value={qbHotel} 
+                  onChange={e => {
+                    if (e.target.value === '__custom__') {
+                      setIsQbCustom(true);
+                    } else {
+                      setQbHotel(e.target.value);
+                    }
+                  }}
+                  className="w-full h-11 px-4 rounded-xl border border-white/10 bg-white/5 text-white focus:ring-1 focus:ring-[#D4AF37] transition font-medium"
+                >
+                  {hotelCatalog.map((hName, idx) => (
+                    <option key={idx} value={hName} className="text-[#1A3326] font-medium">{hName}</option>
+                  ))}
+                  <option value="__custom__" className="text-[#1A3326] font-bold">+ Enter custom property...</option>
+                </select>
+              )}
             </div>
 
             <div className="space-y-1.5">
@@ -611,7 +705,12 @@ export const RoomingView: React.FC<RoomingViewProps> = ({
             </div>
           </div>
 
-          <div className="flex justify-end pt-4 border-t border-white/10">
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-4 border-t border-white/10">
+            {qbError ? (
+              <p className="text-xs text-rose-300 font-semibold flex items-center gap-1.5">
+                <AlertCircle size={14} className="shrink-0" /> {qbError}
+              </p>
+            ) : <div />}
             <button 
               onClick={handleQuickBookSave} 
               className="flex items-center gap-1.5 px-6 py-3 rounded-xl bg-[#D4AF37] text-[#1A3326] hover:bg-[#b89528] text-xs font-bold shadow-md hover:translate-y-[-1px] transition-all"
@@ -719,6 +818,55 @@ export const RoomingView: React.FC<RoomingViewProps> = ({
                     onChange={e => setRForm({ ...rForm, conf: e.target.value })}
                     className="w-full h-11 px-4 rounded-xl border border-gray-200 text-xs font-bold text-gray-900 uppercase focus:border-[#D4AF37] transition duration-200" 
                     placeholder="SIL-77621B" 
+                  />
+                </div>
+
+                <div className="space-y-1.5 md:col-span-2">
+                  <div className="flex items-center justify-between">
+                    <label className="text-[11px] text-gray-500 font-bold uppercase tracking-wider flex items-center gap-1.5">
+                      <MapPin size={12} className="text-[#D4AF37]" /> Google Maps Share Link
+                    </label>
+                    {rForm.googleMapsUrl && (
+                      <a 
+                        href={rForm.googleMapsUrl} 
+                        target="_blank" 
+                        rel="noopener noreferrer" 
+                        className="text-[10px] font-bold text-[#D4AF37] hover:underline flex items-center gap-1"
+                      >
+                        <ExternalLink size={10} /> Open in Google Maps
+                      </a>
+                    )}
+                  </div>
+                  <input 
+                    type="url" 
+                    value={rForm.googleMapsUrl || ''} 
+                    onChange={e => {
+                      const url = e.target.value;
+                      const parsed = parseGoogleMapsUrl(url);
+                      setMapsNotice(parsed.message || null);
+                      setRForm({
+                        ...rForm,
+                        googleMapsUrl: url,
+                        gpsLocation: parsed.extractedGps || rForm.gpsLocation,
+                        address: parsed.extractedAddress || rForm.address
+                      });
+                    }}
+                    className="w-full h-11 px-4 rounded-xl border border-gray-200 text-xs font-mono text-gray-800 focus:border-[#D4AF37] transition"
+                    placeholder="https://maps.app.goo.gl/... or https://google.com/maps/place/..." 
+                  />
+                  {mapsNotice && (
+                    <p className="text-[10px] text-amber-700 font-medium">{mapsNotice}</p>
+                  )}
+                </div>
+
+                <div className="space-y-1.5 md:col-span-2">
+                  <label className="text-[11px] text-gray-500 font-bold uppercase tracking-wider block">Physical Property Address</label>
+                  <input 
+                    type="text" 
+                    value={rForm.address || ''} 
+                    onChange={e => setRForm({ ...rForm, address: e.target.value })}
+                    className="w-full h-11 px-4 rounded-xl border border-gray-200 text-xs font-medium text-gray-800 focus:border-[#D4AF37] transition"
+                    placeholder="e.g. Silo Square, V&A Waterfront, Cape Town, 8001" 
                   />
                 </div>
 
@@ -884,13 +1032,20 @@ export const RoomingView: React.FC<RoomingViewProps> = ({
               )}
             </div>
 
-            {/* GROUP 3: Settlement Status */}
+            {/* GROUP 3: Settlement Status & Financial Accounting */}
             <div className="bg-white rounded-[20px] p-6 border border-gray-100 shadow-sm space-y-6">
-              <h3 className="text-xs uppercase font-bold text-[#1A3326] tracking-wider border-b border-gray-100 pb-2 flex items-center gap-2">
-                <Clock size={14} className="text-[#D4AF37]" /> Stay Settlement & Voucher Options
-              </h3>
+              <div className="flex items-center justify-between border-b border-gray-100 pb-2">
+                <h3 className="text-xs uppercase font-bold text-[#1A3326] tracking-wider flex items-center gap-2">
+                  <Clock size={14} className="text-[#D4AF37]" /> Stay Settlement & Accounting Status
+                </h3>
+                {rForm.pay === 'Fully Paid' && (
+                  <span className="text-[10px] bg-amber-100 text-amber-900 border border-amber-200 px-2 py-0.5 rounded-full font-bold">
+                    Historical Record (Legacy: Fully Paid)
+                  </span>
+                )}
+              </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                 
                 <div className="space-y-1.5">
                   <label className="text-[11px] text-gray-500 font-bold uppercase tracking-wider block">Settlement Status</label>
@@ -899,24 +1054,75 @@ export const RoomingView: React.FC<RoomingViewProps> = ({
                     onChange={e => setRForm({ ...rForm, pay: e.target.value as any })}
                     className="w-full h-11 px-4 rounded-xl border border-gray-200 text-xs font-semibold text-gray-700 bg-white hover:border-[#D4AF37] focus:border-[#D4AF37] transition duration-200"
                   >
-                    <option value="Unpaid">Unpaid / Awaiting Voucher</option>
-                    <option value="Deposit Paid">Deposit Paid (DMC Hold)</option>
-                    <option value="Fully Paid">Fully Vouchered / Pre-paid</option>
+                    <option value="Unpaid">Unpaid</option>
+                    <option value="Deposit Paid">Deposit Paid</option>
+                    <option value="Paid">Paid</option>
+                    <option value="Negotiation / Pending Confirmation">Negotiation / Pending Confirmation</option>
+                    {rForm.pay === 'Fully Paid' && (
+                      <option value="Fully Paid">Fully Paid (Legacy status)</option>
+                    )}
                   </select>
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="text-[11px] text-gray-500 font-bold uppercase tracking-wider block">Property Eco/Sustainability Rating</label>
+                  <label className="text-[11px] text-gray-500 font-bold uppercase tracking-wider block">Deposit Paid Amount (ZAR)</label>
+                  <input 
+                    type="number" 
+                    min="0"
+                    value={rForm.depositAmount ?? ''} 
+                    onChange={e => setRForm({ ...rForm, depositAmount: e.target.value ? Number(e.target.value) : undefined })}
+                    className="w-full h-11 px-4 rounded-xl border border-gray-200 text-xs font-semibold text-gray-800 focus:border-[#D4AF37] transition"
+                    placeholder="e.g. 5000" 
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-[11px] text-gray-500 font-bold uppercase tracking-wider block">Balance Due Amount (ZAR)</label>
+                  <input 
+                    type="number" 
+                    min="0"
+                    value={rForm.balanceDue ?? ''} 
+                    onChange={e => setRForm({ ...rForm, balanceDue: e.target.value ? Number(e.target.value) : undefined })}
+                    className="w-full h-11 px-4 rounded-xl border border-gray-200 text-xs font-semibold text-gray-800 focus:border-[#D4AF37] transition"
+                    placeholder="e.g. 13500" 
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-[11px] text-gray-500 font-bold uppercase tracking-wider block">Eco/Sustainability Rating</label>
                   <input 
                     type="text" 
                     value={rForm.sustainabilityRating || ''} 
                     onChange={e => setRForm({ ...rForm, sustainabilityRating: e.target.value })}
                     className="w-full h-11 px-4 rounded-xl border border-gray-200 text-xs font-semibold text-gray-800 focus:border-[#D4AF37] transition"
-                    placeholder="e.g. Fair Trade Tourism certified, Carbon Neutral lodge" 
+                    placeholder="e.g. Fair Trade Tourism certified" 
                   />
                 </div>
 
               </div>
+
+              <div className="space-y-1.5">
+                <label className="text-[11px] text-gray-500 font-bold uppercase tracking-wider block">Payment & Voucher Settlement Notes</label>
+                <input 
+                  type="text" 
+                  value={rForm.paymentNotes || ''} 
+                  onChange={e => setRForm({ ...rForm, paymentNotes: e.target.value })}
+                  className="w-full h-11 px-4 rounded-xl border border-gray-200 text-xs font-medium text-gray-800 focus:border-[#D4AF37] transition"
+                  placeholder="e.g. 50% deposit processed via EFT, balance scheduled 30 days prior to check-in. Voucher #V-2026-99" 
+                />
+              </div>
+
+              {/* Ambiguity notice */}
+              {((rForm.depositAmount && rForm.depositAmount > 0 && rForm.pay === 'Unpaid') || rForm.pay === 'Fully Paid') && (
+                <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-800 flex items-center gap-2">
+                  <AlertCircle size={15} className="text-amber-600 shrink-0" />
+                  <span>
+                    <strong>Settlement Flag:</strong> {rForm.pay === 'Fully Paid' 
+                      ? 'This reservation uses legacy status "Fully Paid". You can migrate it to "Paid" for updated reporting.' 
+                      : 'A deposit amount is entered, but status is currently marked as "Unpaid". Consider updating to "Deposit Paid".'}
+                  </span>
+                </div>
+              )}
             </div>
 
             {/* GROUP 4: Emergency Contacts & Cancellation Rules */}
@@ -994,6 +1200,26 @@ export const RoomingView: React.FC<RoomingViewProps> = ({
               />
             </div>
 
+            {/* GROUP 6: Supporting Documents & Hotel Attachments */}
+            <div className="bg-white rounded-[20px] p-6 border border-gray-100 shadow-sm space-y-4">
+              <AttachmentManager
+                attachments={rForm.attachments || []}
+                onAddAttachment={(item) => setRForm(prev => ({
+                  ...prev,
+                  attachments: [...(prev.attachments || []), item]
+                }))}
+                onRemoveAttachment={(id) => setRForm(prev => ({
+                  ...prev,
+                  attachments: (prev.attachments || []).filter(a => a.id !== id)
+                }))}
+                recordType="hotel"
+                recordId={rForm.id || Date.now()}
+                bookingRef={state.ref}
+                title="Hotel Confirmation Documents & Vouchers"
+                description="Upload booking vouchers, pro-forma invoices, floor plans, or rate agreements (PDF, JPEG, PNG, WebP up to 15MB)."
+              />
+            </div>
+
           </div>
 
           {/* Sticky footer */}
@@ -1063,10 +1289,31 @@ export const RoomingView: React.FC<RoomingViewProps> = ({
                       <Hotel size={20} />
                     </div>
                     <div>
-                      <div className="flex items-center gap-2">
+                      <div className="flex flex-wrap items-center gap-2">
                         <span className="text-[10px] bg-[#1A3326] text-white px-2.5 py-0.5 rounded font-bold uppercase tracking-wider">
                           DMC CONTRACTED PROPOSAL
                         </span>
+                        {/* Settlement Badge */}
+                        <span className={`text-[10px] px-2.5 py-0.5 rounded font-bold uppercase tracking-wider border ${
+                          r.pay === 'Paid'
+                            ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
+                            : r.pay === 'Deposit Paid'
+                              ? 'bg-blue-50 text-blue-800 border-blue-200'
+                              : r.pay === 'Negotiation / Pending Confirmation'
+                                ? 'bg-purple-50 text-purple-800 border-purple-200'
+                                : r.pay === 'Fully Paid'
+                                  ? 'bg-amber-50 text-amber-900 border-amber-300'
+                                  : 'bg-amber-50 text-amber-800 border-amber-200'
+                        }`}>
+                          ● {r.pay || 'Unpaid'}
+                          {r.depositAmount ? ` (Dep: R${r.depositAmount.toLocaleString()})` : ''}
+                          {r.balanceDue ? ` • Bal: R${r.balanceDue.toLocaleString()}` : ''}
+                        </span>
+                        {r.attachments && r.attachments.length > 0 && (
+                          <span className="text-[10px] bg-slate-100 text-slate-700 px-2 py-0.5 rounded-full font-bold flex items-center gap-1 border border-slate-200">
+                            📎 {r.attachments.length} {r.attachments.length === 1 ? 'doc' : 'docs'}
+                          </span>
+                        )}
                         {r.sustainabilityRating && (
                           <span className="text-[10px] bg-emerald-50 text-emerald-700 px-2.5 py-0.5 rounded border border-emerald-100 font-semibold flex items-center gap-1">
                             <Sparkles size={10} /> Eco Certified

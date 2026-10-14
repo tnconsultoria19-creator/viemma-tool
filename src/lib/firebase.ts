@@ -1,5 +1,14 @@
 import { initializeApp, getApps, FirebaseApp } from 'firebase/app';
-import { getAuth, Auth, signInAnonymously } from 'firebase/auth';
+import { 
+  getAuth, 
+  Auth, 
+  User, 
+  signInAnonymously, 
+  signInWithPopup, 
+  GoogleAuthProvider, 
+  signOut,
+  onAuthStateChanged 
+} from 'firebase/auth';
 import { getFirestore, Firestore } from 'firebase/firestore';
 import appletConfig from '../../firebase-applet-config.json';
 
@@ -57,11 +66,7 @@ if (hasRealConfig) {
       }
       authInstance = getAuth(app);
       isFirestoreAvailable = true;
-      // Auto-authenticate internal staff session
-      signInAnonymously(authInstance).catch(e => {
-        console.warn("Owner anonymous auth notice:", e);
-      });
-      console.info("⚡ Viemma Firebase Live Cloud (Spark Plan) initialized successfully with Project ID:", rawProjectId);
+      console.info("⚡ Viemma Firebase Live Cloud initialized with Project ID:", rawProjectId);
     }
   } catch (err) {
     console.info("Firestore initialization fallback to local storage mode:", err);
@@ -76,6 +81,53 @@ export const appFirebase = app;
 export const db = dbInstance;
 export const auth = authInstance;
 export const isCloudConnected = isFirestoreAvailable;
+
+/**
+ * Check whether a user is genuine authorized Viemma staff
+ * Authentication alone does NOT grant staff permissions; anonymous accounts are never staff.
+ */
+export function isStaffUser(user: User | null | undefined): boolean {
+  if (!user || user.isAnonymous) return false;
+  const email = (user.email || '').toLowerCase().trim();
+  if (email === 'olisbel@gmail.com') return true;
+  if (email.endsWith('@viemmatours.com') || email.endsWith('@viemma.co.za')) return true;
+  return false;
+}
+
+/**
+ * Sign in as staff using Google OAuth popup
+ */
+export async function signInStaffWithGoogle(): Promise<User> {
+  if (!authInstance) {
+    throw new Error('Firebase Auth is not available.');
+  }
+  const provider = new GoogleAuthProvider();
+  provider.setCustomParameters({ prompt: 'select_account' });
+  const credential = await signInWithPopup(authInstance, provider);
+  return credential.user;
+}
+
+/**
+ * Sign out current user
+ */
+export async function signOutStaff(): Promise<void> {
+  if (authInstance) {
+    await signOut(authInstance);
+  }
+}
+
+/**
+ * Subscribe to Auth State changes with staff status
+ */
+export function subscribeToStaffAuth(callback: (user: User | null, isStaff: boolean) => void): () => void {
+  if (!authInstance) {
+    callback(null, false);
+    return () => {};
+  }
+  return onAuthStateChanged(authInstance, (user) => {
+    callback(user, isStaffUser(user));
+  });
+}
 
 export enum OperationType {
   CREATE = 'create',

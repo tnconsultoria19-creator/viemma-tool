@@ -227,7 +227,7 @@ export const ExperienceLibraryView: React.FC<ExperienceLibraryViewProps> = ({
     setAiStep('Polishing stationery and opening connection...');
 
     const steps = [
-      'Sending details to Gemini 3.5 Flash...',
+      'Sending details to Gemini...',
       'Fusing historical facts and sensory atmospheres...',
       'Polishing five-star prose for multi-generational guests...',
       'Structuring descriptions...'

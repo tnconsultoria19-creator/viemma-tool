@@ -62,6 +62,42 @@
 
         /* Login Input Focus */
         .auth-input:focus, .custom-focus:focus { border-color: #D4AF37 !important; box-shadow: 0 0 0 3px rgba(212, 175, 55, 0.2) !important; outline: none !important; }
+
+        @media print {
+            @page {
+                size: A4 portrait;
+                margin: 10mm;
+            }
+            body {
+                background: white !important;
+                color: black !important;
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+            }
+            nav, header, footer, .print\:hidden, button:not(.print\:show) {
+                display: none !important;
+            }
+            #root {
+                margin: 0 !important;
+                padding: 0 !important;
+            }
+            .page-break {
+                page-break-before: always;
+            }
+            table {
+                page-break-inside: auto;
+            }
+            tr {
+                page-break-inside: avoid;
+                page-break-after: auto;
+            }
+            thead {
+                display: table-header-group;
+            }
+            tfoot {
+                display: table-footer-group;
+            }
+        }
     </style>
     <!-- NATIVE JSPDF ENGINE -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>

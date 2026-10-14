@@ -1,6 +1,13 @@
 import React, { useState } from 'react';
-import { AppState, Transfer, Waypoint } from '../types';
+import { AppState, Transfer, Waypoint, AttachmentItem } from '../types';
 import { DB_DEFAULT } from '../dbDefaults';
+import { AttachmentManager } from './AttachmentManager';
+import { DriverPickupBoard } from './DriverPickupBoard';
+import { 
+  checkDriverOperationalConflicts, 
+  evaluateDriverPermit, 
+  DriverConflict 
+} from '../utils/driverConflictDetector';
 import { 
   Car, 
   Plus, 
@@ -15,7 +22,10 @@ import {
   Clock, 
   Phone,
   ArrowRight,
-  AlertCircle
+  AlertCircle,
+  Shield,
+  FileText,
+  X
 } from 'lucide-react';
 
 interface TransfersViewProps {
@@ -36,6 +46,9 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
   const [editingTransferId, setEditingTransferId] = useState<number | null>(null);
   const [tForm, setTForm] = useState<Partial<Transfer>>({});
   const [waypointsList, setWaypointsList] = useState<Waypoint[]>([]);
+  const [showPickupPlacard, setShowPickupPlacard] = useState<boolean>(false);
+  const [transferValidationError, setTransferValidationError] = useState<string | null>(null);
+  const [waypointValidationError, setWaypointValidationError] = useState<string | null>(null);
 
   // Waypoint sub-form
   const [waypointLoc, setWaypointLoc] = useState('');
@@ -80,8 +93,9 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
   };
 
   const handleSaveTransfer = () => {
-    if (!tForm.from || !tForm.to) {
-      alert('Please fill out Pick-up Location and Drop-off Location.');
+    setTransferValidationError(null);
+    if (!tForm.from?.trim() || !tForm.to?.trim()) {
+      setTransferValidationError('Please fill out Pick-up Location and Drop-off Location.');
       return;
     }
 
@@ -112,7 +126,8 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
       tolls: Number(tForm.tolls) || 0,
       parking: Number(tForm.parking) || 0,
       notes: tForm.notes || '',
-      waypoints: waypointsList
+      waypoints: waypointsList,
+      attachments: tForm.attachments || []
     };
 
     if (editingTransferId === -1) {
@@ -123,11 +138,13 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
     setEditingTransferId(null);
     setTForm({});
     setWaypointsList([]);
+    setTransferValidationError(null);
   };
 
   const handleAddWaypoint = () => {
-    if (!waypointLoc) {
-      alert('Waypoint location is required.');
+    setWaypointValidationError(null);
+    if (!waypointLoc.trim()) {
+      setWaypointValidationError('Waypoint location is required.');
       return;
     }
     const newW: Waypoint = {
@@ -191,14 +208,34 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
           </p>
         </div>
         {editingTransferId === null && (
-          <button 
-            onClick={handleOpenAddForm} 
-            className="flex items-center gap-2 px-5 py-3 rounded-xl bg-[#1A3326] text-white hover:bg-[#12241b] text-xs font-bold shadow-md hover:translate-y-[-1px] transition-all duration-150 shrink-0"
-          >
-            <Plus size={14} /> Schedule Ground Transfer
-          </button>
+          <div className="flex items-center gap-2.5 shrink-0">
+            <button 
+              onClick={() => setShowPickupPlacard(true)} 
+              className="flex items-center gap-2 px-4 py-3 rounded-xl border border-amber-300 bg-amber-50 hover:bg-amber-100 text-[#1A3326] text-xs font-bold shadow-xs hover:translate-y-[-1px] transition-all duration-150"
+            >
+              <Users size={14} className="text-amber-700" /> Airport Welcome Placard
+            </button>
+            <button 
+              onClick={handleOpenAddForm} 
+              className="flex items-center gap-2 px-5 py-3 rounded-xl bg-[#1A3326] text-white hover:bg-[#12241b] text-xs font-bold shadow-md hover:translate-y-[-1px] transition-all duration-150"
+            >
+              <Plus size={14} /> Schedule Ground Transfer
+            </button>
+          </div>
         )}
       </div>
+
+      {/* AIRPORT CHAUFFEUR BOARD OVERLAY */}
+      {showPickupPlacard && (
+        <div className="fixed inset-0 z-[120] bg-black/70 backdrop-blur-xs flex flex-col overflow-y-auto">
+          <div className="p-4 md:p-8 max-w-5xl mx-auto w-full my-auto">
+            <DriverPickupBoard 
+              state={state} 
+              onBack={() => setShowPickupPlacard(false)} 
+            />
+          </div>
+        </div>
+      )}
 
       {/* FORM CONFIGURATION PANEL */}
       {editingTransferId !== null && (
@@ -432,9 +469,57 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
 
             {/* GROUP 4: Dispatch details */}
             <div className="bg-white rounded-[20px] p-6 border border-gray-100 shadow-sm space-y-6">
-              <h3 className="text-xs uppercase font-bold text-[#1A3326] tracking-wider border-b border-gray-100 pb-2 flex items-center gap-2">
-                <Users size={14} className="text-[#D4AF37]" /> Chauffeur, Driver & Fleet Vehicles
-              </h3>
+              <div className="flex items-center justify-between border-b border-gray-100 pb-2">
+                <h3 className="text-xs uppercase font-bold text-[#1A3326] tracking-wider flex items-center gap-2">
+                  <Users size={14} className="text-[#D4AF37]" /> Chauffeur, Driver & Fleet Vehicles
+                </h3>
+                {tForm.driver && (() => {
+                  const matchedDrv = (state.drivers || []).find(d => d.name === tForm.driver);
+                  const permit = evaluateDriverPermit(matchedDrv?.prdpExpiryDate);
+                  return (
+                    <span className={`text-[10px] px-2.5 py-0.5 rounded-full border ${permit.badgeClass}`}>
+                      {permit.label}
+                    </span>
+                  );
+                })()}
+              </div>
+
+              {/* Driver and Vehicle Conflicts Alert */}
+              {(() => {
+                const report = checkDriverOperationalConflicts(state, {
+                  targetId: tForm.id,
+                  driverName: tForm.driver,
+                  vehicleName: tForm.vehicle,
+                  date: tForm.date,
+                  time: tForm.time,
+                  duration: tForm.dur
+                });
+                if (report.conflicts.length === 0) return null;
+                return (
+                  <div className="space-y-2">
+                    {report.conflicts.map(c => (
+                      <div
+                        key={c.id}
+                        className={`p-3.5 rounded-2xl border text-xs flex items-start gap-2.5 ${
+                          c.severity === 'critical'
+                            ? 'bg-rose-50 border-rose-200 text-rose-900'
+                            : c.severity === 'warning'
+                              ? 'bg-amber-50 border-amber-200 text-amber-900'
+                              : 'bg-blue-50 border-blue-200 text-blue-900'
+                        }`}
+                      >
+                        <AlertTriangle size={16} className={`shrink-0 mt-0.5 ${
+                          c.severity === 'critical' ? 'text-rose-600' : c.severity === 'warning' ? 'text-amber-600' : 'text-blue-600'
+                        }`} />
+                        <div>
+                          <strong className="block font-bold">{c.title}</strong>
+                          <span className="text-[11px] leading-relaxed opacity-90">{c.description}</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                );
+              })()}
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 
@@ -446,7 +531,7 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
                     className="w-full h-11 px-4 rounded-xl border border-gray-200 text-xs font-semibold text-gray-700 bg-white hover:border-[#D4AF37] focus:border-[#D4AF37] transition duration-200"
                   >
                     <option value="">Choose Driver...</option>
-                    {DB_DEFAULT.drivers.map(d => (
+                    {(state.drivers && state.drivers.length > 0 ? state.drivers : DB_DEFAULT.drivers).map(d => (
                       <option key={d.name} value={d.name}>{d.name} — {d.phone}</option>
                     ))}
                   </select>
@@ -645,22 +730,49 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
               />
             </div>
 
+            {/* GROUP 9: Supporting Documents & Waybills */}
+            <div className="bg-white rounded-[20px] p-6 border border-gray-100 shadow-sm space-y-4">
+              <AttachmentManager
+                attachments={tForm.attachments || []}
+                onAddAttachment={(item) => setTForm(prev => ({
+                  ...prev,
+                  attachments: [...(prev.attachments || []), item]
+                }))}
+                onRemoveAttachment={(id) => setTForm(prev => ({
+                  ...prev,
+                  attachments: (prev.attachments || []).filter(a => a.id !== id)
+                }))}
+                recordType="transfer"
+                recordId={tForm.id || Date.now()}
+                bookingRef={state.ref}
+                title="Route Waybills, Chauffeur Vouchers & Transfer Briefs"
+                description="Upload transfer dispatch sheets, parking vouchers, toll passes, or vehicle permits (PDF, JPEG, PNG, WebP up to 15MB)."
+              />
+            </div>
+
           </div>
 
           {/* Sticky footer for action buttons */}
-          <div className="p-6 bg-gray-50 border-t border-gray-100 flex justify-end gap-3.5">
-            <button 
-              onClick={() => setEditingTransferId(null)} 
-              className="px-6 py-3 rounded-xl border border-gray-200 bg-white hover:bg-gray-50 text-xs font-bold text-gray-700 shadow-sm transition"
-            >
-              Cancel
-            </button>
-            <button 
-              onClick={handleSaveTransfer} 
-              className="px-6 py-3 rounded-xl bg-[#1A3326] text-white hover:bg-[#12241b] text-xs font-extrabold shadow-md hover:translate-y-[-1px] transition duration-150"
-            >
-              Save Dispatch Rules
-            </button>
+          <div className="p-6 bg-gray-50 border-t border-gray-100 flex flex-col sm:flex-row items-center justify-between gap-3">
+            {transferValidationError ? (
+              <p className="text-xs text-rose-600 font-bold flex items-center gap-1.5">
+                <AlertCircle size={15} /> {transferValidationError}
+              </p>
+            ) : <div />}
+            <div className="flex items-center gap-3 ml-auto">
+              <button 
+                onClick={() => setEditingTransferId(null)} 
+                className="px-6 py-3 rounded-xl border border-gray-200 bg-white hover:bg-gray-50 text-xs font-bold text-gray-700 shadow-sm transition"
+              >
+                Cancel
+              </button>
+              <button 
+                onClick={handleSaveTransfer} 
+                className="px-6 py-3 rounded-xl bg-[#1A3326] text-white hover:bg-[#12241b] text-xs font-extrabold shadow-md hover:translate-y-[-1px] transition duration-150"
+              >
+                Save Dispatch Rules
+              </button>
+            </div>
           </div>
 
         </div>
@@ -705,7 +817,44 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
                       <Car size={18} />
                     </div>
                     <div>
-                      <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest block">{t.type} Logistics</span>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{t.type} Logistics</span>
+                        {t.driver && (() => {
+                          const matchedDrv = (state.drivers || []).find(d => d.name === t.driver);
+                          const permit = evaluateDriverPermit(matchedDrv?.prdpExpiryDate);
+                          return (
+                            <span className={`text-[9px] px-2 py-0.5 rounded-full border ${permit.badgeClass}`}>
+                              {permit.label}
+                            </span>
+                          );
+                        })()}
+                        {(() => {
+                          const report = checkDriverOperationalConflicts(state, {
+                            targetId: t.id,
+                            driverName: t.driver,
+                            vehicleName: t.vehicle,
+                            date: t.date,
+                            time: t.time,
+                            duration: t.dur
+                          });
+                          if (!report.hasCritical && !report.hasWarnings) return null;
+                          return (
+                            <span className={`text-[9px] px-2 py-0.5 rounded-full border font-bold flex items-center gap-1 ${
+                              report.hasCritical 
+                                ? 'bg-rose-50 text-rose-800 border-rose-200' 
+                                : 'bg-amber-50 text-amber-800 border-amber-200'
+                            }`}>
+                              <AlertTriangle size={10} />
+                              {report.conflicts[0]?.title || 'Conflict detected'}
+                            </span>
+                          );
+                        })()}
+                        {t.attachments && t.attachments.length > 0 && (
+                          <span className="text-[9px] bg-slate-100 text-slate-700 border border-slate-200 px-2 py-0.5 rounded-full font-bold flex items-center gap-1">
+                            📎 {t.attachments.length} {t.attachments.length === 1 ? 'doc' : 'docs'}
+                          </span>
+                        )}
+                      </div>
                       <h3 className="font-bold text-gray-900 text-sm mt-0.5">
                         {t.vehicle} • <span className="font-sans text-xs text-gray-500">Chauffeur: <strong className="text-gray-900 font-semibold">{t.driver || 'Unassigned'}</strong></span>
                       </h3>
@@ -713,6 +862,15 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
                   </div>
 
                   <div className="flex items-center gap-2">
+                    {(t.type === 'Airport Arrival' || t.sign) && (
+                      <button 
+                        onClick={() => setShowPickupPlacard(true)} 
+                        title="Open Airport Welcome Placard"
+                        className="h-9 px-2.5 rounded-xl border border-amber-200 bg-amber-50 text-amber-900 hover:bg-amber-100 flex items-center gap-1.5 transition text-xs font-bold shadow-xs cursor-pointer"
+                      >
+                        <Users size={13} className="text-amber-700" /> Placard
+                      </button>
+                    )}
                     <button 
                       onClick={() => handleEditTransfer(t)} 
                       className="w-9 h-9 rounded-xl border border-gray-200 bg-white text-gray-400 hover:text-gray-900 hover:border-gray-300 flex items-center justify-center transition shadow-sm"

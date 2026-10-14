@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { AppState, ExperienceLibraryItem } from '../types';
 import { ClientView } from './ClientView';
+import { DriverPickupBoard } from './DriverPickupBoard';
 import { 
   generateSecureToken, 
   regenerateShareToken, 
@@ -123,6 +124,7 @@ export const PrintHubView: React.FC<PrintHubViewProps> = ({
   // Local state
   const [copied, setCopied] = useState<string>('');
   const [showPreviewMode, setShowPreviewMode] = useState<boolean>(false);
+  const [showAirportPlacard, setShowAirportPlacard] = useState<boolean>(false);
   const [isPublishing, setIsPublishing] = useState<boolean>(false);
   const [pubStep, setPubStep] = useState<number>(0);
   const [pubLogs, setPubLogs] = useState<string[]>([]);
@@ -834,6 +836,18 @@ export const PrintHubView: React.FC<PrintHubViewProps> = ({
         </div>
       )}
 
+      {/* AIRPORT CHAUFFEUR BOARD OVERLAY */}
+      {showAirportPlacard && (
+        <div className="fixed inset-0 z-[115] bg-black/70 backdrop-blur-xs flex flex-col overflow-y-auto">
+          <div className="p-4 md:p-8 max-w-5xl mx-auto w-full my-auto">
+            <DriverPickupBoard 
+              state={state} 
+              onBack={() => setShowAirportPlacard(false)} 
+            />
+          </div>
+        </div>
+      )}
+
       {/* Main Workspace Header */}
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 pb-6 border-b border-gray-100">
         <div className="space-y-2">
@@ -1155,6 +1169,13 @@ export const PrintHubView: React.FC<PrintHubViewProps> = ({
                     <X size={12} /> Revoke
                   </button>
                   <button 
+                    onClick={() => setShowAirportPlacard(true)}
+                    className="px-3 py-2 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-200 text-xs font-bold transition flex items-center gap-1"
+                    title="Interactive Airport Arrival Chauffeur Board"
+                  >
+                    <Users size={12} /> Placard Board
+                  </button>
+                  <button 
                     onClick={() => generatePDF('job')}
                     className="px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-white text-xs font-bold transition flex items-center gap-1"
                   >
@@ -1166,12 +1187,19 @@ export const PrintHubView: React.FC<PrintHubViewProps> = ({
           </div>
 
           {/* Action grid */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2">
             <button 
               onClick={() => setShowPreviewMode(true)}
               className="flex items-center justify-center gap-2 px-4 py-3.5 rounded-xl bg-[#1A3326] text-white hover:bg-[#12241b] text-xs font-bold shadow-xs transition"
             >
               <Eye size={13} /> Fullscreen Client View
+            </button>
+
+            <button 
+              onClick={() => setShowAirportPlacard(true)}
+              className="flex items-center justify-center gap-2 px-4 py-3.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-[#1A3326] text-xs font-extrabold shadow-xs transition"
+            >
+              <Users size={13} /> Airport Welcome Placard
             </button>
 
             <button 
@@ -1231,13 +1259,13 @@ export const PrintHubView: React.FC<PrintHubViewProps> = ({
             <Mail size={18} className="text-[#D4AF37]" /> Share Handcrafted Experience
           </h3>
 
-          <div className="grid grid-cols-2 sm:grid-cols-5 gap-3.5">
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-7 gap-3">
             <a 
               href={`mailto:${state.client.email || ''}?subject=${encodeURIComponent(`Exclusive: Your Bespoke Handcrafted Africa Expedition • ${state.ref || ''}`)}&body=${encodeURIComponent(`Hi ${state.client.name},\n\nWe have designed a bespoke luxury African holiday itinerary tailored specifically for you. Click below to view the interactive day-by-day experience inside your private portal:\n\n${publishing.publicUrl}`)}`}
               className="flex flex-col items-center justify-center p-4 rounded-2xl bg-slate-50 hover:bg-slate-100 border border-slate-100 hover:border-slate-200 text-gray-700 text-center space-y-2 transition"
             >
               <Mail className="text-emerald-700" size={18} />
-              <span className="text-xs font-bold">Email Invitation</span>
+              <span className="text-xs font-bold">Email Invite</span>
             </a>
 
             <a 
@@ -1247,7 +1275,7 @@ export const PrintHubView: React.FC<PrintHubViewProps> = ({
               className="flex flex-col items-center justify-center p-4 rounded-2xl bg-slate-50 hover:bg-slate-100 border border-slate-100 hover:border-slate-200 text-gray-700 text-center space-y-2 transition"
             >
               <MessageSquare className="text-emerald-600" size={18} />
-              <span className="text-xs font-bold">WhatsApp Portal</span>
+              <span className="text-xs font-bold">WhatsApp</span>
             </a>
 
             <button 
@@ -1255,7 +1283,7 @@ export const PrintHubView: React.FC<PrintHubViewProps> = ({
               className="flex flex-col items-center justify-center p-4 rounded-2xl bg-slate-50 hover:bg-slate-100 border border-slate-100 hover:border-slate-200 text-gray-700 text-center space-y-2 transition"
             >
               <Download className="text-blue-600" size={18} />
-              <span className="text-xs font-bold">Download PDF Client</span>
+              <span className="text-xs font-bold">Client PDF</span>
             </button>
 
             <button 
@@ -1263,7 +1291,23 @@ export const PrintHubView: React.FC<PrintHubViewProps> = ({
               className="flex flex-col items-center justify-center p-4 rounded-2xl bg-slate-50 hover:bg-slate-100 border border-slate-100 hover:border-slate-200 text-gray-700 text-center space-y-2 transition"
             >
               <FileText className="text-rose-600" size={18} />
-              <span className="text-xs font-bold">Download Costing PDF</span>
+              <span className="text-xs font-bold">Costing PDF</span>
+            </button>
+
+            <button 
+              onClick={() => setShowAirportPlacard(true)}
+              className="flex flex-col items-center justify-center p-4 rounded-2xl bg-amber-50/60 hover:bg-amber-100/70 border border-amber-200 text-amber-950 text-center space-y-2 transition"
+            >
+              <Users className="text-amber-700" size={18} />
+              <span className="text-xs font-bold">Placard Board</span>
+            </button>
+
+            <button 
+              onClick={() => generatePDF('airport')}
+              className="flex flex-col items-center justify-center p-4 rounded-2xl bg-slate-50 hover:bg-slate-100 border border-slate-100 hover:border-slate-200 text-gray-700 text-center space-y-2 transition"
+            >
+              <Download className="text-emerald-700" size={18} />
+              <span className="text-xs font-bold">Placard PDF</span>
             </button>
 
             <button 
@@ -1271,7 +1315,7 @@ export const PrintHubView: React.FC<PrintHubViewProps> = ({
               className="flex flex-col items-center justify-center p-4 rounded-2xl bg-slate-50 hover:bg-slate-100 border border-slate-100 hover:border-slate-200 text-gray-700 text-center space-y-2 transition"
             >
               <Printer className="text-gray-600" size={18} />
-              <span className="text-xs font-bold">Print Documents</span>
+              <span className="text-xs font-bold">Print Page</span>
             </button>
           </div>
         </div>

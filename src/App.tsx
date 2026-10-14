@@ -33,6 +33,7 @@ import { DriversView } from './components/DriversView';
 import { DailyTimelinesView } from './components/DailyTimelinesView';
 import { DriverItineraryView } from './components/DriverItineraryView';
 import { AIItineraryImportModal } from './components/AIItineraryImportModal';
+import { generateNextTripReference } from './utils/tripReference';
 import { 
   Home, 
   TrendingUp, 
@@ -783,7 +784,7 @@ export default function App() {
 
   const handleDeleteTrip = (tripId: string) => {
     if (tripsList.length <= 1) {
-      alert("Cannot delete the only trip in the workspace.");
+      console.warn("Cannot delete the only trip in the workspace.");
       return;
     }
     const updated = tripsList.filter(t => t.ref !== tripId);
@@ -797,7 +798,7 @@ export default function App() {
 
   const handleDuplicateTrip = (tripId: string) => {
     const src = tripsList.find(t => t.ref === tripId) || state;
-    const newRef = `VT-2026-${Math.floor(1000 + Math.random() * 9000)}`;
+    const newRef = generateNextTripReference([state, ...tripsList]);
     const cloned: AppState = {
       ...JSON.parse(JSON.stringify(src)),
       ref: newRef,
@@ -849,17 +850,95 @@ export default function App() {
     handleUpdateState({ guests: list });
   };
 
+  // Safe removal: unassigns traveller from flights, transfers, rooms, activities & promotes next lead if needed
   const handleRemoveGuest = (id: number) => {
-    const list = state.guests.filter(g => g.id !== id);
-    handleUpdateState({ guests: list });
+    const target = state.guests.find(g => g.id === id);
+    const remaining = state.guests.filter(g => g.id !== id);
+
+    // If the removed guest was the lead, promote first remaining guest as lead
+    let updatedGuests = remaining;
+    if (target?.isLead && remaining.length > 0) {
+      updatedGuests = remaining.map((g, idx) => ({
+        ...g,
+        isLead: idx === 0
+      }));
+    }
+
+    // Safely remove the guest ID from flights
+    const updatedFlights = state.flights.map(f => ({
+      ...f,
+      paxIds: (f.paxIds || []).filter(pid => pid !== id)
+    }));
+
+    // Safely remove the guest ID from transfers and update paxCount
+    const updatedTransfers = state.transfers.map(t => {
+      const remainingPax = (t.paxIds || []).filter(pid => pid !== id);
+      return {
+        ...t,
+        paxIds: remainingPax,
+        paxCount: remainingPax.length > 0 ? remainingPax.length : Math.max(1, t.paxCount - 1)
+      };
+    });
+
+    // Safely remove the guest ID from hotel rooms and room allocations
+    const updatedRooms = state.rooms.map(r => ({
+      ...r,
+      guestIds: (r.guestIds || []).filter(gid => gid !== id),
+      allocatedRooms: r.allocatedRooms?.map(ar => ({
+        ...ar,
+        guestIds: (ar.guestIds || []).filter(gid => gid !== id)
+      }))
+    }));
+
+    // Safely remove the guest ID from activities
+    const updatedActivities = state.activities.map(a => ({
+      ...a,
+      paxIds: (a.paxIds || []).filter(pid => pid !== id)
+    }));
+
+    // If lead was removed and a new lead promoted, update client contact details smoothly
+    let updatedClient = state.client;
+    if (target?.isLead && updatedGuests.length > 0) {
+      const newLead = updatedGuests[0];
+      updatedClient = {
+        ...state.client,
+        name: `${newLead.first} ${newLead.last}`.trim() || state.client.name,
+        email: newLead.individualEmail || state.client.email,
+        phone: newLead.individualPhone || state.client.phone,
+        country: newLead.nationality || newLead.country || state.client.country
+      };
+    }
+
+    handleUpdateState({
+      guests: updatedGuests,
+      flights: updatedFlights,
+      transfers: updatedTransfers,
+      rooms: updatedRooms,
+      activities: updatedActivities,
+      client: updatedClient
+    });
   };
 
+  // Safe lead assignment: preserves all other travellers' data & assignments
   const handleSetLeadGuest = (id: number) => {
+    const target = state.guests.find(g => g.id === id);
+    if (!target) return;
     const list = state.guests.map(g => ({
       ...g,
       isLead: g.id === id
     }));
-    handleUpdateState({ guests: list });
+    // Synchronize client record with new lead contact without overwriting other members' individual data
+    const updatedClient = {
+      ...state.client,
+      name: `${target.first} ${target.last}`.trim() || state.client.name,
+      email: target.individualEmail || state.client.email,
+      phone: target.individualPhone || state.client.phone,
+      country: target.nationality || target.country || state.client.country
+    };
+    handleUpdateState({
+      guests: list,
+      client: updatedClient
+    });
   };
 
   const handleUpdateGuest = (id: number, updates: Partial<Guest>) => {
@@ -951,11 +1030,39 @@ export default function App() {
   };
 
   const handleNewBooking = () => {
-    const newRef = `VT-2026-${Math.floor(1000 + Math.random() * 9000)}`;
+    const newRef = generateNextTripReference([state, ...tripsList]);
+    const leadGuestId = Date.now();
     const newEmptyTrip: AppState = {
       ...INITIAL_STATE,
       ref: newRef,
-      title: `New Itinerary (${newRef})`,
+      title: `Itinerary ${newRef}`,
+      status: 'draft',
+      client: {
+        ...INITIAL_STATE.client,
+        name: 'New Client Party',
+        email: '',
+        phone: '',
+        country: '🇿🇦 South Africa',
+        startDate: new Date().toISOString().split('T')[0],
+        endDate: new Date(Date.now() + 5 * 86400000).toISOString().split('T')[0]
+      },
+      guests: [
+        {
+          id: leadGuestId,
+          first: 'Primary',
+          last: 'Contact',
+          age: 'Adult',
+          isLead: true,
+          country: '🇿🇦 South Africa',
+          nationality: '🇿🇦 South Africa',
+          relationshipToLead: 'Primary Contact',
+          notes: 'Lead group contact and primary itinerary representative.'
+        }
+      ],
+      flights: [],
+      transfers: [],
+      rooms: [],
+      activities: [],
       publishing: {
         ...INITIAL_STATE.publishing,
         tripId: newRef,
@@ -963,8 +1070,7 @@ export default function App() {
         lastUpdated: new Date().toISOString()
       }
     };
-    updateFullState(newEmptyTrip);
-    setActiveTab('guests');
+    handleCreateNewTrip(newEmptyTrip);
   };
 
   // 1. ISOLATED PUBLIC SHARE VIEW (Zero master access, strict projection rendering)
@@ -980,6 +1086,18 @@ export default function App() {
       );
     }
 
+    const handleExitShareToWorkspace = () => {
+      try {
+        const url = new URL(window.location.href);
+        url.searchParams.delete('share');
+        url.searchParams.delete('token');
+        window.history.pushState({}, '', url.pathname.replace(/\/share\/(client|agent|ops)\/[^/]+/, '') || '/');
+      } catch (e) {
+        // ignore
+      }
+      window.location.href = window.location.origin;
+    };
+
     if (shareDocData === null || shareDocData.active === false) {
       return (
         <div className="min-h-screen bg-[#1A3326] flex items-center justify-center p-6 text-white text-center font-sans">
@@ -994,6 +1112,14 @@ export default function App() {
             <p className="text-[11px] text-[#D4AF37] font-medium">
               Please contact your Viemma Private Travel Designer for a new access link.
             </p>
+            <div className="pt-2">
+              <button
+                onClick={handleExitShareToWorkspace}
+                className="px-4 py-2 rounded-xl bg-white/15 hover:bg-white/25 text-white text-xs font-bold transition cursor-pointer"
+              >
+                ← Return to Main Workspace
+              </button>
+            </div>
           </div>
         </div>
       );
@@ -1002,7 +1128,18 @@ export default function App() {
     if (publicShare.role === 'client') {
       return (
         <div className="min-h-screen relative flex flex-col font-sans bg-[#FDFBF7]">
-          <ClientView state={clientDocToAppState(shareDocData)} />
+          <div className="bg-[#1A3326] text-white px-4 py-2 flex items-center justify-between text-xs z-50">
+            <span className="font-semibold text-emerald-200 flex items-center gap-1.5">
+              <span>●</span> Shared Client Presentation View
+            </span>
+            <button
+              onClick={handleExitShareToWorkspace}
+              className="px-3 py-1 rounded-lg bg-white/10 hover:bg-white/20 text-white text-xs font-bold transition cursor-pointer"
+            >
+              ← Back to Main Workspace
+            </button>
+          </div>
+          <ClientView state={clientDocToAppState(shareDocData)} onBackToWorkspace={handleExitShareToWorkspace} />
         </div>
       );
     }
@@ -1010,7 +1147,15 @@ export default function App() {
     if (publicShare.role === 'agent') {
       return (
         <div className="min-h-screen relative flex flex-col font-sans bg-slate-950 p-4 md:p-8">
-          <AgentPortalView state={agentDocToAppState(shareDocData)} />
+          <div className="max-w-[1400px] mx-auto w-full mb-3 flex justify-end">
+            <button
+              onClick={handleExitShareToWorkspace}
+              className="px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-white text-xs font-bold transition cursor-pointer"
+            >
+              ← Back to Main Workspace
+            </button>
+          </div>
+          <AgentPortalView state={agentDocToAppState(shareDocData)} onBackToAdmin={handleExitShareToWorkspace} />
         </div>
       );
     }
@@ -1018,7 +1163,15 @@ export default function App() {
     if (publicShare.role === 'ops') {
       return (
         <div className="min-h-screen relative flex flex-col font-sans bg-slate-100 p-4 md:p-8">
-          <OperatorGroundSheetView state={opsDocToAppState(shareDocData)} />
+          <div className="max-w-[1400px] mx-auto w-full mb-3 flex justify-end">
+            <button
+              onClick={handleExitShareToWorkspace}
+              className="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-900 text-white text-xs font-bold transition cursor-pointer"
+            >
+              ← Back to Main Workspace
+            </button>
+          </div>
+          <OperatorGroundSheetView state={opsDocToAppState(shareDocData)} onBackToAdmin={handleExitShareToWorkspace} />
         </div>
       );
     }
@@ -1054,7 +1207,7 @@ export default function App() {
       <JourneyPlannerView 
         onReturnHome={() => setAppMode('client-portal')}
         onSubmit={(data) => {
-          const newRef = `VT-2026-${Math.floor(1000 + Math.random() * 9000)}`;
+          const newRef = generateNextTripReference([state, ...tripsList]);
           const destName = data.destination || 'Southern Africa';
           const newTrip: AppState = {
             ...INITIAL_STATE,
@@ -1501,6 +1654,7 @@ export default function App() {
                   onAddFlight={handleAddFlight}
                   onRemoveFlight={handleRemoveFlight}
                   onUpdateFlight={handleUpdateFlight}
+                  onOpenAIImport={() => setIsAIImportOpen(true)}
                 />
               )}
 
@@ -1511,6 +1665,7 @@ export default function App() {
                   onAddTransfer={handleAddTransfer}
                   onRemoveTransfer={handleRemoveTransfer}
                   onUpdateTransfer={handleUpdateTransfer}
+                  onOpenAIImport={() => setIsAIImportOpen(true)}
                 />
               )}
 
@@ -1521,6 +1676,7 @@ export default function App() {
                   onAddRoom={handleAddRoom}
                   onRemoveRoom={handleRemoveRoom}
                   onUpdateRoom={handleUpdateRoom}
+                  onOpenAIImport={() => setIsAIImportOpen(true)}
                 />
               )}
 
@@ -1531,6 +1687,7 @@ export default function App() {
                   onAddActivity={handleAddActivity}
                   onRemoveActivity={handleRemoveActivity}
                   onUpdateActivity={handleUpdateActivity}
+                  onOpenAIImport={() => setIsAIImportOpen(true)}
                 />
               )}
 
@@ -1569,6 +1726,7 @@ export default function App() {
                 <DriversView 
                   state={state} 
                   onUpdateState={handleUpdateState}
+                  onOpenAIImport={() => setIsAIImportOpen(true)}
                 />
               )}
 
@@ -1583,6 +1741,15 @@ export default function App() {
                 <DriverItineraryView 
                   state={state} 
                   onUpdateState={handleUpdateState}
+                />
+              )}
+
+              {activeTab === 'exporthub' && (
+                <PrintHubView 
+                  state={state} 
+                  onUpdateState={handleUpdateState}
+                  totalCost={totalCost}
+                  netProfit={netProfit}
                 />
               )}
             </div>

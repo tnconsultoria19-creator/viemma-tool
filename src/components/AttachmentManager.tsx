@@ -1,8 +1,9 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { AttachmentItem } from '../types';
 import { 
   uploadAttachment, 
   deleteAttachment, 
+  getAttachmentBlobUrl,
   formatFileSize, 
   validateUploadFile 
 } from '../lib/storageService';
@@ -14,10 +15,8 @@ import {
   Eye, 
   Download, 
   X, 
-  Check, 
   AlertTriangle, 
   Sparkles,
-  ExternalLink,
   Loader2
 } from 'lucide-react';
 
@@ -25,7 +24,7 @@ interface AttachmentManagerProps {
   attachments?: AttachmentItem[];
   onAddAttachment: (item: AttachmentItem) => void;
   onRemoveAttachment: (id: string) => void;
-  recordType: 'booking' | 'guest' | 'hotel' | 'flight';
+  recordType: 'booking' | 'guest' | 'hotel' | 'flight' | 'transfer' | 'activity' | 'driver';
   recordId: string | number;
   bookingRef: string;
   title?: string;
@@ -40,25 +39,69 @@ export const AttachmentManager: React.FC<AttachmentManagerProps> = ({
   recordType,
   recordId,
   bookingRef,
-  title = "Supporting Documents & Image Attachments",
-  description = "Upload client passport copies, hotel vouchers, flight e-tickets, or quotations (PDF, JPEG, PNG, WebP up to 15MB).",
+  title = "Supporting Documents & File Attachments",
+  description = "Upload vouchers, flight e-tickets, driver PrDP permits, or passport copies (PDF, JPEG, PNG, WebP up to 15MB).",
   onExtractToAI
 }) => {
   const [isDragging, setIsDragging] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  
+  // Preview modal state
   const [previewAttachment, setPreviewAttachment] = useState<AttachmentItem | null>(null);
+  const [previewBlobUrl, setPreviewBlobUrl] = useState<string | null>(null);
+  const [isPreviewLoading, setIsPreviewLoading] = useState(false);
+  const [downloadingId, setDownloadingId] = useState<string | null>(null);
+
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Load preview blob URL when previewAttachment changes
+  useEffect(() => {
+    let active = true;
+    let createdUrl: string | null = null;
+
+    if (previewAttachment) {
+      setIsPreviewLoading(true);
+      getAttachmentBlobUrl(previewAttachment)
+        .then(url => {
+          if (active) {
+            createdUrl = url;
+            setPreviewBlobUrl(url);
+            setIsPreviewLoading(false);
+          }
+        })
+        .catch(err => {
+          if (active) {
+            console.error('Error loading preview blob:', err);
+            setErrorMessage(`Failed to load file preview: ${err.message || 'File not found'}`);
+            setIsPreviewLoading(false);
+            setPreviewAttachment(null);
+          }
+        });
+    } else {
+      setPreviewBlobUrl(null);
+      setIsPreviewLoading(false);
+    }
+
+    return () => {
+      active = false;
+      if (createdUrl && createdUrl.startsWith('blob:')) {
+        URL.revokeObjectURL(createdUrl);
+      }
+    };
+  }, [previewAttachment]);
 
   const handleProcessFiles = async (files: FileList | null) => {
     if (!files || files.length === 0) return;
     setErrorMessage(null);
+    setSuccessMessage(null);
 
     const file = files[0];
     const validation = validateUploadFile(file);
     if (!validation.valid) {
-      setErrorMessage(validation.error || 'Invalid file.');
+      setErrorMessage(validation.error || 'Invalid file type or size.');
       return;
     }
 
@@ -76,41 +119,54 @@ export const AttachmentManager: React.FC<AttachmentManagerProps> = ({
 
       onAddAttachment(item);
       setUploadProgress(100);
+      setSuccessMessage(`Document "${file.name}" uploaded successfully.`);
       setTimeout(() => {
         setIsUploading(false);
         setUploadProgress(0);
-      }, 500);
+        setSuccessMessage(null);
+      }, 2500);
     } catch (err: any) {
       console.error('Upload failed:', err);
-      setErrorMessage(err.message || 'File upload failed. Please try again.');
+      // Explicit error visible to user; never show success on failure
+      setErrorMessage(err.message || 'File upload failed. Please verify storage permissions and try again.');
       setIsUploading(false);
       setUploadProgress(0);
     }
   };
 
-  const handleDragOver = (e: React.DragEvent) => {
-    e.preventDefault();
-    setIsDragging(true);
-  };
-
-  const handleDragLeave = () => {
-    setIsDragging(false);
-  };
-
-  const handleDrop = (e: React.DragEvent) => {
-    e.preventDefault();
-    setIsDragging(false);
-    handleProcessFiles(e.dataTransfer.files);
+  const handleDownload = async (att: AttachmentItem) => {
+    setDownloadingId(att.id);
+    try {
+      const blobUrl = await getAttachmentBlobUrl(att);
+      const link = document.createElement('a');
+      link.href = blobUrl;
+      link.download = att.name;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      setTimeout(() => {
+        if (blobUrl.startsWith('blob:')) {
+          URL.revokeObjectURL(blobUrl);
+        }
+      }, 5000);
+    } catch (err: any) {
+      setErrorMessage(err.message || 'Failed to download document.');
+    } finally {
+      setDownloadingId(null);
+    }
   };
 
   const handleDelete = async (att: AttachmentItem) => {
-    if (confirm(`Are you sure you want to remove "${att.name}"?`)) {
+    if (confirm(`Are you sure you want to delete "${att.name}"? This removes the file permanently from storage.`)) {
       try {
         await deleteAttachment(att);
-      } catch (e) {
+      } catch (e: any) {
         console.warn('Error deleting storage file:', e);
       }
       onRemoveAttachment(att.id);
+      if (previewAttachment?.id === att.id) {
+        setPreviewAttachment(null);
+      }
     }
   };
 
@@ -135,15 +191,15 @@ export const AttachmentManager: React.FC<AttachmentManagerProps> = ({
 
       {/* Upload Drag & Drop Zone */}
       <div
-        onDragOver={handleDragOver}
-        onDragLeave={handleDragLeave}
-        onDrop={handleDrop}
-        onClick={() => fileInputRef.current?.click()}
+        onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
+        onDragLeave={() => setIsDragging(false)}
+        onDrop={(e) => { e.preventDefault(); setIsDragging(false); handleProcessFiles(e.dataTransfer.files); }}
+        onClick={() => !isUploading && fileInputRef.current?.click()}
         className={`border-2 border-dashed rounded-2xl p-5 text-center cursor-pointer transition flex flex-col items-center justify-center gap-2 ${
           isDragging
             ? 'border-emerald-600 bg-emerald-50/60'
             : 'border-gray-200 hover:border-gray-300 bg-gray-50/50 hover:bg-gray-50'
-        }`}
+        } ${isUploading ? 'cursor-not-allowed opacity-75' : ''}`}
       >
         <input
           ref={fileInputRef}
@@ -157,7 +213,7 @@ export const AttachmentManager: React.FC<AttachmentManagerProps> = ({
           <div className="w-full max-w-xs space-y-2 py-2">
             <div className="flex items-center justify-center gap-2 text-xs font-bold text-[#1A3326]">
               <Loader2 size={16} className="animate-spin text-[#D4AF37]" />
-              <span>Uploading document... {uploadProgress}%</span>
+              <span>Uploading securely to cloud storage... {uploadProgress}%</span>
             </div>
             <div className="w-full bg-gray-200 h-2 rounded-full overflow-hidden">
               <div 
@@ -183,13 +239,25 @@ export const AttachmentManager: React.FC<AttachmentManagerProps> = ({
         )}
       </div>
 
+      {/* Explicit Error Alert */}
       {errorMessage && (
         <div className="p-3 rounded-xl bg-red-50 border border-red-200 text-red-800 text-xs flex items-center gap-2">
-          <AlertTriangle size={14} className="text-red-600 shrink-0" />
-          <span>{errorMessage}</span>
-          <button onClick={() => setErrorMessage(null)} className="ml-auto text-red-500 hover:text-red-700">
+          <AlertTriangle size={15} className="text-red-600 shrink-0" />
+          <span className="font-medium">{errorMessage}</span>
+          <button 
+            type="button"
+            onClick={() => setErrorMessage(null)} 
+            className="ml-auto text-red-500 hover:text-red-700"
+          >
             <X size={14} />
           </button>
+        </div>
+      )}
+
+      {/* Success Notification */}
+      {successMessage && (
+        <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs flex items-center gap-2">
+          <span className="font-medium">{successMessage}</span>
         </div>
       )}
 
@@ -198,6 +266,8 @@ export const AttachmentManager: React.FC<AttachmentManagerProps> = ({
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
           {attachments.map((att) => {
             const isDocumentPdf = isPdf(att.type, att.name);
+            const isDownloadingThis = downloadingId === att.id;
+
             return (
               <div
                 key={att.id}
@@ -240,21 +310,20 @@ export const AttachmentManager: React.FC<AttachmentManagerProps> = ({
                     <Eye size={14} />
                   </button>
 
-                  <a
-                    href={att.url}
-                    download={att.name}
-                    target="_blank"
-                    rel="noreferrer"
-                    title="Download"
-                    className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-600 hover:text-gray-900 transition cursor-pointer"
+                  <button
+                    type="button"
+                    onClick={() => handleDownload(att)}
+                    disabled={isDownloadingThis}
+                    title="Download File"
+                    className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-600 hover:text-gray-900 transition cursor-pointer disabled:opacity-50"
                   >
-                    <Download size={14} />
-                  </a>
+                    {isDownloadingThis ? <Loader2 size={14} className="animate-spin text-[#D4AF37]" /> : <Download size={14} />}
+                  </button>
 
                   <button
                     type="button"
                     onClick={() => handleDelete(att)}
-                    title="Remove"
+                    title="Delete File"
                     className="p-1.5 rounded-lg hover:bg-red-50 text-red-500 hover:text-red-700 transition cursor-pointer"
                   >
                     <Trash2 size={14} />
@@ -266,7 +335,7 @@ export const AttachmentManager: React.FC<AttachmentManagerProps> = ({
         </div>
       )}
 
-      {/* File Preview Modal */}
+      {/* Authenticated File Preview Modal */}
       {previewAttachment && (
         <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in">
           <div className="bg-white rounded-3xl max-w-3xl w-full max-h-[90vh] shadow-2xl flex flex-col overflow-hidden animate-in zoom-in-95">
@@ -277,37 +346,45 @@ export const AttachmentManager: React.FC<AttachmentManagerProps> = ({
                 <span className="text-[10px] text-gray-400 font-mono">({formatFileSize(previewAttachment.size)})</span>
               </div>
               <div className="flex items-center gap-2">
-                <a
-                  href={previewAttachment.url}
-                  download={previewAttachment.name}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="px-3 py-1.5 rounded-lg bg-gray-200 text-gray-700 text-xs font-bold hover:bg-gray-300 transition flex items-center gap-1"
+                <button
+                  type="button"
+                  onClick={() => handleDownload(previewAttachment)}
+                  className="px-3 py-1.5 rounded-lg bg-gray-200 text-gray-700 text-xs font-bold hover:bg-gray-300 transition flex items-center gap-1 cursor-pointer"
                 >
                   <Download size={12} /> Download
-                </a>
+                </button>
                 <button
+                  type="button"
                   onClick={() => setPreviewAttachment(null)}
-                  className="p-1.5 rounded-full hover:bg-gray-200 text-gray-500"
+                  className="p-1.5 rounded-full hover:bg-gray-200 text-gray-500 cursor-pointer"
                 >
                   <X size={18} />
                 </button>
               </div>
             </div>
 
-            <div className="flex-1 overflow-auto p-4 flex items-center justify-center bg-gray-100">
-              {isPdf(previewAttachment.type, previewAttachment.name) ? (
-                <iframe
-                  src={previewAttachment.url}
-                  title={previewAttachment.name}
-                  className="w-full h-[65vh] rounded-xl border border-gray-300 bg-white"
-                />
+            <div className="flex-1 overflow-auto p-4 flex items-center justify-center bg-gray-100 min-h-[300px]">
+              {isPreviewLoading ? (
+                <div className="flex flex-col items-center justify-center gap-2 text-gray-500 text-xs py-12">
+                  <Loader2 size={24} className="animate-spin text-[#D4AF37]" />
+                  <span>Loading authenticated document stream...</span>
+                </div>
+              ) : previewBlobUrl ? (
+                isPdf(previewAttachment.type, previewAttachment.name) ? (
+                  <iframe
+                    src={previewBlobUrl}
+                    title={previewAttachment.name}
+                    className="w-full h-[65vh] rounded-xl border border-gray-300 bg-white"
+                  />
+                ) : (
+                  <img
+                    src={previewBlobUrl}
+                    alt={previewAttachment.name}
+                    className="max-h-[70vh] max-w-full object-contain rounded-xl shadow-md"
+                  />
+                )
               ) : (
-                <img
-                  src={previewAttachment.url}
-                  alt={previewAttachment.name}
-                  className="max-h-[70vh] max-w-full object-contain rounded-xl shadow-md"
-                />
+                <div className="text-gray-500 text-xs">Preview unavailable. Please click Download to view.</div>
               )}
             </div>
           </div>

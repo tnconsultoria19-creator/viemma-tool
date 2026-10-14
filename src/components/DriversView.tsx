@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { AppState, Driver } from '../types';
+import { AppState, Driver, AttachmentItem } from '../types';
+import { AttachmentManager } from './AttachmentManager';
 import { Users, Plus, Phone, Mail, Shield, CheckCircle, Clock, X, Truck, Award, AlertTriangle, Calendar, Check, AlertCircle } from 'lucide-react';
 
 interface DriversViewProps {
@@ -29,6 +30,7 @@ export const DriversView: React.FC<DriversViewProps> = ({ state, onUpdateState }
   const [emergencyContactPhone, setEmergencyContactPhone] = useState('');
   const [notes, setNotes] = useState('');
   const [photoUrl, setPhotoUrl] = useState('');
+  const [driverAttachments, setDriverAttachments] = useState<AttachmentItem[]>([]);
 
   const getPrdpStatus = (expiryDate?: string) => {
     if (!expiryDate) {
@@ -90,7 +92,8 @@ export const DriversView: React.FC<DriversViewProps> = ({ state, onUpdateState }
       emergencyContactName: emergencyContactName.trim() || undefined,
       emergencyContactPhone: emergencyContactPhone.trim() || undefined,
       notes: notes.trim(),
-      photoUrl: photoUrl.trim() || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=400&auto=format&fit=crop'
+      photoUrl: photoUrl.trim() || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=400&auto=format&fit=crop',
+      attachments: driverAttachments
     };
 
     const updatedList = editingDriver
@@ -120,6 +123,7 @@ export const DriversView: React.FC<DriversViewProps> = ({ state, onUpdateState }
     setEmergencyContactPhone('');
     setNotes('');
     setPhotoUrl('');
+    setDriverAttachments([]);
     setIsAddModalOpen(true);
   };
 
@@ -141,6 +145,7 @@ export const DriversView: React.FC<DriversViewProps> = ({ state, onUpdateState }
     setEmergencyContactPhone(d.emergencyContactPhone || '');
     setNotes(d.notes);
     setPhotoUrl(d.photoUrl || '');
+    setDriverAttachments(d.attachments || []);
     setIsAddModalOpen(true);
   };
 
@@ -407,56 +412,21 @@ export const DriversView: React.FC<DriversViewProps> = ({ state, onUpdateState }
                 <div className="flex items-center gap-1.5">
                   <Shield size={14} className="text-emerald-800" />
                   <h4 className="text-[11px] font-bold text-[#1A3326] uppercase tracking-wider">
-                    2. Licencing & Professional Driving Permit (PrDP)
+                    2. Professional Driving Permit Compliance (PrDP/PDP)
                   </h4>
                 </div>
                 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div className="space-y-1">
-                    <label className="font-bold text-gray-700">Driver Licence Number</label>
-                    <input
-                      type="text"
-                      value={licenseNo}
-                      onChange={(e) => setLicenseNo(e.target.value)}
-                      placeholder="e.g. 8403125089081"
-                      className="w-full p-2.5 rounded-xl border border-gray-200 focus:outline-none focus:border-emerald-600 bg-white"
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <label className="font-bold text-gray-700">Licence Code / Category</label>
-                    <select
-                      value={licenseCategory}
-                      onChange={(e) => setLicenseCategory(e.target.value)}
-                      className="w-full p-2.5 rounded-xl border border-gray-200 focus:outline-none focus:border-emerald-600 bg-white"
-                    >
-                      <option value="Code 8 (B) — Light Motor Vehicle">Code 8 (B) — Light Motor Vehicle (Sedan / SUV)</option>
-                      <option value="Code 10 (C1) — Heavy Motor Vehicle (&lt;16t)">Code 10 (C1) — Heavy Motor Vehicle (&lt;16t / Quantum / Minibus)</option>
-                      <option value="Code 14 (EC) — Extra Heavy Articulated">Code 14 (EC) — Extra Heavy Coach / Bus</option>
-                      <option value="International Driving Permit (IDP)">International Driving Permit (IDP)</option>
-                    </select>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div className="space-y-1">
-                    <label className="font-bold text-gray-700">PrDP Permit Number (Goods & Passengers)</label>
-                    <input
-                      type="text"
-                      value={prdpNumber}
-                      onChange={(e) => setPrdpNumber(e.target.value)}
-                      placeholder="e.g. PrDP-CPT-92841"
-                      className="w-full p-2.5 rounded-xl border border-gray-200 focus:outline-none focus:border-emerald-600 bg-white"
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <label className="font-bold text-gray-700">PrDP Expiry Date</label>
-                    <input
-                      type="date"
-                      value={prdpExpiryDate}
-                      onChange={(e) => setPrdpExpiryDate(e.target.value)}
-                      className="w-full p-2.5 rounded-xl border border-gray-200 focus:outline-none focus:border-emerald-600 bg-white"
-                    />
-                  </div>
+                <div className="space-y-1">
+                  <label className="font-bold text-gray-700">PrDP / PDP Expiration Date</label>
+                  <input
+                    type="date"
+                    value={prdpExpiryDate}
+                    onChange={(e) => setPrdpExpiryDate(e.target.value)}
+                    className="w-full p-2.5 rounded-xl border border-gray-200 focus:outline-none focus:border-emerald-600 bg-white font-medium"
+                  />
+                  <p className="text-[11px] text-gray-400">
+                    Tracked for 45-day threshold compliance warnings and active dispatch eligibility.
+                  </p>
                 </div>
               </div>
 
@@ -568,6 +538,19 @@ export const DriversView: React.FC<DriversViewProps> = ({ state, onUpdateState }
                     onChange={(e) => setNotes(e.target.value)}
                     placeholder="First Aid Level 2, Advanced Defensive Driving, fluent in English, Portuguese & Zulu..."
                     className="w-full p-2.5 rounded-xl border border-gray-200 focus:outline-none focus:border-emerald-600 bg-gray-50/50"
+                  />
+                </div>
+
+                <div className="pt-2">
+                  <AttachmentManager
+                    attachments={driverAttachments}
+                    onAddAttachment={(item) => setDriverAttachments(prev => [...prev, item])}
+                    onRemoveAttachment={(id) => setDriverAttachments(prev => prev.filter(a => a.id !== id))}
+                    recordType="driver"
+                    recordId={editingDriver?.id || Date.now()}
+                    bookingRef={state.ref}
+                    title="Driver Credentials, PrDP Permits & Licenses"
+                    description="Upload PrDP card scans, driver license certificates, advanced driving accreditation, or contract agreements (PDF, JPEG, PNG, WebP up to 15MB)."
                   />
                 </div>
               </div>

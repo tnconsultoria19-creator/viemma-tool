@@ -6,15 +6,47 @@ service cloud.firestore {
       return id is string && id.size() >= 4 && id.size() <= 128;
     }
 
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    // Genuine staff verification: Non-anonymous verified staff email or staff document
+    function isStaff() {
+      return isSignedIn() &&
+        request.auth.token.firebase.sign_in_provider != 'anonymous' &&
+        (
+          request.auth.token.email.matches('(?i)^olisbel@gmail\\.com$') ||
+          (request.auth.token.email != null && request.auth.token.email.matches('(?i).*@(viemmatours\\.com|viemma\\.co\\.za)$') && request.auth.token.email_verified == true) ||
+          exists(/databases/$(database)/documents/staff/$(request.auth.uid)) ||
+          exists(/databases/$(database)/documents/admins/$(request.auth.uid))
+        );
+    }
+
+    // Default deny catch-all
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
     // ========================================================
     // 1. /trips/{tripId} — PRIVATE MASTER ITINERARY
     // Contains net costs, markups, margins, supplier payments,
     // and confidential internal notes.
-    // Strictly requires authenticated staff credentials.
+    // Strictly requires genuine authenticated staff credentials.
+    // Anonymous users CANNOT read or write master trips.
     // NEVER publicly readable or listable.
     // ========================================================
     match /trips/{tripId} {
-      allow read, write: if request.auth != null && isValidId(tripId);
+      allow read, write: if isStaff() && isValidId(tripId);
+    }
+
+    // Staff and Administrator registries
+    match /staff/{uid} {
+      allow read: if isSignedIn();
+      allow write: if isStaff();
+    }
+    match /admins/{uid} {
+      allow read: if isSignedIn();
+      allow write: if isStaff();
     }
 
     // ========================================================
@@ -26,7 +58,7 @@ service cloud.firestore {
     match /clientShares/{token} {
       allow get: if isValidId(token);
       allow list: if false;
-      allow write: if request.auth != null && isValidId(token);
+      allow write: if isStaff() && isValidId(token);
     }
 
     // ========================================================
@@ -38,7 +70,7 @@ service cloud.firestore {
     match /agentShares/{token} {
       allow get: if isValidId(token);
       allow list: if false;
-      allow write: if request.auth != null && isValidId(token);
+      allow write: if isStaff() && isValidId(token);
     }
 
     // ========================================================
@@ -50,7 +82,7 @@ service cloud.firestore {
     match /opsShares/{token} {
       allow get: if isValidId(token);
       allow list: if false;
-      allow write: if request.auth != null && isValidId(token);
+      allow write: if isStaff() && isValidId(token);
     }
   }
 }

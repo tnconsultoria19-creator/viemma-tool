@@ -46,7 +46,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
       <div 
         className="w-full min-h-[320px] md:min-h-[380px] rounded-2xl md:rounded-3xl relative flex items-end overflow-hidden shadow-lg border border-white/10"
         style={{
-          backgroundImage: `url('https://images.pexels.com/photos/7843687/pexels-photo-7843687.jpeg')`,
+          backgroundImage: `url('/hero-bg.jpg'), url('https://images.pexels.com/photos/7843687/pexels-photo-7843687.jpeg')`,
           backgroundSize: 'cover',
           backgroundPosition: 'center center',
           backgroundRepeat: 'no-repeat'

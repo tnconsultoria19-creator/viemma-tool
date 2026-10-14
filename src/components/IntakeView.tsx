@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { AppState, Guest, GroupManagement, TripStatus } from '../types';
+import { AppState, Guest, GroupManagement, TripStatus, AttachmentItem } from '../types';
+import { AttachmentManager } from './AttachmentManager';
 import { InfoTooltip } from './InfoTooltip';
 import { COUNTRIES, DB_DEFAULT } from '../dbDefaults';
 import { 
@@ -20,7 +21,18 @@ import {
   ArrowRight, 
   CheckCircle2, 
   RotateCcw,
-  Sparkles
+  Sparkles,
+  Trash2,
+  Plane,
+  Hotel,
+  Car,
+  Check,
+  Compass,
+  ShieldAlert,
+  FileText,
+  CheckCircle,
+  Clock,
+  ShieldCheck
 } from 'lucide-react';
 
 interface IntakeViewProps {
@@ -52,9 +64,26 @@ export const IntakeView: React.FC<IntakeViewProps> = ({
   const [modalOpen, setModalOpen] = useState(false);
   const [modalGuest, setModalGuest] = useState<Partial<Guest>>({});
   const [showAdvancedGuestDetails, setShowAdvancedGuestDetails] = useState(false);
-  const [modalTab, setModalTab] = useState<'details' | 'dietary' | 'accessibility' | 'preferences'>('details');
+  const [modalTab, setModalTab] = useState<'details' | 'assignments' | 'audit' | 'dietary' | 'accessibility' | 'preferences' | 'documents'>('details');
   const [modalCountrySearch, setModalCountrySearch] = useState('');
   const [showModalCountryDD, setShowModalCountryDD] = useState(false);
+
+  // Group Hierarchy & Roster View Mode
+  const [viewMode, setViewMode] = useState<'both' | 'hierarchy' | 'cards'>('both');
+
+  // Change Lead Person Dialog
+  const [showChangeLeadModal, setShowChangeLeadModal] = useState(false);
+
+  // Safe Removal Confirmation Modal
+  const [guestToRemove, setGuestToRemove] = useState<Guest | null>(null);
+
+  // Quick Add State (Quantity controls for Adults, Elderly, Children, Infants)
+  const [quickAddOpen, setQuickAddOpen] = useState(false);
+  const [qaAdults, setQaAdults] = useState<number>(0);
+  const [qaElderly, setQaElderly] = useState<number>(0);
+  const [qaChildren, setQaChildren] = useState<number>(0);
+  const [qaInfants, setQaInfants] = useState<number>(0);
+  const [qaError, setQaError] = useState<string>('');
 
   // Group Name inline edit state
   const [isEditingGroupName, setIsEditingGroupName] = useState(false);
@@ -264,11 +293,11 @@ export const IntakeView: React.FC<IntakeViewProps> = ({
     setModalOpen(true);
   };
 
-  const handleOpenEditGuest = (g: Guest) => {
+  const handleOpenEditGuest = (g: Guest, tab: 'details' | 'assignments' | 'audit' = 'details') => {
     setModalGuest({ ...g });
     setModalCountrySearch(g.nationality || g.country || '');
-    setShowAdvancedGuestDetails(false);
-    setModalTab('details');
+    setShowAdvancedGuestDetails(tab !== 'details' || Boolean(g.isProvisional));
+    setModalTab(tab);
     setModalOpen(true);
   };
 
@@ -355,21 +384,24 @@ export const IntakeView: React.FC<IntakeViewProps> = ({
     });
   };
 
-  const handleSaveModalGuest = () => {
-    if (!modalGuest.first?.trim() || !modalGuest.last?.trim()) {
-      alert('First and Last name are required to register a traveller.');
-      return;
-    }
+  const handleSaveModalGuest = (keepOpen = false) => {
+    const firstName = modalGuest.first?.trim() || modalGuest.age || 'Adult';
+    const lastName = modalGuest.last?.trim() || 'Traveller';
 
+    // Lead contact check
     const isMarkedLead = modalGuest.isLead || state.guests.length === 0;
+
+    // Check if provisional status should be lifted when a real name is entered
+    const isNamed = firstName !== 'Adult' && firstName !== 'Senior' && firstName !== 'Child' && firstName !== 'Infant' && !firstName.match(/^(Adult|Senior|Child|Infant)\s+\d+$/i);
+    const finalProvisional = isNamed ? Boolean(modalGuest.isProvisional) : (modalGuest.isProvisional ?? true);
 
     const savedGuest: Guest = {
       id: modalGuest.id || Date.now(),
-      first: modalGuest.first.trim(),
-      last: modalGuest.last.trim(),
-      preferredName: modalGuest.preferredName?.trim() || '',
-      nationality: modalCountrySearch || state.client.country || '🇿🇦 South Africa',
-      country: modalCountrySearch || state.client.country || '🇿🇦 South Africa',
+      first: firstName,
+      last: lastName,
+      preferredName: modalGuest.preferredName?.trim() || `${firstName} ${lastName}`,
+      nationality: modalCountrySearch || modalGuest.nationality || state.client.country || '🇿🇦 South Africa',
+      country: modalCountrySearch || modalGuest.country || state.client.country || '🇿🇦 South Africa',
       age: modalGuest.age || 'Adult',
       exactAge: modalGuest.exactAge,
       dob: modalGuest.dob || '',
@@ -380,6 +412,8 @@ export const IntakeView: React.FC<IntakeViewProps> = ({
       individualPhone: (modalGuest.individualPhone || '').trim(),
       languagesSpoken: modalGuest.languagesSpoken || ['English'],
       isLead: isMarkedLead,
+      isProvisional: finalProvisional,
+      provisionalLabel: finalProvisional ? `${firstName} ${lastName} (Provisional)` : undefined,
       notes: modalGuest.notes || '',
       customFoodRequirements: modalGuest.customFoodRequirements || [],
       customAccessibilityRequirements: modalGuest.customAccessibilityRequirements || [],
@@ -395,6 +429,10 @@ export const IntakeView: React.FC<IntakeViewProps> = ({
       preferencesAccommodation: modalGuest.preferencesAccommodation || [],
       preferencesTransport: modalGuest.preferencesTransport || [],
       preferencesInterests: modalGuest.preferencesInterests || [],
+      attachments: modalGuest.attachments || [],
+      emergencyContactName: modalGuest.emergencyContactName,
+      emergencyContactPhone: modalGuest.emergencyContactPhone,
+      emergencyContactRelation: modalGuest.emergencyContactRelation,
       diet: [
         ...(modalGuest.dietaryReligious || []),
         ...(modalGuest.dietaryLifestyle || []),
@@ -425,12 +463,123 @@ export const IntakeView: React.FC<IntakeViewProps> = ({
 
     onUpdateState({ guests: updatedRoster });
 
-    // If client group name is empty, auto-seed suggested name from lead guest
-    if (!state.client.name.trim() && isMarkedLead) {
-      onUpdateClient({ name: `${savedGuest.first} ${savedGuest.last} Party` });
+    // Sync group contact details when lead contact changes or is created without destroying other travellers
+    if (isMarkedLead) {
+      onUpdateClient({
+        name: state.client.name.trim() ? state.client.name : `${savedGuest.first} ${savedGuest.last} Party`,
+        email: savedGuest.individualEmail || state.client.email,
+        phone: savedGuest.individualPhone || state.client.phone,
+        country: savedGuest.nationality || state.client.country
+      });
     }
 
-    closeModal();
+    if (keepOpen) {
+      // Pre-populate next traveller with group defaults for consecutive entry without closing form
+      const lead = isMarkedLead ? savedGuest : state.guests.find(g => g.isLead) || savedGuest;
+      setModalGuest({
+        first: '',
+        last: lead.last,
+        preferredName: '',
+        nationality: lead.nationality || state.client.country || '',
+        country: lead.country || state.client.country || '',
+        age: 'Adult',
+        relationshipToLead: 'Family Member',
+        languagesSpoken: lead.languagesSpoken || ['English'],
+        isLead: false,
+        isProvisional: false,
+        emergencyContactName: `${lead.first} ${lead.last}`,
+        emergencyContactPhone: lead.individualPhone || state.client.phone || '',
+        emergencyContactRelation: 'Lead Contact',
+        notes: ''
+      });
+      setModalCountrySearch(lead.nationality || state.client.country || '');
+    } else {
+      closeModal();
+    }
+  };
+
+  const handleSafeRemovePrompt = (g: Guest) => {
+    const assignedFlights = state.flights.filter(f => f.paxIds?.includes(g.id));
+    const assignedTransfers = state.transfers.filter(t => t.paxIds?.includes(g.id));
+    const assignedRooms = state.rooms.filter(r => r.guestIds?.includes(g.id) || r.allocatedRooms?.some(ar => ar.guestIds?.includes(g.id)));
+    const assignedActivities = state.activities.filter(a => a.paxIds?.includes(g.id));
+
+    const totalAssignments = assignedFlights.length + assignedTransfers.length + assignedRooms.length + assignedActivities.length;
+
+    if (totalAssignments > 0 || g.isLead) {
+      setGuestToRemove(g);
+    } else {
+      onRemoveGuest(g.id);
+    }
+  };
+
+  // Option 1: Quick Add (Quantity Controls) Submit Handler
+  const handleQuickAddSubmit = () => {
+    const totalNew = qaAdults + qaElderly + qaChildren + qaInfants;
+    if (totalNew <= 0) {
+      setQaError('Please specify at least one quantity for Adults, Seniors, Children or Infants.');
+      return;
+    }
+    setQaError('');
+
+    const lead = state.guests.find(g => g.isLead) || state.guests[0];
+    const leadId = lead?.id;
+    const currentList = [...state.guests];
+    let newIdBase = Date.now();
+
+    const createProvisionalBatch = (count: number, ageCategory: 'Adult' | 'Elderly' | 'Child' | 'Infant', baseLabel: string) => {
+      const existingCount = currentList.filter(g => g.age === ageCategory).length;
+      for (let i = 1; i <= count; i++) {
+        const num = existingCount + i;
+        const pGuest: Guest = {
+          id: newIdBase++,
+          first: baseLabel,
+          last: `${num}`,
+          preferredName: `${baseLabel} ${num}`,
+          nationality: lead?.nationality || state.client.country || '🇿🇦 South Africa',
+          country: lead?.country || state.client.country || '🇿🇦 South Africa',
+          age: ageCategory,
+          isLead: currentList.length === 0 && i === 1,
+          isProvisional: true,
+          provisionalLabel: `${baseLabel} ${num} (Provisional)`,
+          leadContactId: leadId,
+          relationshipToLead: lead ? 'Family Member' : 'Primary Contact',
+          languagesSpoken: lead?.languagesSpoken || ['English'],
+          notes: 'Provisional traveller added via Quick Add. Details pending.',
+          customFoodRequirements: [],
+          customAccessibilityRequirements: [],
+          customAccommodationRequirements: [],
+          accessibilityMobility: [],
+          accessibilityVision: [],
+          accessibilityHearing: [],
+          medicalOperationalNotes: '',
+          dietaryReligious: [],
+          dietaryLifestyle: [],
+          dietaryMedical: [],
+          dietaryPreferences: [],
+          preferencesAccommodation: [],
+          preferencesTransport: [],
+          preferencesInterests: [],
+          diet: [],
+          mob: [],
+          med: [],
+          pref: []
+        };
+        currentList.push(pGuest);
+      }
+    };
+
+    if (qaAdults > 0) createProvisionalBatch(qaAdults, 'Adult', 'Adult');
+    if (qaElderly > 0) createProvisionalBatch(qaElderly, 'Elderly', 'Senior');
+    if (qaChildren > 0) createProvisionalBatch(qaChildren, 'Child', 'Child');
+    if (qaInfants > 0) createProvisionalBatch(qaInfants, 'Infant', 'Infant');
+
+    onUpdateState({ guests: currentList });
+    setQuickAddOpen(false);
+    setQaAdults(0);
+    setQaElderly(0);
+    setQaChildren(0);
+    setQaInfants(0);
   };
 
   // Quick Preset Templates (Secondary option)
@@ -555,15 +704,25 @@ export const IntakeView: React.FC<IntakeViewProps> = ({
             </p>
           </div>
 
-          {/* Primary Prominent Action: + ADD TRAVELLER */}
-          <div className="flex items-center gap-2 shrink-0">
+          {/* Primary Prominent Action: ADD TRAVELLER & QUICK ADD */}
+          <div className="flex flex-wrap items-center gap-2 shrink-0">
             <button
               type="button"
               onClick={handleOpenAddGuest}
-              className="px-6 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs md:text-sm font-extrabold shadow-sm hover:shadow-md transition flex items-center gap-2 cursor-pointer"
+              className="px-5 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs md:text-sm font-extrabold shadow-sm hover:shadow-md transition flex items-center gap-2 cursor-pointer"
             >
               <Plus size={18} strokeWidth={2.6} />
-              <span>Add Traveller</span>
+              <span>Add Named Traveller</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setQuickAddOpen(true)}
+              className="px-4 py-3 rounded-xl bg-amber-50 hover:bg-amber-100 text-[#1A3326] border border-amber-300 text-xs md:text-sm font-bold transition flex items-center gap-2 cursor-pointer"
+              title="Quick Add travellers by quantities (Adults, Elderly, Children, Infants)"
+            >
+              <Users size={16} className="text-amber-700" />
+              <span>Quick Add (Quantities)</span>
             </button>
 
             {onOpenAIImport && (
@@ -616,98 +775,330 @@ export const IntakeView: React.FC<IntakeViewProps> = ({
             </div>
           </div>
         ) : (
-          <div className="space-y-3">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5">
-              {state.guests.map(g => (
-                <div 
-                  key={g.id}
-                  className={`p-4 rounded-xl border transition-all ${
-                    g.isLead 
-                      ? 'border-[#D4AF37] bg-yellow-50/20 shadow-xs ring-1 ring-[#D4AF37]/30' 
-                      : 'border-gray-200 bg-white hover:border-gray-300'
-                  }`}
-                >
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="min-w-0">
-                      <div className="flex items-center gap-1.5">
-                        {g.isLead && (
-                          <span title="Primary Lead Contact" className="text-[#D4AF37]">
-                            <Crown size={15} />
-                          </span>
-                        )}
-                        <h3 className="font-bold text-[#10233F] text-sm truncate">
-                          {g.first} {g.last} {g.preferredName ? `(${g.preferredName})` : ''}
-                        </h3>
+          <div className="space-y-6">
+            {/* GROUP HIERARCHY & STRUCTURE PANEL (MASTER DIRECTIVE SECTION 2.B) */}
+            <div className="bg-slate-50 border border-slate-200 rounded-2xl p-5 md:p-6 space-y-4 shadow-2xs">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-200">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="px-2.5 py-0.5 bg-[#1A3326] text-[#D4AF37] text-xs font-black tracking-widest rounded-md uppercase font-mono">
+                      Trip {state.ref || 'VT-2026-001'}
+                    </span>
+                    <span className="text-xs font-bold text-gray-500">
+                      • Group Structure & Operational Roster
+                    </span>
+                  </div>
+                  <h2 className="text-lg md:text-xl font-black text-[#10233F] mt-1 flex flex-wrap items-center gap-2">
+                    <span>Lead person:</span>
+                    <span className="text-[#1A3326] underline decoration-[#D4AF37] decoration-2">
+                      {leadGuest ? `${leadGuest.first} ${leadGuest.last}` : (state.client.name || 'Primary Representative')}
+                    </span>
+                    {leadGuest?.isProvisional ? (
+                      <span className="text-[10px] bg-amber-100 text-amber-800 font-bold px-2 py-0.5 rounded-full border border-amber-300">
+                        Provisional Contact
+                      </span>
+                    ) : (
+                      <span className="text-[10px] bg-emerald-100 text-emerald-800 font-bold px-2 py-0.5 rounded-full border border-emerald-300">
+                        Confirmed Contact
+                      </span>
+                    )}
+                  </h2>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  {state.guests.length > 1 && (
+                    <button
+                      type="button"
+                      onClick={() => setShowChangeLeadModal(true)}
+                      className="px-3 py-1.5 rounded-lg border border-amber-300 bg-amber-50 hover:bg-amber-100 text-amber-900 text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-2xs"
+                      title="Change the group lead person safely while preserving all other travellers"
+                    >
+                      <Crown size={14} className="text-amber-600" />
+                      <span>Change Lead Person</span>
+                    </button>
+                  )}
+
+                  {/* View Mode Switcher */}
+                  <div className="flex items-center bg-white border border-gray-200 rounded-lg p-0.5 text-xs font-bold text-gray-600">
+                    <button
+                      type="button"
+                      onClick={() => setViewMode('both')}
+                      className={`px-2 py-1 rounded-md transition ${viewMode === 'both' ? 'bg-[#1A3326] text-white' : 'hover:bg-gray-100'}`}
+                    >
+                      All
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setViewMode('hierarchy')}
+                      className={`px-2 py-1 rounded-md transition ${viewMode === 'hierarchy' ? 'bg-[#1A3326] text-white' : 'hover:bg-gray-100'}`}
+                    >
+                      Hierarchy List
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setViewMode('cards')}
+                      className={`px-2 py-1 rounded-md transition ${viewMode === 'cards' ? 'bg-[#1A3326] text-white' : 'hover:bg-gray-100'}`}
+                    >
+                      Cards
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Organized Hierarchical Traveller List */}
+              {(viewMode === 'both' || viewMode === 'hierarchy') && (
+                <div className="space-y-2">
+                  <div className="text-[11px] font-bold uppercase tracking-wider text-gray-500 flex items-center justify-between px-1">
+                    <span>Group Roster ({state.guests.length} Total • {state.guests.filter(g => g.isLead).length} Lead • {state.guests.filter(g => !g.isLead && !g.isProvisional).length} Confirmed • {state.guests.filter(g => g.isProvisional).length} Provisional)</span>
+                    <span className="text-[10px] text-gray-400">Click traveller actions to view assignments or audit status</span>
+                  </div>
+
+                  <div className="bg-white border border-slate-200 rounded-xl divide-y divide-slate-100 overflow-hidden shadow-2xs">
+                    {state.guests.map((g, index) => {
+                      // Check missing operational items
+                      const missingItems: string[] = [];
+                      if (g.isProvisional) missingItems.push('Provisional (Name Unconfirmed)');
+                      if (!g.passportNo) missingItems.push('Passport No');
+                      if (!g.passportExpiry) missingItems.push('Passport Expiry');
+                      if (!g.nationality && !g.country) missingItems.push('Nationality');
+                      if (!g.individualEmail && !g.individualPhone && g.isLead) missingItems.push('Contact Details');
+
+                      const hasFlight = state.flights.some(f => f.paxIds?.includes(g.id));
+                      const hasRoom = state.rooms.some(r => r.guestIds?.includes(g.id) || r.allocatedRooms?.some(ar => ar.guestIds?.includes(g.id)));
+                      if (!hasFlight && state.flights.length > 0) missingItems.push('Flight Unassigned');
+                      if (!hasRoom && state.rooms.length > 0) missingItems.push('Room Unassigned');
+
+                      return (
+                        <div 
+                          key={g.id}
+                          className={`p-3.5 flex flex-col md:flex-row md:items-center justify-between gap-3 transition-colors ${
+                            g.isLead 
+                              ? 'bg-amber-50/30 hover:bg-amber-50/50' 
+                              : 'hover:bg-slate-50/80'
+                          }`}
+                        >
+                          <div className="flex items-center gap-3 min-w-0">
+                            <span className="text-xs font-mono font-bold text-gray-400 w-5 text-right shrink-0">
+                              {index + 1}.
+                            </span>
+
+                            <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 font-bold text-xs shadow-2xs border ${
+                              g.isLead 
+                                ? 'bg-[#1A3326] text-[#D4AF37] border-[#D4AF37]' 
+                                : g.isProvisional 
+                                  ? 'bg-amber-100 text-amber-800 border-amber-300' 
+                                  : 'bg-emerald-100 text-emerald-800 border-emerald-300'
+                            }`}>
+                              {g.isLead ? '★' : (g.first[0] || 'T')}
+                            </div>
+
+                            <div className="min-w-0">
+                              <div className="flex flex-wrap items-center gap-2">
+                                <span className="font-bold text-sm text-[#10233F]">
+                                  {g.first} {g.last}
+                                </span>
+                                <span className="text-gray-400 text-xs">—</span>
+                                <span className={`text-xs font-semibold px-2 py-0.5 rounded-md border ${
+                                  g.isLead 
+                                    ? 'bg-yellow-100 text-yellow-900 border-yellow-300 font-bold' 
+                                    : g.isProvisional 
+                                      ? 'bg-amber-50 text-amber-800 border-amber-200' 
+                                      : 'bg-emerald-50 text-emerald-800 border-emerald-200'
+                                }`}>
+                                  {g.isLead ? 'Lead traveller' : g.isProvisional ? 'Provisional traveller' : 'Confirmed traveller'}
+                                </span>
+
+                                <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider bg-gray-100 px-1.5 py-0.5 rounded">
+                                  {g.age || 'Adult'}
+                                </span>
+
+                                {g.relationshipToLead && !g.isLead && (
+                                  <span className="text-[11px] text-gray-500">
+                                    ({g.relationshipToLead})
+                                  </span>
+                                )}
+                              </div>
+
+                              {/* Missing Info / Confirmed Badges */}
+                              <div className="flex flex-wrap items-center gap-1.5 mt-1">
+                                {missingItems.length > 0 ? (
+                                  missingItems.map(item => (
+                                    <span key={item} className="text-[10px] font-semibold text-rose-700 bg-rose-50 border border-rose-200 px-1.5 py-0.2 rounded">
+                                      ⚠️ {item}
+                                    </span>
+                                  ))
+                                ) : (
+                                  <span className="text-[10px] font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 px-1.5 py-0.2 rounded">
+                                    ✓ Profile Complete
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Row Action Buttons */}
+                          <div className="flex items-center gap-2 self-end md:self-center shrink-0">
+                            <button
+                              type="button"
+                              onClick={() => handleOpenEditGuest(g, 'details')}
+                              className="px-3 py-1.5 text-xs font-bold rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-800 transition cursor-pointer"
+                            >
+                              {g.isProvisional ? 'Name Person / Edit' : 'Edit Profile'}
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() => handleOpenEditGuest(g, 'assignments')}
+                              className="px-2.5 py-1.5 text-xs font-semibold rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 transition cursor-pointer"
+                              title="View flights, rooms, transfers & activities for this traveller"
+                            >
+                              Assignments
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() => handleOpenEditGuest(g, 'audit')}
+                              className="px-2.5 py-1.5 text-xs font-semibold rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 transition cursor-pointer"
+                              title="Check missing information and operational readiness"
+                            >
+                              Audit
+                            </button>
+
+                            {!g.isLead && (
+                              <button
+                                type="button"
+                                onClick={() => onSetLeadGuest(g.id)}
+                                className="px-2.5 py-1.5 text-xs font-semibold rounded-lg text-amber-700 hover:bg-amber-50 border border-amber-200 transition cursor-pointer"
+                                title="Make this person the group lead"
+                              >
+                                Make Lead
+                              </button>
+                            )}
+
+                            <button
+                              type="button"
+                              onClick={() => handleSafeRemovePrompt(g)}
+                              className="p-1.5 text-rose-500 hover:text-rose-700 hover:bg-rose-50 rounded-lg transition cursor-pointer"
+                              title="Safely remove traveller"
+                            >
+                              <Trash2 size={15} />
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* EXPANDED CARDS GRID */}
+            {(viewMode === 'both' || viewMode === 'cards') && (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5">
+                {state.guests.map(g => (
+                  <div 
+                    key={g.id}
+                    className={`p-4 rounded-xl border transition-all ${
+                      g.isLead 
+                        ? 'border-[#D4AF37] bg-yellow-50/20 shadow-xs ring-1 ring-[#D4AF37]/30' 
+                        : 'border-gray-200 bg-white hover:border-gray-300'
+                    }`}
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-1.5">
+                          {g.isLead && (
+                            <span title="Primary Lead Contact" className="text-[#D4AF37]">
+                              <Crown size={15} />
+                            </span>
+                          )}
+                          <h3 className="font-bold text-[#10233F] text-sm truncate">
+                            {g.first} {g.last} {g.preferredName ? `(${g.preferredName})` : ''}
+                          </h3>
+                        </div>
+                        <span className="text-[11px] text-gray-500 block mt-0.5 truncate">
+                          {g.nationality || g.country || 'Global Citizen'}
+                        </span>
                       </div>
-                      <span className="text-[11px] text-gray-500 block mt-0.5 truncate">
-                        {g.nationality || g.country || 'Global Citizen'}
+
+                      <span className="text-[10px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider bg-slate-100 text-slate-700 border border-slate-200 shrink-0">
+                        {g.age}
                       </span>
                     </div>
 
-                    <span className="text-[10px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider bg-slate-100 text-slate-700 border border-slate-200 shrink-0">
-                      {g.age}
-                    </span>
-                  </div>
-
-                  {/* Special Badges (Lead, Dietary, Accessibility) */}
-                  <div className="flex flex-wrap gap-1 mt-2.5">
-                    {g.isLead && (
-                      <span className="text-[9px] bg-[#D4AF37]/20 text-[#1A3326] px-1.5 py-0.5 rounded font-bold">
-                        ★ Lead
-                      </span>
-                    )}
-                    {g.dietaryMedical && g.dietaryMedical.length > 0 && (
-                      <span className="text-[9px] bg-rose-50 text-rose-700 border border-rose-200 px-1.5 py-0.5 rounded font-semibold">
-                        Allergens
-                      </span>
-                    )}
-                    {g.accessibilityMobility && g.accessibilityMobility.length > 0 && (
-                      <span className="text-[9px] bg-amber-50 text-amber-700 border border-amber-200 px-1.5 py-0.5 rounded font-semibold">
-                        Mobility
-                      </span>
-                    )}
-                  </div>
-
-                  {/* Card Actions */}
-                  <div className="flex items-center justify-between pt-3 mt-3 border-t border-gray-100 text-[11px]">
-                    <div>
-                      {!g.isLead ? (
-                        <button
-                          type="button"
-                          onClick={() => onSetLeadGuest(g.id)}
-                          className="text-gray-500 hover:text-[#1A3326] font-semibold text-[11px] underline cursor-pointer"
-                        >
-                          Make Lead
-                        </button>
-                      ) : (
-                        <span className="text-[10px] text-[#D4AF37] font-bold uppercase">Lead Contact</span>
+                    {/* Special Badges (Lead, Dietary, Accessibility) */}
+                    <div className="flex flex-wrap gap-1 mt-2.5">
+                      {g.isLead && (
+                        <span className="text-[9px] bg-[#D4AF37]/20 text-[#1A3326] px-1.5 py-0.5 rounded font-bold">
+                          ★ Lead
+                        </span>
+                      )}
+                      {g.isProvisional && (
+                        <span className="text-[9px] bg-amber-100 text-amber-800 border border-amber-300 px-1.5 py-0.5 rounded font-bold">
+                          Provisional
+                        </span>
+                      )}
+                      {g.dietaryMedical && g.dietaryMedical.length > 0 && (
+                        <span className="text-[9px] bg-rose-50 text-rose-700 border border-rose-200 px-1.5 py-0.5 rounded font-semibold">
+                          Allergens
+                        </span>
+                      )}
+                      {g.accessibilityMobility && g.accessibilityMobility.length > 0 && (
+                        <span className="text-[9px] bg-amber-50 text-amber-700 border border-amber-200 px-1.5 py-0.5 rounded font-semibold">
+                          Mobility
+                        </span>
                       )}
                     </div>
 
-                    <div className="flex items-center gap-2">
-                      <button
-                        type="button"
-                        onClick={() => handleOpenEditGuest(g)}
-                        className="text-[#1A3326] hover:text-[#D4AF37] font-bold text-[11px]"
-                      >
-                        Edit
-                      </button>
-                      <span className="text-gray-200">|</span>
-                      <button
-                        type="button"
-                        onClick={() => onRemoveGuest(g.id)}
-                        className="text-rose-500 hover:text-rose-700 font-semibold text-[11px]"
-                      >
-                        Remove
-                      </button>
+                    {/* Card Actions */}
+                    <div className="flex items-center justify-between pt-3 mt-3 border-t border-gray-100 text-[11px]">
+                      <div>
+                        {!g.isLead ? (
+                          <button
+                            type="button"
+                            onClick={() => onSetLeadGuest(g.id)}
+                            className="text-gray-500 hover:text-[#1A3326] font-semibold text-[11px] underline cursor-pointer"
+                          >
+                            Make Lead
+                          </button>
+                        ) : (
+                          <span className="text-[10px] text-[#D4AF37] font-bold uppercase">Lead Contact</span>
+                        )}
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => handleOpenEditGuest(g, 'details')}
+                          className="text-[#1A3326] hover:text-[#D4AF37] font-bold text-[11px] cursor-pointer"
+                        >
+                          {g.isProvisional ? 'Name Person' : 'Edit'}
+                        </button>
+                        <span className="text-gray-200">|</span>
+                        <button
+                          type="button"
+                          onClick={() => handleOpenEditGuest(g, 'assignments')}
+                          className="text-blue-600 hover:text-blue-800 font-semibold text-[11px] cursor-pointer"
+                        >
+                          Services
+                        </button>
+                        <span className="text-gray-200">|</span>
+                        <button
+                          type="button"
+                          onClick={() => handleSafeRemovePrompt(g)}
+                          className="text-rose-500 hover:text-rose-700 font-semibold text-[11px] cursor-pointer"
+                        >
+                          Remove
+                        </button>
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
 
             {/* Quick Bulk Propagate Helpers */}
-            <div className="flex flex-wrap items-center justify-between gap-3 pt-3 text-xs text-gray-500">
+            <div className="flex flex-wrap items-center justify-between gap-3 pt-3 text-xs text-gray-500 border-t border-gray-100">
               <span>
                 Lead Contact: <strong className="text-[#10233F]">{leadGuest ? `${leadGuest.first} ${leadGuest.last}` : 'Not assigned'}</strong>
               </span>
@@ -720,7 +1111,7 @@ export const IntakeView: React.FC<IntakeViewProps> = ({
                     const updated = state.guests.map(g => ({ ...g, country, nationality: country }));
                     onUpdateState({ guests: updated });
                   }}
-                  className="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 rounded-lg text-[11px] font-semibold text-gray-700 transition"
+                  className="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 rounded-lg text-[11px] font-semibold text-gray-700 transition cursor-pointer"
                 >
                   Apply Country to All
                 </button>
@@ -737,7 +1128,7 @@ export const IntakeView: React.FC<IntakeViewProps> = ({
                       onUpdateState({ guests: updated });
                     }
                   }}
-                  className="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 rounded-lg text-[11px] font-semibold text-gray-700 transition"
+                  className="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 rounded-lg text-[11px] font-semibold text-gray-700 transition cursor-pointer"
                 >
                   Copy Lead Contact to All
                 </button>
@@ -861,6 +1252,24 @@ export const IntakeView: React.FC<IntakeViewProps> = ({
                   className="w-full h-9 px-3 rounded-lg border border-gray-300 bg-white text-xs"
                 />
               </div>
+            </div>
+
+            {/* Master Group & Booking Attachments */}
+            <div className="pt-3 border-t border-slate-200">
+              <AttachmentManager
+                attachments={state.attachments || []}
+                onAddAttachment={(item) => onUpdateState({
+                  attachments: [...(state.attachments || []), item]
+                })}
+                onRemoveAttachment={(id) => onUpdateState({
+                  attachments: (state.attachments || []).filter(a => a.id !== id)
+                })}
+                recordType="booking"
+                recordId={state.ref}
+                bookingRef={state.ref}
+                title="Group & Booking Master Documents"
+                description="Upload agency contracts, indemnity waivers, group travel insurance policies, or master quotes (PDF, JPEG, PNG, WebP up to 15MB)."
+              />
             </div>
           </div>
         )}
@@ -1382,8 +1791,8 @@ export const IntakeView: React.FC<IntakeViewProps> = ({
                 </div>
               </div>
 
-              {/* Lead Traveller Checkbox */}
-              <div className="pt-1">
+              {/* Lead Traveller Checkbox & Provisional Banner */}
+              <div className="space-y-2 pt-1">
                 <label className="flex items-center gap-2 cursor-pointer text-xs font-semibold text-gray-800">
                   <input
                     type="checkbox"
@@ -1393,6 +1802,32 @@ export const IntakeView: React.FC<IntakeViewProps> = ({
                   />
                   <span>Designate as Lead Contact for group vouchers and notifications</span>
                 </label>
+
+                {modalGuest.isProvisional && (
+                  <div className="p-3 bg-amber-50 border border-amber-300 rounded-xl flex items-center justify-between text-xs text-amber-900">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <AlertCircle size={16} className="text-amber-700 shrink-0" />
+                      <div className="min-w-0">
+                        <strong className="block truncate">Provisional Record ({modalGuest.provisionalLabel || `${modalGuest.first} ${modalGuest.last}`})</strong>
+                        <span className="text-[11px] text-amber-800">Assign confirmed passport name and details without losing existing assignments.</span>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setModalGuest(prev => ({
+                          ...prev,
+                          isProvisional: false,
+                          first: prev.first === 'Adult' || prev.first === 'Senior' || prev.first === 'Child' || prev.first === 'Infant' ? '' : prev.first,
+                          last: prev.last && !isNaN(Number(prev.last)) ? '' : prev.last
+                        }));
+                      }}
+                      className="px-3 py-1 bg-amber-600 hover:bg-amber-700 text-white rounded-lg font-bold text-[11px] shrink-0 cursor-pointer"
+                    >
+                      Promote to Confirmed
+                    </button>
+                  </div>
+                )}
               </div>
 
               {/* PROGRESSIVE DISCLOSURE TOGGLE: MORE DETAILS */}
@@ -1402,42 +1837,76 @@ export const IntakeView: React.FC<IntakeViewProps> = ({
                   onClick={() => setShowAdvancedGuestDetails(!showAdvancedGuestDetails)}
                   className="w-full py-2 px-3 rounded-xl bg-slate-50 hover:bg-slate-100 border border-slate-200 text-xs font-bold text-gray-700 flex items-center justify-between transition cursor-pointer"
                 >
-                  <span>{showAdvancedGuestDetails ? '− Hide Additional Profile Details' : '+ Add Dietary, Accessibility, Preferences & Notes'}</span>
-                  <span className="text-[10px] text-gray-400 font-normal">Optional</span>
+                  <span>{showAdvancedGuestDetails ? '− Hide Additional Profile Details' : '+ View Service Assignments, Audit, Dietary & Preferences'}</span>
+                  <span className="text-[10px] text-gray-400 font-normal">Expanded Profile</span>
                 </button>
               </div>
 
               {/* EXPANDABLE ADVANCED PROFILE DETAILS */}
               {showAdvancedGuestDetails && (
                 <div className="space-y-4 pt-2 border-t border-gray-100 animate-in fade-in duration-150">
-                  <div className="flex border-b border-gray-200 text-xs font-bold text-gray-500">
+                  <div className="flex flex-wrap border-b border-gray-200 text-xs font-bold text-gray-500">
                     <button
                       type="button"
                       onClick={() => setModalTab('details')}
-                      className={`pb-2 px-3 border-b-2 transition ${modalTab === 'details' ? 'border-[#D4AF37] text-[#1A3326]' : 'border-transparent'}`}
+                      className={`pb-2 px-3 border-b-2 transition cursor-pointer ${modalTab === 'details' ? 'border-[#D4AF37] text-[#1A3326]' : 'border-transparent text-gray-500 hover:text-gray-900'}`}
                     >
                       General & Contact
                     </button>
                     <button
                       type="button"
+                      onClick={() => setModalTab('assignments')}
+                      className={`pb-2 px-3 border-b-2 transition cursor-pointer flex items-center gap-1.5 ${modalTab === 'assignments' ? 'border-[#D4AF37] text-[#1A3326]' : 'border-transparent text-gray-500 hover:text-gray-900'}`}
+                    >
+                      <Briefcase size={12} />
+                      <span>Assignments</span>
+                      {modalGuest.id && (
+                        <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-blue-100 text-blue-800 font-mono">
+                          {(state.flights.filter(f => f.paxIds?.includes(modalGuest.id!)).length) + 
+                           (state.rooms.filter(r => r.guestIds?.includes(modalGuest.id!) || r.allocatedRooms?.some(ar => ar.guestIds?.includes(modalGuest.id!))).length) +
+                           (state.transfers.filter(t => t.paxIds?.includes(modalGuest.id!)).length) +
+                           (state.activities.filter(a => a.paxIds?.includes(modalGuest.id!)).length)}
+                        </span>
+                      )}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setModalTab('audit')}
+                      className={`pb-2 px-3 border-b-2 transition cursor-pointer flex items-center gap-1.5 ${modalTab === 'audit' ? 'border-[#D4AF37] text-[#1A3326]' : 'border-transparent text-gray-500 hover:text-gray-900'}`}
+                    >
+                      <ShieldCheck size={12} />
+                      <span>Readiness Audit</span>
+                      {(!modalGuest.passportNo || modalGuest.isProvisional) && (
+                        <span className="w-1.5 h-1.5 rounded-full bg-rose-500" />
+                      )}
+                    </button>
+                    <button
+                      type="button"
                       onClick={() => setModalTab('dietary')}
-                      className={`pb-2 px-3 border-b-2 transition ${modalTab === 'dietary' ? 'border-[#D4AF37] text-[#1A3326]' : 'border-transparent'}`}
+                      className={`pb-2 px-3 border-b-2 transition cursor-pointer ${modalTab === 'dietary' ? 'border-[#D4AF37] text-[#1A3326]' : 'border-transparent text-gray-500 hover:text-gray-900'}`}
                     >
                       Dietary
                     </button>
                     <button
                       type="button"
                       onClick={() => setModalTab('accessibility')}
-                      className={`pb-2 px-3 border-b-2 transition ${modalTab === 'accessibility' ? 'border-[#D4AF37] text-[#1A3326]' : 'border-transparent'}`}
+                      className={`pb-2 px-3 border-b-2 transition cursor-pointer ${modalTab === 'accessibility' ? 'border-[#D4AF37] text-[#1A3326]' : 'border-transparent text-gray-500 hover:text-gray-900'}`}
                     >
                       Accessibility
                     </button>
                     <button
                       type="button"
                       onClick={() => setModalTab('preferences')}
-                      className={`pb-2 px-3 border-b-2 transition ${modalTab === 'preferences' ? 'border-[#D4AF37] text-[#1A3326]' : 'border-transparent'}`}
+                      className={`pb-2 px-3 border-b-2 transition cursor-pointer ${modalTab === 'preferences' ? 'border-[#D4AF37] text-[#1A3326]' : 'border-transparent text-gray-500 hover:text-gray-900'}`}
                     >
                       Preferences
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setModalTab('documents')}
+                      className={`pb-2 px-3 border-b-2 transition cursor-pointer ${modalTab === 'documents' ? 'border-[#D4AF37] text-[#1A3326]' : 'border-transparent text-gray-500 hover:text-gray-900'}`}
+                    >
+                      Documents
                     </button>
                   </div>
 
@@ -1586,6 +2055,302 @@ export const IntakeView: React.FC<IntakeViewProps> = ({
                             placeholder="e.g. Sister, Lead"
                             className="w-full h-9 px-3 rounded-lg border border-gray-200 text-xs"
                           />
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* TAB 2: OPERATIONAL ASSIGNMENTS (Flights, Rooms, Transfers, Activities) */}
+                  {modalTab === 'assignments' && (
+                    <div className="space-y-4 animate-in fade-in duration-150">
+                      <div className="p-3 bg-blue-50/70 border border-blue-200/80 rounded-xl flex items-center justify-between text-xs text-blue-950">
+                        <div className="flex items-center gap-2">
+                          <Briefcase size={16} className="text-blue-700 shrink-0" />
+                          <div>
+                            <strong className="block">Connected Operational Services</strong>
+                            <span className="text-[11px] text-blue-800">
+                              Current itinerary services booked and assigned to {modalGuest.first} {modalGuest.last}.
+                            </span>
+                          </div>
+                        </div>
+                        <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 bg-blue-100 text-blue-800 rounded font-mono">
+                          {state.ref || 'VT-2026-001'}
+                        </span>
+                      </div>
+
+                      {/* FLIGHTS */}
+                      <div className="space-y-2">
+                        <div className="flex items-center gap-2 text-xs font-bold text-gray-700">
+                          <Plane size={14} className="text-blue-600" />
+                          <span>Flight Bookings</span>
+                        </div>
+                        {(() => {
+                          const flights = state.flights.filter(f => f.paxIds?.includes(modalGuest.id!));
+                          if (flights.length === 0) {
+                            return (
+                              <p className="text-xs text-gray-400 italic bg-gray-50 p-2.5 rounded-lg border border-gray-100">
+                                No flights currently assigned to this traveller.
+                              </p>
+                            );
+                          }
+                          return (
+                            <div className="space-y-1.5">
+                              {flights.map(f => (
+                                <div key={f.id} className="p-2.5 bg-gray-50 border border-gray-200 rounded-lg text-xs flex items-center justify-between">
+                                  <div>
+                                    <span className="font-bold text-[#10233F]">{f.airline} {f.flightNo}</span>
+                                    <span className="text-gray-500 ml-2">({f.from} → {f.to})</span>
+                                    <span className="text-gray-400 ml-2">• {f.date || 'Date TBD'} {f.depTime || ''}</span>
+                                  </div>
+                                  <span className="text-[10px] px-2 py-0.5 rounded bg-blue-50 text-blue-700 font-bold border border-blue-200">
+                                    {f.direction} ({f.cabin || 'Economy'})
+                                  </span>
+                                </div>
+                              ))}
+                            </div>
+                          );
+                        })()}
+                      </div>
+
+                      {/* ROOMS */}
+                      <div className="space-y-2">
+                        <div className="flex items-center gap-2 text-xs font-bold text-gray-700">
+                          <Hotel size={14} className="text-emerald-600" />
+                          <span>Accommodation & Room Allocations</span>
+                        </div>
+                        {(() => {
+                          const rooms = state.rooms.filter(r => r.guestIds?.includes(modalGuest.id!) || r.allocatedRooms?.some(ar => ar.guestIds?.includes(modalGuest.id!)));
+                          if (rooms.length === 0) {
+                            return (
+                              <p className="text-xs text-gray-400 italic bg-gray-50 p-2.5 rounded-lg border border-gray-100">
+                                No accommodation rooms currently allocated to this traveller.
+                              </p>
+                            );
+                          }
+                          return (
+                            <div className="space-y-1.5">
+                              {rooms.map(r => {
+                                const specificAlloc = r.allocatedRooms?.filter(ar => ar.guestIds?.includes(modalGuest.id!)) || [];
+                                return (
+                                  <div key={r.id} className="p-2.5 bg-gray-50 border border-gray-200 rounded-lg text-xs flex items-center justify-between">
+                                    <div>
+                                      <span className="font-bold text-[#10233F]">{r.hotel}</span>
+                                      <span className="text-gray-500 ml-2">{r.roomType}</span>
+                                      <span className="text-gray-400 ml-2">• {r.cin} to {r.cout} ({r.nights} nights)</span>
+                                      {specificAlloc.length > 0 && (
+                                        <span className="text-emerald-700 font-semibold block text-[11px] mt-0.5">
+                                          Allocated: {specificAlloc.map(a => a.roomName).join(', ')}
+                                        </span>
+                                      )}
+                                    </div>
+                                    <span className="text-[10px] px-2 py-0.5 rounded bg-emerald-50 text-emerald-800 font-bold border border-emerald-200">
+                                      {r.pay}
+                                    </span>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          );
+                        })()}
+                      </div>
+
+                      {/* TRANSFERS */}
+                      <div className="space-y-2">
+                        <div className="flex items-center gap-2 text-xs font-bold text-gray-700">
+                          <Car size={14} className="text-amber-600" />
+                          <span>Ground Transfers & Fleet</span>
+                        </div>
+                        {(() => {
+                          const transfers = state.transfers.filter(t => t.paxIds?.includes(modalGuest.id!));
+                          if (transfers.length === 0) {
+                            return (
+                              <p className="text-xs text-gray-400 italic bg-gray-50 p-2.5 rounded-lg border border-gray-100">
+                                No ground transfers currently assigned to this traveller.
+                              </p>
+                            );
+                          }
+                          return (
+                            <div className="space-y-1.5">
+                              {transfers.map(t => (
+                                <div key={t.id} className="p-2.5 bg-gray-50 border border-gray-200 rounded-lg text-xs flex items-center justify-between">
+                                  <div>
+                                    <span className="font-bold text-[#10233F]">{t.type}</span>
+                                    <span className="text-gray-500 ml-2">({t.from} → {t.to})</span>
+                                    <span className="text-gray-400 ml-2">• {t.date} {t.time}</span>
+                                    {t.driver && <span className="text-amber-800 text-[11px] block mt-0.5">Chauffeur: {t.driver} ({t.vehicle || 'Fleet vehicle'})</span>}
+                                  </div>
+                                  <span className="text-[10px] px-2 py-0.5 rounded bg-amber-50 text-amber-800 font-bold border border-amber-200">
+                                    {t.status}
+                                  </span>
+                                </div>
+                              ))}
+                            </div>
+                          );
+                        })()}
+                      </div>
+
+                      {/* ACTIVITIES */}
+                      <div className="space-y-2">
+                        <div className="flex items-center gap-2 text-xs font-bold text-gray-700">
+                          <Compass size={14} className="text-purple-600" />
+                          <span>Activities & Excursions</span>
+                        </div>
+                        {(() => {
+                          const activities = state.activities.filter(a => a.paxIds?.includes(modalGuest.id!));
+                          if (activities.length === 0) {
+                            return (
+                              <p className="text-xs text-gray-400 italic bg-gray-50 p-2.5 rounded-lg border border-gray-100">
+                                No activities currently assigned to this traveller.
+                              </p>
+                            );
+                          }
+                          return (
+                            <div className="space-y-1.5">
+                              {activities.map(a => (
+                                <div key={a.id} className="p-2.5 bg-gray-50 border border-gray-200 rounded-lg text-xs flex items-center justify-between">
+                                  <div>
+                                    <span className="font-bold text-[#10233F]">Day {a.day}: {a.name}</span>
+                                    <span className="text-gray-500 ml-2">({a.slot} • {a.start})</span>
+                                    {a.pickupLoc && <span className="text-gray-400 text-[11px] block mt-0.5">Pickup: {a.pickupLoc}</span>}
+                                  </div>
+                                  <span className="text-[10px] px-2 py-0.5 rounded bg-purple-50 text-purple-700 font-bold border border-purple-200">
+                                    {a.status}
+                                  </span>
+                                </div>
+                              ))}
+                            </div>
+                          );
+                        })()}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* TAB 3: READINESS AUDIT */}
+                  {modalTab === 'audit' && (
+                    <div className="space-y-4 animate-in fade-in duration-150">
+                      <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl flex items-center justify-between text-xs">
+                        <div>
+                          <strong className="block text-gray-900">Operational Readiness Audit</strong>
+                          <span className="text-[11px] text-gray-500">Checking documentation, personal records and assignment completeness.</span>
+                        </div>
+                        <span className="px-2 py-0.5 rounded bg-[#1A3326] text-[#D4AF37] font-bold text-[10px] uppercase font-mono">
+                          Viemma Ground OPS
+                        </span>
+                      </div>
+
+                      <div className="space-y-2.5 text-xs">
+                        {/* 1. Name & Identity */}
+                        <div className="p-3 rounded-xl border flex items-center justify-between bg-white border-gray-200">
+                          <div>
+                            <span className="font-bold text-gray-800 block">Traveller Identity</span>
+                            <span className="text-[11px] text-gray-500">
+                              {modalGuest.isProvisional ? 'Provisional Record (Name pending confirmed passport identity)' : `Confirmed Identity (${modalGuest.first} ${modalGuest.last})`}
+                            </span>
+                          </div>
+                          {modalGuest.isProvisional ? (
+                            <span className="px-2 py-1 bg-amber-50 text-amber-800 border border-amber-200 rounded-md font-bold text-[11px]">
+                              ⚠️ Needs Confirmation
+                            </span>
+                          ) : (
+                            <span className="px-2 py-1 bg-emerald-50 text-emerald-800 border border-emerald-200 rounded-md font-bold text-[11px]">
+                              ✓ Confirmed
+                            </span>
+                          )}
+                        </div>
+
+                        {/* 2. Passport Record */}
+                        <div className="p-3 rounded-xl border flex items-center justify-between bg-white border-gray-200">
+                          <div>
+                            <span className="font-bold text-gray-800 block">Passport & Travel Documentation</span>
+                            <span className="text-[11px] text-gray-500">
+                              {modalGuest.passportNo ? `Passport ${modalGuest.passportNo} (Exp: ${modalGuest.passportExpiry || 'No date'})` : 'No passport number on file'}
+                            </span>
+                          </div>
+                          {modalGuest.passportNo ? (
+                            <span className="px-2 py-1 bg-emerald-50 text-emerald-800 border border-emerald-200 rounded-md font-bold text-[11px]">
+                              ✓ Recorded
+                            </span>
+                          ) : (
+                            <span className="px-2 py-1 bg-rose-50 text-rose-800 border border-rose-200 rounded-md font-bold text-[11px]">
+                              ⚠️ Missing Passport
+                            </span>
+                          )}
+                        </div>
+
+                        {/* 3. Emergency Contact */}
+                        <div className="p-3 rounded-xl border flex items-center justify-between bg-white border-gray-200">
+                          <div>
+                            <span className="font-bold text-gray-800 block">Emergency Contact</span>
+                            <span className="text-[11px] text-gray-500">
+                              {modalGuest.emergencyContactName ? `${modalGuest.emergencyContactName} (${modalGuest.emergencyContactPhone || 'No phone'})` : 'No emergency contact specified'}
+                            </span>
+                          </div>
+                          {modalGuest.emergencyContactName ? (
+                            <span className="px-2 py-1 bg-emerald-50 text-emerald-800 border border-emerald-200 rounded-md font-bold text-[11px]">
+                              ✓ Recorded
+                            </span>
+                          ) : (
+                            <span className="px-2 py-1 bg-amber-50 text-amber-800 border border-amber-200 rounded-md font-bold text-[11px]">
+                              ⚠️ Missing Contact
+                            </span>
+                          )}
+                        </div>
+
+                        {/* 4. Dietary & Allergens */}
+                        <div className="p-3 rounded-xl border flex items-center justify-between bg-white border-gray-200">
+                          <div>
+                            <span className="font-bold text-gray-800 block">Dietary & Medical Allergens</span>
+                            <span className="text-[11px] text-gray-500">
+                              {(modalGuest.dietaryMedical?.length || 0) + (modalGuest.customFoodRequirements?.length || 0) > 0 
+                                ? `Specific requirements logged (${[...(modalGuest.dietaryMedical || []), ...(modalGuest.customFoodRequirements || []).map(x => x.name)].join(', ')})`
+                                : 'Standard menu / No special allergens specified'}
+                            </span>
+                          </div>
+                          <span className="px-2 py-1 bg-slate-100 text-slate-700 border border-slate-200 rounded-md font-semibold text-[11px]">
+                            {(modalGuest.dietaryMedical?.length || 0) > 0 ? 'Medical Alert' : 'Standard'}
+                          </span>
+                        </div>
+
+                        {/* 5. Inbound / Outbound Flight Links */}
+                        <div className="p-3 rounded-xl border flex items-center justify-between bg-white border-gray-200">
+                          <div>
+                            <span className="font-bold text-gray-800 block">Flight Links (Arrival & Departure)</span>
+                            <span className="text-[11px] text-gray-500">
+                              {state.flights.some(f => f.paxIds?.includes(modalGuest.id!))
+                                ? `${state.flights.filter(f => f.paxIds?.includes(modalGuest.id!)).length} flight segments linked`
+                                : 'No flights assigned'}
+                            </span>
+                          </div>
+                          {state.flights.some(f => f.paxIds?.includes(modalGuest.id!)) ? (
+                            <span className="px-2 py-1 bg-emerald-50 text-emerald-800 border border-emerald-200 rounded-md font-bold text-[11px]">
+                              ✓ Assigned
+                            </span>
+                          ) : (
+                            <span className="px-2 py-1 bg-amber-50 text-amber-800 border border-amber-200 rounded-md font-bold text-[11px]">
+                              ⚠️ Unassigned
+                            </span>
+                          )}
+                        </div>
+
+                        {/* 6. Room Allocation */}
+                        <div className="p-3 rounded-xl border flex items-center justify-between bg-white border-gray-200">
+                          <div>
+                            <span className="font-bold text-gray-800 block">Hotel Room Allocation</span>
+                            <span className="text-[11px] text-gray-500">
+                              {state.rooms.some(r => r.guestIds?.includes(modalGuest.id!) || r.allocatedRooms?.some(ar => ar.guestIds?.includes(modalGuest.id!)))
+                                ? 'Assigned to accommodation room'
+                                : 'Not currently assigned to any room'}
+                            </span>
+                          </div>
+                          {state.rooms.some(r => r.guestIds?.includes(modalGuest.id!) || r.allocatedRooms?.some(ar => ar.guestIds?.includes(modalGuest.id!))) ? (
+                            <span className="px-2 py-1 bg-emerald-50 text-emerald-800 border border-emerald-200 rounded-md font-bold text-[11px]">
+                              ✓ Allocated
+                            </span>
+                          ) : (
+                            <span className="px-2 py-1 bg-amber-50 text-amber-800 border border-amber-200 rounded-md font-bold text-[11px]">
+                              ⚠️ Unallocated
+                            </span>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -1855,6 +2620,27 @@ export const IntakeView: React.FC<IntakeViewProps> = ({
                       </div>
                     </div>
                   )}
+
+                  {modalTab === 'documents' && (
+                    <div className="space-y-4">
+                      <AttachmentManager
+                        attachments={modalGuest.attachments || []}
+                        onAddAttachment={(item) => setModalGuest(prev => ({
+                          ...prev,
+                          attachments: [...(prev.attachments || []), item]
+                        }))}
+                        onRemoveAttachment={(id) => setModalGuest(prev => ({
+                          ...prev,
+                          attachments: (prev.attachments || []).filter(a => a.id !== id)
+                        }))}
+                        recordType="guest"
+                        recordId={modalGuest.id || Date.now()}
+                        bookingRef={state.ref}
+                        title="Traveller Passports, Visas & Medical Clearances"
+                        description="Upload passport scan copies, entry visas, travel insurance certificates, or medical clearance letters (PDF, JPEG, PNG, WebP up to 15MB)."
+                      />
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -1871,13 +2657,274 @@ export const IntakeView: React.FC<IntakeViewProps> = ({
               </button>
               <button
                 type="button"
-                onClick={handleSaveModalGuest}
-                className="px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition shadow-xs cursor-pointer"
+                onClick={() => handleSaveModalGuest(true)}
+                className="px-4 py-2 bg-amber-50 hover:bg-amber-100 text-[#1A3326] border border-amber-300 rounded-xl text-xs font-bold transition shadow-xs cursor-pointer"
+                title="Save this traveller and immediately add another without closing"
+              >
+                Save & Add Another
+              </button>
+              <button
+                type="button"
+                onClick={() => handleSaveModalGuest(false)}
+                className="px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-extrabold transition shadow-xs cursor-pointer"
               >
                 Save Traveller
               </button>
             </div>
 
+          </div>
+        </div>
+      )}
+
+      {/* QUICK ADD MODAL (Option 1: Quantity Controls) */}
+      {quickAddOpen && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in">
+          <div className="bg-white rounded-3xl max-w-lg w-full p-6 md:p-8 space-y-6 shadow-2xl border border-amber-200 animate-in zoom-in-95">
+            <div className="flex items-center justify-between border-b border-gray-100 pb-4">
+              <div className="flex items-center gap-2.5">
+                <div className="w-10 h-10 rounded-2xl bg-amber-50 text-amber-700 flex items-center justify-center">
+                  <Users size={20} />
+                </div>
+                <div>
+                  <h3 className="text-lg font-extrabold text-[#10233F]">Quick Add Travellers</h3>
+                  <p className="text-xs text-gray-500">Add provisional group composition before collecting full names.</p>
+                </div>
+              </div>
+              <button onClick={() => setQuickAddOpen(false)} className="p-2 rounded-xl hover:bg-gray-100 text-gray-400 cursor-pointer">
+                <X size={18} />
+              </button>
+            </div>
+
+            <div className="space-y-4 text-xs">
+              <p className="text-gray-600 leading-relaxed font-medium">
+                Specify quantities to generate individual provisional traveller records (e.g. Adult 1, Child 1) linked to the lead contact. Each person can be named and assigned independently:
+              </p>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="p-3.5 bg-gray-50 border border-gray-200 rounded-2xl space-y-1.5">
+                  <span className="font-extrabold text-gray-800 block">Adults (18+)</span>
+                  <div className="flex items-center justify-between">
+                    <button type="button" onClick={() => setQaAdults(Math.max(0, qaAdults - 1))} className="w-8 h-8 rounded-xl bg-white border border-gray-300 font-bold text-gray-700 cursor-pointer">-</button>
+                    <span className="text-base font-black text-[#10233F]">{qaAdults}</span>
+                    <button type="button" onClick={() => setQaAdults(qaAdults + 1)} className="w-8 h-8 rounded-xl bg-[#1A3326] text-white font-bold cursor-pointer">+</button>
+                  </div>
+                </div>
+
+                <div className="p-3.5 bg-gray-50 border border-gray-200 rounded-2xl space-y-1.5">
+                  <span className="font-extrabold text-gray-800 block">Elderly / Seniors</span>
+                  <div className="flex items-center justify-between">
+                    <button type="button" onClick={() => setQaElderly(Math.max(0, qaElderly - 1))} className="w-8 h-8 rounded-xl bg-white border border-gray-300 font-bold text-gray-700 cursor-pointer">-</button>
+                    <span className="text-base font-black text-[#10233F]">{qaElderly}</span>
+                    <button type="button" onClick={() => setQaElderly(qaElderly + 1)} className="w-8 h-8 rounded-xl bg-[#1A3326] text-white font-bold cursor-pointer">+</button>
+                  </div>
+                </div>
+
+                <div className="p-3.5 bg-gray-50 border border-gray-200 rounded-2xl space-y-1.5">
+                  <span className="font-extrabold text-gray-800 block">Children (2 - 11)</span>
+                  <div className="flex items-center justify-between">
+                    <button type="button" onClick={() => setQaChildren(Math.max(0, qaChildren - 1))} className="w-8 h-8 rounded-xl bg-white border border-gray-300 font-bold text-gray-700 cursor-pointer">-</button>
+                    <span className="text-base font-black text-[#10233F]">{qaChildren}</span>
+                    <button type="button" onClick={() => setQaChildren(qaChildren + 1)} className="w-8 h-8 rounded-xl bg-[#1A3326] text-white font-bold cursor-pointer">+</button>
+                  </div>
+                </div>
+
+                <div className="p-3.5 bg-gray-50 border border-gray-200 rounded-2xl space-y-1.5">
+                  <span className="font-extrabold text-gray-800 block">Infants (Under 2)</span>
+                  <div className="flex items-center justify-between">
+                    <button type="button" onClick={() => setQaInfants(Math.max(0, qaInfants - 1))} className="w-8 h-8 rounded-xl bg-white border border-gray-300 font-bold text-gray-700 cursor-pointer">-</button>
+                    <span className="text-base font-black text-[#10233F]">{qaInfants}</span>
+                    <button type="button" onClick={() => setQaInfants(qaInfants + 1)} className="w-8 h-8 rounded-xl bg-[#1A3326] text-white font-bold cursor-pointer">+</button>
+                  </div>
+                </div>
+              </div>
+
+              {qaError && (
+                <div className="p-2.5 bg-rose-50 border border-rose-200 text-rose-800 rounded-xl text-xs font-bold">
+                  {qaError}
+                </div>
+              )}
+
+              <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl text-amber-900 flex items-center justify-between font-bold">
+                <span>Total additional travellers to add:</span>
+                <span className="text-base text-amber-950 font-black">{qaAdults + qaElderly + qaChildren + qaInfants}</span>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-3 pt-2 border-t border-gray-100">
+              <button
+                type="button"
+                onClick={() => {
+                  setQuickAddOpen(false);
+                  setQaError('');
+                }}
+                className="px-5 py-2.5 rounded-xl border border-gray-200 bg-white hover:bg-gray-50 text-xs font-bold text-gray-700 cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleQuickAddSubmit}
+                disabled={qaAdults + qaElderly + qaChildren + qaInfants === 0}
+                className="px-6 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white text-xs font-extrabold shadow-sm transition cursor-pointer"
+              >
+                Add {qaAdults + qaElderly + qaChildren + qaInfants} Travellers
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* CHANGE LEAD PERSON CONFIRMATION MODAL */}
+      {showChangeLeadModal && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in">
+          <div className="bg-white rounded-3xl max-w-lg w-full p-6 md:p-8 space-y-6 shadow-2xl border border-amber-200 animate-in zoom-in-95">
+            <div className="flex items-center justify-between border-b border-gray-100 pb-4">
+              <div className="flex items-center gap-2.5">
+                <div className="w-10 h-10 rounded-2xl bg-amber-50 text-amber-700 flex items-center justify-center">
+                  <Crown size={20} />
+                </div>
+                <div>
+                  <h3 className="text-lg font-extrabold text-[#10233F]">Change Lead Person</h3>
+                  <p className="text-xs text-gray-500">Trip {state.ref || 'VT-2026-001'} Primary Representative</p>
+                </div>
+              </div>
+              <button onClick={() => setShowChangeLeadModal(false)} className="p-2 rounded-xl hover:bg-gray-100 text-gray-400 cursor-pointer">
+                <X size={18} />
+              </button>
+            </div>
+
+            <div className="space-y-3 text-xs">
+              <p className="text-gray-600 leading-relaxed">
+                Select the group member to designate as the primary representative. All other travellers, preferences, and individual operational assignments will remain strictly preserved:
+              </p>
+
+              <div className="max-h-60 overflow-y-auto space-y-2 pr-1">
+                {state.guests.map(g => (
+                  <button
+                    key={g.id}
+                    type="button"
+                    onClick={() => {
+                      onSetLeadGuest(g.id);
+                      setShowChangeLeadModal(false);
+                    }}
+                    className={`w-full p-3 rounded-xl border text-left transition flex items-center justify-between cursor-pointer ${
+                      g.isLead
+                        ? 'border-[#D4AF37] bg-yellow-50/40 ring-1 ring-[#D4AF37]/50'
+                        : 'border-gray-200 hover:border-gray-300 hover:bg-slate-50'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <div className={`w-7 h-7 rounded-full flex items-center justify-center font-bold text-xs ${g.isLead ? 'bg-[#1A3326] text-[#D4AF37]' : 'bg-gray-100 text-gray-700'}`}>
+                        {g.isLead ? '★' : (g.first[0] || 'T')}
+                      </div>
+                      <div>
+                        <span className="font-bold text-[#10233F] block">{g.first} {g.last}</span>
+                        <span className="text-[11px] text-gray-500">{g.nationality || g.country || 'Global Citizen'} • {g.age}</span>
+                      </div>
+                    </div>
+                    {g.isLead ? (
+                      <span className="text-[10px] uppercase font-bold text-[#D4AF37] bg-[#1A3326] px-2 py-0.5 rounded">
+                        Current Lead
+                      </span>
+                    ) : (
+                      <span className="text-xs font-bold text-[#1A3326] underline">
+                        Make Lead
+                      </span>
+                    )}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="flex justify-end pt-2 border-t border-gray-100">
+              <button
+                type="button"
+                onClick={() => setShowChangeLeadModal(false)}
+                className="px-5 py-2.5 rounded-xl border border-gray-200 bg-white hover:bg-gray-50 text-xs font-bold text-gray-700 cursor-pointer"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* SAFE REMOVAL CONFIRMATION MODAL */}
+      {guestToRemove && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in">
+          <div className="bg-white rounded-3xl max-w-md w-full p-6 md:p-8 space-y-5 shadow-2xl border border-rose-200 animate-in zoom-in-95">
+            <div className="flex items-center justify-between border-b border-gray-100 pb-4">
+              <div className="flex items-center gap-2.5 text-rose-700">
+                <div className="w-10 h-10 rounded-2xl bg-rose-50 flex items-center justify-center">
+                  <ShieldAlert size={20} />
+                </div>
+                <div>
+                  <h3 className="text-lg font-extrabold text-gray-900">Remove Traveller</h3>
+                  <p className="text-xs text-gray-500">{guestToRemove.first} {guestToRemove.last}</p>
+                </div>
+              </div>
+              <button onClick={() => setGuestToRemove(null)} className="p-2 rounded-xl hover:bg-gray-100 text-gray-400 cursor-pointer">
+                <X size={18} />
+              </button>
+            </div>
+
+            <div className="space-y-3 text-xs text-gray-600 leading-relaxed">
+              <p>
+                Are you sure you want to remove <strong className="text-gray-900">{guestToRemove.first} {guestToRemove.last}</strong> from Trip {state.ref || 'VT-2026-001'}?
+              </p>
+
+              {guestToRemove.isLead && (
+                <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl text-amber-900 font-semibold">
+                  ⚠️ This person is currently designated as the Group Lead Contact. Removing them will safely promote the next group member to Lead Contact.
+                </div>
+              )}
+
+              {/* Assignments breakdown */}
+              {(() => {
+                const assignedF = state.flights.filter(f => f.paxIds?.includes(guestToRemove.id));
+                const assignedT = state.transfers.filter(t => t.paxIds?.includes(guestToRemove.id));
+                const assignedR = state.rooms.filter(r => r.guestIds?.includes(guestToRemove.id) || r.allocatedRooms?.some(ar => ar.guestIds?.includes(guestToRemove.id)));
+                const assignedA = state.activities.filter(a => a.paxIds?.includes(guestToRemove.id));
+
+                if (assignedF.length > 0 || assignedT.length > 0 || assignedR.length > 0 || assignedA.length > 0) {
+                  return (
+                    <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-1.5">
+                      <span className="font-bold text-gray-700 block">Active Operational Assignments to be Unlinked:</span>
+                      <ul className="list-disc list-inside space-y-0.5 text-gray-600 text-[11px]">
+                        {assignedF.length > 0 && <li>{assignedF.length} Flight segment(s)</li>}
+                        {assignedT.length > 0 && <li>{assignedT.length} Ground transfer(s)</li>}
+                        {assignedR.length > 0 && <li>{assignedR.length} Accommodation room(s)</li>}
+                        {assignedA.length > 0 && <li>{assignedA.length} Scheduled activity(ies)</li>}
+                      </ul>
+                      <p className="text-[10px] text-gray-500 pt-1">
+                        All unassigned services will remain intact for the other group travellers.
+                      </p>
+                    </div>
+                  );
+                }
+                return null;
+              })()}
+            </div>
+
+            <div className="flex items-center justify-end gap-3 pt-2 border-t border-gray-100">
+              <button
+                type="button"
+                onClick={() => setGuestToRemove(null)}
+                className="px-5 py-2.5 rounded-xl border border-gray-200 bg-white hover:bg-gray-50 text-xs font-bold text-gray-700 cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  onRemoveGuest(guestToRemove.id);
+                  setGuestToRemove(null);
+                }}
+                className="px-5 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold shadow-sm transition cursor-pointer"
+              >
+                Confirm Removal
+              </button>
+            </div>
           </div>
         </div>
       )}

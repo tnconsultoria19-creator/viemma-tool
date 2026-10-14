@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { AppState, Activity, Guide } from '../types';
+import { AppState, Activity, Guide, AttachmentItem } from '../types';
 import { DB_DEFAULT } from '../dbDefaults';
+import { AttachmentManager } from './AttachmentManager';
 import { 
   Route, 
   Plus, 
@@ -23,7 +24,8 @@ import {
   FileText,
   MapPin,
   ChevronDown,
-  ChevronUp
+  ChevronUp,
+  Upload
 } from 'lucide-react';
 
 interface ActivitiesViewProps {
@@ -43,8 +45,9 @@ export const ActivitiesView: React.FC<ActivitiesViewProps> = ({
 }) => {
   const [editingActivityId, setEditingActivityId] = useState<number | null>(null);
   const [aForm, setAForm] = useState<Partial<Activity>>({});
-  const [activeTab, setActiveTab] = useState<'basic' | 'operational' | 'pricing' | 'pax'>('basic');
+  const [activeTab, setActiveTab] = useState<'basic' | 'operational' | 'pricing' | 'pax' | 'attachments'>('basic');
   const [expandedActivityIds, setExpandedActivityIds] = useState<number[]>([]);
+  const [activityValidationError, setActivityValidationError] = useState<string | null>(null);
   const guides = state.guides?.length ? state.guides : DB_DEFAULT.guides as Guide[];
 
   const toggleActivityExpand = (id: number) => {
@@ -169,8 +172,9 @@ export const ActivitiesView: React.FC<ActivitiesViewProps> = ({
   };
 
   const handleSaveActivity = () => {
-    if (!aForm.name) {
-      alert('Activity name is required.');
+    setActivityValidationError(null);
+    if (!aForm.name?.trim()) {
+      setActivityValidationError('Activity name is required.');
       return;
     }
 
@@ -178,7 +182,7 @@ export const ActivitiesView: React.FC<ActivitiesViewProps> = ({
       id: aForm.id || Date.now(),
       day: Number(aForm.day) || 1,
       slot: aForm.slot || 'Morning',
-      name: aForm.name,
+      name: aForm.name.trim(),
       desc: aForm.desc || '',
       pickup: aForm.pickup || '',
       start: aForm.start || '',
@@ -220,7 +224,8 @@ export const ActivitiesView: React.FC<ActivitiesViewProps> = ({
       guideName: aForm.guideName || '',
       guidePhone: aForm.guidePhone || '',
       guideSourceAgentId: aForm.guideSourceAgentId || '',
-      guideSourceAgentName: aForm.guideSourceAgentName || ''
+      guideSourceAgentName: aForm.guideSourceAgentName || '',
+      attachments: aForm.attachments || []
     };
 
     if (editingActivityId === -1) {
@@ -230,6 +235,7 @@ export const ActivitiesView: React.FC<ActivitiesViewProps> = ({
     }
     setEditingActivityId(null);
     setAForm({});
+    setActivityValidationError(null);
   };
 
   const togglePassengerSelection = (paxId: number) => {
@@ -331,6 +337,13 @@ export const ActivitiesView: React.FC<ActivitiesViewProps> = ({
               className={`py-3.5 px-4 border-b-2 -mb-px transition-all ${activeTab === 'pax' ? 'border-[#D4AF37] text-[#1A3326]' : 'border-transparent hover:text-gray-950'}`}
             >
               4. Traveler Alignment
+            </button>
+            <button 
+              type="button"
+              onClick={() => setActiveTab('attachments')}
+              className={`py-3.5 px-4 border-b-2 -mb-px transition-all ${activeTab === 'attachments' ? 'border-[#D4AF37] text-[#1A3326]' : 'border-transparent hover:text-gray-950'}`}
+            >
+              5. Documents & Vouchers
             </button>
           </div>
 
@@ -870,6 +883,30 @@ export const ActivitiesView: React.FC<ActivitiesViewProps> = ({
                       })
                     )}
                   </div>
+                </div>
+              </div>
+            )}
+
+            {/* TAB 5: SUPPORTING DOCUMENTS & ATTACHMENTS */}
+            {activeTab === 'attachments' && (
+              <div className="space-y-6 animate-in fade-in duration-150">
+                <div className="bg-white rounded-[20px] p-6 border border-gray-100 shadow-sm space-y-4">
+                  <AttachmentManager
+                    attachments={aForm.attachments || []}
+                    onAddAttachment={(item) => setAForm(prev => ({
+                      ...prev,
+                      attachments: [...(prev.attachments || []), item]
+                    }))}
+                    onRemoveAttachment={(id) => setAForm(prev => ({
+                      ...prev,
+                      attachments: (prev.attachments || []).filter(a => a.id !== id)
+                    }))}
+                    recordType="activity"
+                    recordId={aForm.id || Date.now()}
+                    bookingRef={state.ref}
+                    title="Excursion Vouchers, Permits & Safety Briefs"
+                    description="Upload excursion ticket vouchers, park entry permits, wine cellar booking confirmations, or safety waivers (PDF, JPEG, PNG, WebP up to 15MB)."
+                  />
                 </div>
               </div>
             )}
