@@ -711,9 +711,9 @@ export async function syncProjectionsToFirestore(trip: AppState): Promise<{
   if (db && isCloudConnected) {
     try {
       await Promise.all([
-        setDoc(doc(db, 'clientShares', clientToken), storedClientDoc, { merge: true }),
-        setDoc(doc(db, 'agentShares', agentToken), storedAgentDoc, { merge: true }),
-        setDoc(doc(db, 'opsShares', opsToken), storedOpsDoc, { merge: true })
+        setDoc(doc(db, 'clientShares', clientToken), storedClientDoc),
+        setDoc(doc(db, 'agentShares', agentToken), storedAgentDoc),
+        setDoc(doc(db, 'opsShares', opsToken), storedOpsDoc)
       ]);
     } catch (err) {
       console.warn('Firestore share projections sync warning:', err);
