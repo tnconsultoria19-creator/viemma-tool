@@ -894,7 +894,7 @@ export const ActivitiesView: React.FC<ActivitiesViewProps> = ({
                 </span>
                 <span className="text-gray-300">•</span>
                 <span className="flex items-center gap-1">
-                  💰 Activities Valuation: <strong className="text-[#1A3326]">R {state.activities.reduce((sum, a) => sum + (a.isFree || a.status === 'Cancelled' ? 0 : a.total), 0).toLocaleString()}</strong>
+                  💰 Activities Valuation: <strong className="text-[#1A3326]">R {visibleActivities.reduce((sum, a) => sum + (a.isFree || a.status === 'Cancelled' ? 0 : a.total), 0).toLocaleString()}</strong>
                 </span>
               </div>
             </div>
@@ -2303,7 +2303,7 @@ export const ActivitiesView: React.FC<ActivitiesViewProps> = ({
                     {Array.from({ length: tripDaysCount }).map((_, idx) => {
                       const dayNum = idx + 1;
                       const dayActs = state.activities
-                        .filter(a => a.day === dayNum && a.status !== 'Cancelled')
+                        .filter(a => a.day === dayNum && a.status !== 'Cancelled' && matchesSelectedGroup(a))
                         .sort((a, b) => (a.start || '00:00').localeCompare(b.start || '00:00'));
 
                       return (
@@ -2366,7 +2366,7 @@ export const ActivitiesView: React.FC<ActivitiesViewProps> = ({
                       <p className="text-xs text-gray-500">Operational matrix tracking all scheduled excursions across all trip days.</p>
                     </div>
                     <span className="text-xs font-bold bg-slate-100 px-3 py-1.5 rounded-xl text-gray-700">
-                      Total: {state.activities.length} Records
+                      Total: {visibleActivities.length} Records
                     </span>
                   </div>
 
