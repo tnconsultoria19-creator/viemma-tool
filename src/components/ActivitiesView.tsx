@@ -199,12 +199,33 @@ export const ActivitiesView: React.FC<ActivitiesViewProps> = ({
     const group = namedGroups.find(g => g.id === groupId);
     if (!group) return;
     if (typeof window !== 'undefined' && !window.confirm(`Delete “${group.name}”? Existing activity participant lists will be preserved.`)) return;
+    const remainingGroups = namedGroups.filter(g => g.id !== groupId);
+    const updatedActivities = state.activities.map(activity => {
+      const oldGroupIds = activity.groupIds || [];
+      const remainingGroupIds = oldGroupIds.filter(id => id !== groupId);
+      // If an activity still belongs to other named groups, recalculate the roster from those
+      // groups. If the deleted group was its only named assignment, preserve the saved roster.
+      if (oldGroupIds.includes(groupId) && remainingGroupIds.length > 0) {
+        const memberIds: number[] = remainingGroups
+          .filter(g => remainingGroupIds.includes(g.id))
+          .flatMap(g => g.memberIds || []);
+        const paxIds = Array.from(new Set<number>(memberIds));
+        const counts = countsForRoster(paxIds);
+        return {
+          ...activity,
+          groupIds: remainingGroupIds,
+          paxIds,
+          nAdult: counts.adults,
+          nChild: counts.children,
+          total: totalForRoster(activity, paxIds),
+          updatedAt: new Date().toISOString()
+        };
+      }
+      return { ...activity, groupIds: remainingGroupIds };
+    });
     onUpdateState({
-      namedGroups: namedGroups.filter(g => g.id !== groupId),
-      activities: state.activities.map(activity => ({
-        ...activity,
-        groupIds: (activity.groupIds || []).filter(id => id !== groupId)
-      }))
+      namedGroups: remainingGroups,
+      activities: updatedActivities
     });
     setSelectedGroupFilter(current => current === groupId ? 'ALL' : current);
     setCatalogTargetGroupIds(current => current.filter(id => id !== groupId));
