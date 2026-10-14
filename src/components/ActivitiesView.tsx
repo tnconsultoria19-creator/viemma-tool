@@ -75,14 +75,8 @@ export const ActivitiesView: React.FC<ActivitiesViewProps> = ({
   const [assigningActivityId, setAssigningActivityId] = useState<number | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [editingDayTitleId, setEditingDayTitleId] = useState<number | null>(null);
-  const [customDayTitles, setCustomDayTitles] = useState<Record<number, string>>({
-    1: 'Arrival, Private Check-in & Scenic Sunset Welcome',
-    2: 'Table Mountain Cableway Ascent & Heritage Quarter Walk',
-    3: 'Chapman’s Peak Coastal Route & Boulders Beach Penguins',
-    4: 'Cape Winelands Private Cellar Tastings & Artisan Lunch',
-    5: 'Wilderness Reserve Safari Drives & Conservation Briefing',
-    6: 'Leisure Morning, Curio Shopping & Airport Departure'
-  });
+  // Do not seed new trips with a sample itinerary; day titles are supplied by the user.
+  const [customDayTitles, setCustomDayTitles] = useState<Record<number, string>>({});
 
   const guides = state.guides?.length ? state.guides : DB_DEFAULT.guides as Guide[];
 
