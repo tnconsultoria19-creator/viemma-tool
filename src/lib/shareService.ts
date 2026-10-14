@@ -828,22 +828,32 @@ export function subscribeToShareDoc(
   onUpdate: (docData: any | null) => void,
   onError?: (err: unknown) => void
 ): () => void {
-  // Check local fallback first
-  try {
-    const cachePrefix = role === 'client' ? 'cli' : role === 'agent' ? 'agt' : 'ops';
-    const localKey = `viemma_share_${cachePrefix}_${token}`;
-    const cached = localStorage.getItem(localKey);
-    if (cached) {
-      const parsed = JSON.parse(cached);
-      if (parsed.active !== false) {
-        onUpdate(parsed);
-      }
-    }
-  } catch {}
-
   const collectionName = role === 'client' ? 'clientShares' : role === 'agent' ? 'agentShares' : 'opsShares';
 
+  // When online, always confirm the share with Firestore before displaying it.
+  // Only use a browser cache when cloud connectivity is unavailable and the owner allowed offline access.
   if (!db || !isCloudConnected) {
+    try {
+      const cachePrefix = role === 'client' ? 'cli' : role === 'agent' ? 'agt' : 'ops';
+      const localKey = `viemma_share_${cachePrefix}_${token}`;
+      const cached = localStorage.getItem(localKey);
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        const expiresAt = parsed?.accessPolicy?.expiresAt;
+        const expired = expiresAt
+          ? Date.now() > new Date(/^\\d{4}-\\d{2}-\\d{2}$/.test(expiresAt) ? `${expiresAt}T23:59:59.999` : expiresAt).getTime()
+          : false;
+        if (parsed.active !== false && parsed.accessPolicy?.enableOfflineAccess !== false && !expired) {
+          onUpdate(parsed);
+        } else {
+          onUpdate(null);
+        }
+      } else {
+        onUpdate(null);
+      }
+    } catch {
+      onUpdate(null);
+    }
     return () => {};
   }
 
