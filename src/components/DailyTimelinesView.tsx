@@ -46,19 +46,27 @@ export const DailyTimelinesView: React.FC<DailyTimelinesViewProps> = ({ state, o
       paxCount: f.paxIds?.length || 1,
       originalObj: f
     })),
-    ...activities.map(a => ({
-      id: `act_${a.id}`,
-      type: 'ACTIVITY' as const,
-      time: a.start || '14:00',
-      date: selectedDate, // Default or day match
-      title: a.name,
-      subtitle: `Pickup: ${a.pickup} | Conf: ${a.conf}`,
-      driver: 'Assigned Guide',
-      vehicle: 'Transfer Fleet',
-      status: a.status,
-      paxCount: a.paxIds?.length || 2,
-      originalObj: a
-    })),
+    ...activities.map(a => {
+      let actDate = a.date;
+      if (!actDate && state.client?.startDate) {
+        const d = new Date(state.client.startDate);
+        d.setDate(d.getDate() + ((a.day || 1) - 1));
+        actDate = d.toISOString().split('T')[0];
+      }
+      return {
+        id: `act_${a.id}`,
+        type: 'ACTIVITY' as const,
+        time: a.start || a.pickup || '09:30',
+        date: actDate || selectedDate,
+        title: a.name,
+        subtitle: `Venue: ${a.venue || a.pickupLoc || 'TBD'} | Pickup: ${a.pickup || 'TBD'}${a.endTime ? ` | Ends: ${a.endTime}` : ''} | Resp: ${a.responsiblePerson || a.supplier || 'Guide'}`,
+        driver: a.responsiblePerson || 'Assigned Guide',
+        vehicle: 'Transfer Fleet',
+        status: a.status,
+        paxCount: a.paxIds?.length || state.guests.length,
+        originalObj: a
+      };
+    }),
     ...rooms.map(r => ({
       id: `room_${r.id}`,
       type: 'HOTEL' as const,
@@ -76,6 +84,7 @@ export const DailyTimelinesView: React.FC<DailyTimelinesViewProps> = ({ state, o
 
   // Filter items
   const filteredItems = timelineItems.filter(item => {
+    if (selectedDate && item.date && item.date !== selectedDate) return false;
     if (filterType === 'TRANSFERS' && item.type !== 'TRANSFER') return false;
     if (filterType === 'FLIGHTS' && item.type !== 'FLIGHT') return false;
     if (filterType === 'ACTIVITIES' && item.type !== 'ACTIVITY') return false;
@@ -98,7 +107,12 @@ export const DailyTimelinesView: React.FC<DailyTimelinesViewProps> = ({ state, o
       case 'Pending':
       case 'Requested':
       case 'Held':
+      case 'Planned':
         return <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 text-amber-800 border border-amber-100">{status}</span>;
+      case 'Postponed':
+        return <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-purple-50 text-purple-800 border border-purple-200">{status}</span>;
+      case 'Cancelled':
+        return <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-50 text-rose-800 border border-rose-200 line-through">{status}</span>;
       case 'Assigned':
       case 'EN ROUTE':
         return <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-50 text-blue-800 border border-blue-100">{status}</span>;

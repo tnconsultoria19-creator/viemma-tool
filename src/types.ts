@@ -346,14 +346,18 @@ export interface Room {
 export interface Activity {
   id: number;
   day: number;
+  date?: string;
   slot: 'Morning' | 'Afternoon' | 'Evening' | 'Full Day';
   name: string;
   desc: string;
   pickup: string;
   start: string;
+  endTime?: string;
   dur: string;
+  venue?: string;
   pickupLoc: string;
-  status: 'Planned' | 'Requested' | 'Confirmed' | 'Cancelled';
+  responsiblePerson?: string;
+  status: 'Draft' | 'Planned' | 'Requested' | 'Confirmed' | 'Completed' | 'Postponed' | 'Cancelled';
   serviceStatus?: ServiceStatus;
   conf: string;
   supplier: string;
@@ -797,5 +801,9 @@ export interface AIItineraryPayload {
   generalNotes?: string;
   warnings?: string[];
 }
+
+// --- ARGON_DIRECTIVE_TYPES ---
+export * from './utils/argonDomainModel';
+export * from './utils/pdfExportEngine';
 
 

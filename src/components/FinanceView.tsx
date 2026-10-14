@@ -47,10 +47,10 @@ export const FinanceView: React.FC<FinanceViewProps> = ({
   const retailTotalCurr = retailTotalZAR * selectedRate;
 
   // Segment totals for presentation
-  const hotelCosts = state.rooms.reduce((acc, r) => acc + (r.rate * r.nights) + (r.supp * r.guestIds.length), 0);
-  const flightCosts = state.flights.reduce((acc, fl) => acc + (fl.cost * fl.qty), 0);
-  const transferCosts = state.transfers.reduce((acc, t) => acc + t.cost + t.tolls + t.parking, 0);
-  const activityCosts = state.activities.reduce((acc, act) => acc + act.total, 0);
+  const hotelCosts = state.rooms.reduce((acc, r) => acc + (r.status === 'Cancelled' ? 0 : (r.rate * r.nights) + r.supp), 0);
+  const flightCosts = state.flights.reduce((acc, fl) => acc + (fl.status === 'Cancelled' ? 0 : fl.cost * fl.qty), 0);
+  const transferCosts = state.transfers.reduce((acc, t) => acc + (t.status === 'Cancelled' ? 0 : t.cost + t.tolls + t.parking), 0);
+  const activityCosts = state.activities.reduce((acc, act) => acc + (act.isFree || act.status === 'Cancelled' ? 0 : act.total), 0);
 
   const handleRateChange = (curr: 'USD' | 'EUR' | 'BRL' | 'AOA', val: number) => {
     onUpdateFinance({

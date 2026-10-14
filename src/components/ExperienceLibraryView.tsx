@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { AppState, ExperienceLibraryItem, DestinationLibraryItem } from '../types';
+import React, { useState, useMemo } from 'react';
+import { AppState, ExperienceLibraryItem, DestinationLibraryItem, Activity } from '../types';
 import { DEFAULT_EXPERIENCES, DEFAULT_DESTINATIONS } from '../data/libraryDefaults';
 import { 
   Sparkles, 
@@ -22,7 +22,9 @@ import {
   CloudLightning,
   AlertCircle,
   FileText,
-  Bookmark
+  Bookmark,
+  Calendar,
+  Route
 } from 'lucide-react';
 
 interface ExperienceLibraryViewProps {
@@ -39,29 +41,128 @@ export const ExperienceLibraryView: React.FC<ExperienceLibraryViewProps> = ({
   const [categoryFilter, setCategoryFilter] = useState('');
   const [destinationFilter, setDestinationFilter] = useState('');
 
-  // Editing state
+  const experiences = state.experienceLibrary?.length ? state.experienceLibrary : DEFAULT_EXPERIENCES;
+  const destinations = state.destinationLibrary?.length ? state.destinationLibrary : DEFAULT_DESTINATIONS;
+
   const [editingExperienceId, setEditingExperienceId] = useState<string | null>(null);
-  const [editingDestinationId, setEditingDestinationId] = useState<string | null>(null);
-
-  // Forms state
   const [expForm, setExpForm] = useState<Partial<ExperienceLibraryItem>>({});
-  const [destForm, setDestForm] = useState<Partial<DestinationLibraryItem>>({});
-
-  // Dynamic lists in forms
   const [newHighlight, setNewHighlight] = useState('');
   const [newFaqQ, setNewFaqQ] = useState('');
   const [newFaqA, setNewFaqA] = useState('');
+  const [previewVersion, setPreviewVersion] = useState<'luxury' | 'short' | 'seo' | 'family' | 'adventure'>('luxury');
+
+  const [editingDestinationId, setEditingDestinationId] = useState<string | null>(null);
+  const [destForm, setDestForm] = useState<Partial<DestinationLibraryItem>>({});
   const [newLocalTip, setNewLocalTip] = useState('');
   const [newPackingAdvice, setNewPackingAdvice] = useState('');
 
-  // AI Generator status
   const [isAiGenerating, setIsAiGenerating] = useState(false);
-  const [aiStep, setAiStep] = useState('');
-  const [aiError, setAiError] = useState('');
-  const [previewVersion, setPreviewVersion] = useState<'luxury' | 'short' | 'seo' | 'family' | 'adventure'>('luxury');
+  const [aiError, setAiError] = useState<string | null>(null);
+  const [aiStep, setAiStep] = useState<string>('');
 
-  const experiences = state.experienceLibrary || [];
-  const destinations = state.destinationLibrary || [];
+  // Add to Trip Programme Modal State
+  const [activeAddToTripExp, setActiveAddToTripExp] = useState<ExperienceLibraryItem | null>(null);
+  const [targetDay, setTargetDay] = useState<number>(1);
+  const [targetSlot, setTargetSlot] = useState<'Morning' | 'Afternoon' | 'Evening' | 'Full Day'>('Morning');
+  const [addedToastMessage, setAddedToastMessage] = useState<string | null>(null);
+
+  // Calculate trip days
+  const tripDaysCount = useMemo(() => {
+    let days = 6;
+    if (state.client?.startDate && state.client?.endDate) {
+      const s = new Date(state.client.startDate);
+      const e = new Date(state.client.endDate);
+      const diff = Math.round((e.getTime() - s.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+      if (diff > 0) days = diff;
+    }
+    const maxActDay = state.activities?.length ? Math.max(...state.activities.map(a => a.day || 1)) : 1;
+    return Math.max(days, maxActDay);
+  }, [state.client?.startDate, state.client?.endDate, state.activities]);
+
+  const getDayFormattedDate = (dayNum: number) => {
+    if (!state.client?.startDate) return `Day ${dayNum}`;
+    const d = new Date(state.client.startDate);
+    d.setDate(d.getDate() + (dayNum - 1));
+    if (isNaN(d.getTime())) return `Day ${dayNum}`;
+    return d.toLocaleDateString('en-ZA', { weekday: 'short', day: 'numeric', month: 'short' });
+  };
+
+  const getDayIsoDate = (dayNum: number) => {
+    if (!state.client?.startDate) return '';
+    const d = new Date(state.client.startDate);
+    d.setDate(d.getDate() + (dayNum - 1));
+    return !isNaN(d.getTime()) ? d.toISOString().split('T')[0] : '';
+  };
+
+  const handleConfirmAddToTrip = (item: ExperienceLibraryItem) => {
+    const slotTimes: Record<string, { start: string; end: string; pickup: string }> = {
+      'Morning': { start: '09:00', end: '12:30', pickup: '08:30' },
+      'Afternoon': { start: '14:00', end: '17:30', pickup: '13:30' },
+      'Evening': { start: '18:30', end: '21:30', pickup: '18:00' },
+      'Full Day': { start: '08:30', end: '17:00', pickup: '08:00' },
+    };
+
+    const times = slotTimes[targetSlot] || slotTimes['Morning'];
+    const adCount = state.guests.filter(g => g.age !== 'Child' && g.age !== 'Infant').length;
+    const chCount = state.guests.filter(g => g.age === 'Child' || g.age === 'Infant').length;
+    const priceAd = item.priceAdult || 0;
+    const priceCh = item.priceChild || Math.round(priceAd * 0.5);
+    const calculatedTotal = (priceAd * adCount) + (priceCh * chCount);
+
+    const newActivity: Activity = {
+      id: Date.now(),
+      day: targetDay,
+      date: getDayIsoDate(targetDay),
+      slot: targetSlot,
+      name: item.name,
+      desc: item.shortDescription || item.luxuryDescription || '',
+      pickup: times.pickup,
+      start: times.start,
+      endTime: times.end,
+      dur: item.duration || '3 hours',
+      venue: item.location || item.destination || 'Cape Town',
+      pickupLoc: 'Hotel Reception',
+      responsiblePerson: 'Lead Tour Leader / Guide',
+      status: 'Planned',
+      conf: '',
+      supplier: item.supplier || 'Viemma Selected Operator',
+      supPhone: '',
+      paxIds: state.guests.map(g => g.id),
+      pAdult: priceAd,
+      pChild: priceCh,
+      nAdult: adCount,
+      nChild: chCount,
+      flat: 0,
+      total: calculatedTotal,
+      inc: item.highlights || ["Entrance Tickets", "Viemma Bottled Water"],
+      backup: 'In case of inclement weather, pivot to indoor cultural art & museum gallery excursion.',
+      notes: `Curated from Viemma Experience Library. ${item.destination} focus.`,
+      isFree: false,
+      heroImage: item.featuredImage || item.images?.[0] || '',
+      gallery: item.images || [],
+      difficulty: (item.difficulty as any) || 'Easy',
+      suitableAges: 'All Ages',
+      accessibility: ['Stroller Accessible'],
+      weatherDependency: item.name.toLowerCase().includes('mountain') || item.name.toLowerCase().includes('cruise') ? 'High' : 'Low',
+      dropoffLoc: 'Return to Hotel Lobby',
+      excluded: ["Personal Curios", "Driver Gratuities"],
+      packingAdvice: 'Comfortable footwear, weather-appropriate layers, sunglasses, and camera.',
+      dressCode: 'Casual Outdoor Luxury',
+      safetyNotes: 'Follow guide instructions at all times. Stay with the group.',
+      photographyOpportunities: item.highlights?.[0] || 'Spectacular scenic and wildlife photo opportunities.',
+      seasonalAvailability: 'Year-round',
+      faqs: item.faqs || [],
+      guideNotes: 'Confirm group entry tickets 24 hours prior to excursion departure.'
+    };
+
+    onUpdateState({
+      activities: [...(state.activities || []), newActivity]
+    });
+
+    setAddedToastMessage(`✨ "${item.name}" added to Day ${targetDay} (${getDayFormattedDate(targetDay)})!`);
+    setActiveAddToTripExp(null);
+    setTimeout(() => setAddedToastMessage(null), 4000);
+  };
 
   // Filtering
   const filteredExperiences = experiences.filter(exp => {
@@ -1187,23 +1288,37 @@ export const ExperienceLibraryView: React.FC<ExperienceLibraryViewProps> = ({
                   ))}
                 </div>
 
-                <div className="border-t border-gray-50 pt-4 flex items-center justify-between text-xs text-gray-400">
-                  <div className="flex items-center gap-1">
-                    <Clock size={12} />
+                <div className="border-t border-gray-100 pt-3 flex items-center justify-between gap-2 text-xs">
+                  <div className="flex items-center gap-1 text-gray-500 font-medium">
+                    <Clock size={12} className="text-[#D4AF37]" />
                     <span>{item.duration}</span>
                   </div>
-                  <div className="flex gap-2">
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      onClick={() => {
+                        setActiveAddToTripExp(item);
+                        setTargetDay(1);
+                        setTargetSlot('Morning');
+                      }}
+                      className="px-2.5 py-1 rounded-lg bg-[#1A3326] text-white hover:bg-[#12241b] text-[11px] font-bold flex items-center gap-1 transition shadow-xs cursor-pointer active:scale-95"
+                      title="Add this experience to current trip daily programme"
+                    >
+                      <Plus size={12} />
+                      <span>Add to Programme</span>
+                    </button>
                     <button
                       onClick={() => handleOpenEditExperience(item)}
-                      className="w-8 h-8 rounded-lg border border-gray-100 text-gray-500 hover:text-gray-900 bg-white flex items-center justify-center transition"
+                      className="w-7 h-7 rounded-lg border border-gray-200 text-gray-500 hover:text-gray-900 bg-white flex items-center justify-center transition"
+                      title="Edit template"
                     >
-                      <Edit3 size={13} />
+                      <Edit3 size={12} />
                     </button>
                     <button
                       onClick={() => handleDeleteExperience(item.id)}
-                      className="w-8 h-8 rounded-lg border border-rose-50 text-rose-500 hover:text-white hover:bg-rose-500 bg-rose-50/10 flex items-center justify-center transition"
+                      className="w-7 h-7 rounded-lg border border-rose-100 text-rose-500 hover:text-white hover:bg-rose-500 bg-rose-50/10 flex items-center justify-center transition"
+                      title="Delete from library"
                     >
-                      <Trash2 size={13} />
+                      <Trash2 size={12} />
                     </button>
                   </div>
                 </div>
@@ -1286,6 +1401,125 @@ export const ExperienceLibraryView: React.FC<ExperienceLibraryViewProps> = ({
               <p className="text-xs text-gray-400 max-w-xs mx-auto mt-1">Create your first luxury destination overview using the add button in the right corner.</p>
             </div>
           )}
+        </div>
+      )}
+
+      {/* ADD TO ACTIVE TRIP PROGRAMME MODAL */}
+      {activeAddToTripExp !== null && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in">
+          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-gray-100 space-y-5 animate-in zoom-in-95">
+            <div className="flex items-start justify-between gap-3 pb-3 border-b border-gray-100">
+              <div className="space-y-1">
+                <span className="text-[10px] uppercase font-bold text-[#D4AF37] tracking-wider block">Add to Trip Programme</span>
+                <h3 className="text-base font-bold text-gray-900 leading-snug">{activeAddToTripExp.name}</h3>
+                <span className="text-xs text-gray-400 block">{activeAddToTripExp.destination} • {activeAddToTripExp.duration}</span>
+              </div>
+              <button 
+                onClick={() => setActiveAddToTripExp(null)}
+                className="w-8 h-8 rounded-lg bg-gray-50 hover:bg-gray-100 text-gray-400 hover:text-gray-700 flex items-center justify-center transition"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="space-y-4 text-xs">
+              <div>
+                <label className="text-[11px] font-bold text-gray-500 uppercase tracking-wider block mb-1.5">
+                  Select Itinerary Day
+                </label>
+                <div className="grid grid-cols-3 gap-2 max-h-36 overflow-y-auto pr-1">
+                  {Array.from({ length: tripDaysCount }).map((_, idx) => {
+                    const dayNum = idx + 1;
+                    const isSelected = targetDay === dayNum;
+                    return (
+                      <button
+                        key={dayNum}
+                        type="button"
+                        onClick={() => setTargetDay(dayNum)}
+                        className={`p-2.5 rounded-xl border text-center transition ${
+                          isSelected
+                            ? 'bg-[#1A3326] text-white border-[#1A3326] font-bold shadow-xs'
+                            : 'bg-gray-50 text-gray-700 border-gray-200 hover:bg-gray-100'
+                        }`}
+                      >
+                        <span className="block text-xs font-bold">Day {dayNum}</span>
+                        <span className="block text-[10px] text-gray-400 font-medium truncate mt-0.5">
+                          {getDayFormattedDate(dayNum)}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div>
+                <label className="text-[11px] font-bold text-gray-500 uppercase tracking-wider block mb-1.5">
+                  Time Slot
+                </label>
+                <div className="grid grid-cols-4 gap-2">
+                  {(['Morning', 'Afternoon', 'Evening', 'Full Day'] as const).map(slot => (
+                    <button
+                      key={slot}
+                      type="button"
+                      onClick={() => setTargetSlot(slot)}
+                      className={`py-2 px-1 rounded-xl border text-center text-xs font-bold transition ${
+                        targetSlot === slot 
+                          ? 'bg-[#D4AF37] text-[#1A3326] border-[#D4AF37]' 
+                          : 'bg-gray-50 text-gray-600 border-gray-200 hover:bg-gray-100'
+                      }`}
+                    >
+                      {slot}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="bg-emerald-50/60 p-3 rounded-xl border border-emerald-100 space-y-1">
+                <div className="flex justify-between font-bold text-gray-800">
+                  <span>Assigned Travellers:</span>
+                  <span className="text-emerald-800">{state.guests.length} Guests (Entire Group)</span>
+                </div>
+                <div className="flex justify-between text-gray-600">
+                  <span>Estimated Total:</span>
+                  <strong className="text-gray-900 font-bold">
+                    R {((activeAddToTripExp.priceAdult || 0) * state.guests.filter(g => g.age !== 'Child' && g.age !== 'Infant').length + 
+                        (activeAddToTripExp.priceChild || Math.round((activeAddToTripExp.priceAdult || 0) * 0.5)) * state.guests.filter(g => g.age === 'Child' || g.age === 'Infant').length).toLocaleString()}
+                  </strong>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-2 pt-2 border-t border-gray-100">
+              <button
+                type="button"
+                onClick={() => setActiveAddToTripExp(null)}
+                className="px-4 py-2.5 rounded-xl border border-gray-200 text-xs font-bold text-gray-600 hover:bg-gray-50 transition"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => handleConfirmAddToTrip(activeAddToTripExp)}
+                className="px-5 py-2.5 rounded-xl bg-[#1A3326] text-white hover:bg-[#12241b] text-xs font-bold shadow-md transition flex items-center gap-1.5 active:scale-95 cursor-pointer"
+              >
+                <Check size={14} className="text-[#D4AF37]" />
+                <span>Confirm & Add to Day {targetDay}</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* TOAST NOTIFICATION */}
+      {addedToastMessage && (
+        <div className="fixed bottom-6 right-6 z-50 bg-[#1A3326] text-white px-5 py-3 rounded-2xl shadow-2xl border border-[#D4AF37]/30 flex items-center gap-3 animate-in fade-in slide-in-from-bottom-4">
+          <div className="w-8 h-8 rounded-xl bg-[#D4AF37]/20 text-[#D4AF37] flex items-center justify-center shrink-0">
+            <Route size={16} />
+          </div>
+          <div>
+            <span className="text-xs font-bold block">{addedToastMessage}</span>
+            <span className="text-[10px] text-gray-300">Synchronized with active trip dossier.</span>
+          </div>
         </div>
       )}
 

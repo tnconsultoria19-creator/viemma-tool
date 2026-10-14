@@ -148,28 +148,70 @@ export const HomeView: React.FC<HomeViewProps> = ({
           </h2>
         </div>
 
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3.5 md:gap-4">
+        <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-3 md:gap-3.5">
           <button 
             onClick={() => onSwitchTab('guests')} 
-            className="group bg-white border border-gray-100 p-4 md:p-5 rounded-2xl flex flex-col items-center gap-3 text-center transition-all duration-300 hover:shadow-md hover:-translate-y-1 relative overflow-hidden focus:outline-none"
+            className="group bg-white border border-gray-100 p-3.5 md:p-4 rounded-2xl flex flex-col items-center gap-2.5 text-center transition-all duration-300 hover:shadow-md hover:-translate-y-1 relative overflow-hidden focus:outline-none"
           >
             <div className="absolute top-0 left-0 w-full h-1 bg-[#1A3326]" />
-            <div className="w-11 h-11 rounded-xl bg-purple-50 text-[#7c3aed] flex items-center justify-center group-hover:scale-110 transition duration-300 shrink-0">
-              <Users size={19} />
+            <div className="w-10 h-10 rounded-xl bg-purple-50 text-[#7c3aed] flex items-center justify-center group-hover:scale-110 transition duration-300 shrink-0">
+              <Users size={18} />
             </div>
             <div>
-              <span className="text-xs font-bold text-gray-900 block font-sans">Clients & Pax</span>
+              <span className="text-xs font-bold text-gray-900 block font-sans">Clients</span>
               <span className="text-[9px] text-gray-400 font-semibold uppercase tracking-wider block mt-0.5">Roster</span>
             </div>
           </button>
 
           <button 
-            onClick={() => onSwitchTab('flights')} 
-            className="group bg-white border border-gray-100 p-4 md:p-5 rounded-2xl flex flex-col items-center gap-3 text-center transition-all duration-300 hover:shadow-md hover:-translate-y-1 relative overflow-hidden focus:outline-none"
+            onClick={() => onSwitchTab('activities')} 
+            className="group bg-white border border-amber-200/60 p-3.5 md:p-4 rounded-2xl flex flex-col items-center gap-2.5 text-center transition-all duration-300 hover:shadow-md hover:-translate-y-1 relative overflow-hidden focus:outline-none bg-gradient-to-b from-amber-50/20 to-white"
+          >
+            <div className="absolute top-0 left-0 w-full h-1 bg-[#D4AF37]" />
+            <div className="w-10 h-10 rounded-xl bg-amber-50 text-[#b45309] flex items-center justify-center group-hover:scale-110 transition duration-300 shrink-0">
+              <Route size={18} />
+            </div>
+            <div>
+              <span className="text-xs font-black text-gray-900 block font-sans">Programme</span>
+              <span className="text-[9px] text-amber-700 font-bold uppercase tracking-wider block mt-0.5">Experiences</span>
+            </div>
+          </button>
+
+          <button 
+            onClick={() => onSwitchTab('timelines')} 
+            className="group bg-white border border-gray-100 p-3.5 md:p-4 rounded-2xl flex flex-col items-center gap-2.5 text-center transition-all duration-300 hover:shadow-md hover:-translate-y-1 relative overflow-hidden focus:outline-none"
           >
             <div className="absolute top-0 left-0 w-full h-1 bg-[#1A3326]" />
-            <div className="w-11 h-11 rounded-xl bg-blue-50 text-[#2563eb] flex items-center justify-center group-hover:scale-110 transition duration-300 shrink-0">
-              <Plane size={19} />
+            <div className="w-10 h-10 rounded-xl bg-indigo-50 text-indigo-700 flex items-center justify-center group-hover:scale-110 transition duration-300 shrink-0">
+              <Calendar size={18} />
+            </div>
+            <div>
+              <span className="text-xs font-bold text-gray-900 block font-sans">Timelines</span>
+              <span className="text-[9px] text-gray-400 font-semibold uppercase tracking-wider block mt-0.5">Daily Ops</span>
+            </div>
+          </button>
+
+          <button 
+            onClick={() => onSwitchTab('rooming')} 
+            className="group bg-white border border-gray-100 p-3.5 md:p-4 rounded-2xl flex flex-col items-center gap-2.5 text-center transition-all duration-300 hover:shadow-md hover:-translate-y-1 relative overflow-hidden focus:outline-none"
+          >
+            <div className="absolute top-0 left-0 w-full h-1 bg-[#1A3326]" />
+            <div className="w-10 h-10 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center group-hover:scale-110 transition duration-300 shrink-0">
+              <Hotel size={18} />
+            </div>
+            <div>
+              <span className="text-xs font-bold text-gray-900 block font-sans">Hotels</span>
+              <span className="text-[9px] text-gray-400 font-semibold uppercase tracking-wider block mt-0.5">Lodges</span>
+            </div>
+          </button>
+
+          <button 
+            onClick={() => onSwitchTab('flights')} 
+            className="group bg-white border border-gray-100 p-3.5 md:p-4 rounded-2xl flex flex-col items-center gap-2.5 text-center transition-all duration-300 hover:shadow-md hover:-translate-y-1 relative overflow-hidden focus:outline-none"
+          >
+            <div className="absolute top-0 left-0 w-full h-1 bg-[#1A3326]" />
+            <div className="w-10 h-10 rounded-xl bg-blue-50 text-[#2563eb] flex items-center justify-center group-hover:scale-110 transition duration-300 shrink-0">
+              <Plane size={18} />
             </div>
             <div>
               <span className="text-xs font-bold text-gray-900 block font-sans">Flights</span>
@@ -179,11 +221,11 @@ export const HomeView: React.FC<HomeViewProps> = ({
 
           <button 
             onClick={() => onSwitchTab('transfers')} 
-            className="group bg-white border border-gray-100 p-4 md:p-5 rounded-2xl flex flex-col items-center gap-3 text-center transition-all duration-300 hover:shadow-md hover:-translate-y-1 relative overflow-hidden focus:outline-none"
+            className="group bg-white border border-gray-100 p-3.5 md:p-4 rounded-2xl flex flex-col items-center gap-2.5 text-center transition-all duration-300 hover:shadow-md hover:-translate-y-1 relative overflow-hidden focus:outline-none"
           >
             <div className="absolute top-0 left-0 w-full h-1 bg-[#1A3326]" />
-            <div className="w-11 h-11 rounded-xl bg-amber-50 text-[#d97706] flex items-center justify-center group-hover:scale-110 transition duration-300 shrink-0">
-              <Car size={19} />
+            <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-800 flex items-center justify-center group-hover:scale-110 transition duration-300 shrink-0">
+              <Car size={18} />
             </div>
             <div>
               <span className="text-xs font-bold text-gray-900 block font-sans">Transfers</span>
@@ -193,43 +235,29 @@ export const HomeView: React.FC<HomeViewProps> = ({
 
           <button 
             onClick={() => onSwitchTab('fleet')} 
-            className="group bg-white border border-gray-100 p-4 md:p-5 rounded-2xl flex flex-col items-center gap-3 text-center transition-all duration-300 hover:shadow-md hover:-translate-y-1 relative overflow-hidden focus:outline-none"
+            className="group bg-white border border-gray-100 p-3.5 md:p-4 rounded-2xl flex flex-col items-center gap-2.5 text-center transition-all duration-300 hover:shadow-md hover:-translate-y-1 relative overflow-hidden focus:outline-none"
           >
             <div className="absolute top-0 left-0 w-full h-1 bg-[#1A3326]" />
-            <div className="w-11 h-11 rounded-xl bg-emerald-50 text-emerald-800 flex items-center justify-center group-hover:scale-110 transition duration-300 shrink-0">
-              <Truck size={19} />
+            <div className="w-10 h-10 rounded-xl bg-slate-100 text-slate-700 flex items-center justify-center group-hover:scale-110 transition duration-300 shrink-0">
+              <Truck size={18} />
             </div>
             <div>
-              <span className="text-xs font-bold text-gray-900 block font-sans">Transport Fleet</span>
+              <span className="text-xs font-bold text-gray-900 block font-sans">Fleet</span>
               <span className="text-[9px] text-gray-400 font-semibold uppercase tracking-wider block mt-0.5">Vehicles</span>
             </div>
           </button>
 
           <button 
             onClick={() => onSwitchTab('drivers')} 
-            className="group bg-white border border-gray-100 p-4 md:p-5 rounded-2xl flex flex-col items-center gap-3 text-center transition-all duration-300 hover:shadow-md hover:-translate-y-1 relative overflow-hidden focus:outline-none"
+            className="group bg-white border border-gray-100 p-3.5 md:p-4 rounded-2xl flex flex-col items-center gap-2.5 text-center transition-all duration-300 hover:shadow-md hover:-translate-y-1 relative overflow-hidden focus:outline-none"
           >
             <div className="absolute top-0 left-0 w-full h-1 bg-[#1A3326]" />
-            <div className="w-11 h-11 rounded-xl bg-purple-50 text-purple-700 flex items-center justify-center group-hover:scale-110 transition duration-300 shrink-0">
-              <Users size={19} />
+            <div className="w-10 h-10 rounded-xl bg-violet-50 text-violet-700 flex items-center justify-center group-hover:scale-110 transition duration-300 shrink-0">
+              <Users size={18} />
             </div>
             <div>
               <span className="text-xs font-bold text-gray-900 block font-sans">Drivers</span>
               <span className="text-[9px] text-gray-400 font-semibold uppercase tracking-wider block mt-0.5">Directory</span>
-            </div>
-          </button>
-
-          <button 
-            onClick={() => onSwitchTab('timelines')} 
-            className="group bg-white border border-gray-100 p-4 md:p-5 rounded-2xl flex flex-col items-center gap-3 text-center transition-all duration-300 hover:shadow-md hover:-translate-y-1 relative overflow-hidden focus:outline-none"
-          >
-            <div className="absolute top-0 left-0 w-full h-1 bg-[#1A3326]" />
-            <div className="w-11 h-11 rounded-xl bg-indigo-50 text-indigo-700 flex items-center justify-center group-hover:scale-110 transition duration-300 shrink-0">
-              <Calendar size={19} />
-            </div>
-            <div>
-              <span className="text-xs font-bold text-gray-900 block font-sans">Daily Timelines</span>
-              <span className="text-[9px] text-gray-400 font-semibold uppercase tracking-wider block mt-0.5">Operations</span>
             </div>
           </button>
         </div>

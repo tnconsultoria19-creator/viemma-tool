@@ -165,5 +165,184 @@ export const DEFAULT_EXPERIENCES: ExperienceLibraryItem[] = [
     priceAdult: 300,
     priceChild: 150,
     supplier: "Franschhoek Wine Tram (Pty) Ltd"
+  },
+  {
+    id: "exp_cp",
+    name: "Cape Peninsula & Chapman's Peak Coastal Drive",
+    category: "Scenic & Adventure",
+    destination: "Cape Town",
+    duration: "6 hours",
+    difficulty: "Easy",
+    location: "Chapman's Peak Drive to Cape Point",
+    images: [
+      "https://images.unsplash.com/photo-1580618672591-eb180b1a973f?auto=format&fit=crop&q=80&w=1200",
+      "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=1200&q=80"
+    ],
+    featuredImage: "https://images.unsplash.com/photo-1580618672591-eb180b1a973f?auto=format&fit=crop&q=80&w=1200",
+    highlights: ["🌊 Dramatic Clifftop Chapman's Peak Drive", "🌍 Standing at the historic Cape of Good Hope", "🦓 Cape Mountain Zebra & Ostrich Spotting", "🚢 Historic Flying Dutchman Funicular"],
+    luxuryDescription: "Embark on one of the planet's most jaw-dropping coastal road trips along the legendary Chapman's Peak Drive, carved directly into the sheer vertical cliffs of the Atlantic coast.\n\nYour private chauffeur guides you past secluded surf coves and dramatic rocky headlands to the Cape of Good Hope Nature Reserve. Here, wild ostriches wander along windswept beaches and rare Cape mountain zebras graze among fragrant coastal fynbos. Ride the Flying Dutchman Funicular up to the iconic historic lighthouse for infinite vistas over the roaring Atlantic ocean.",
+    shortDescription: "Private guided coastal expedition winding along Chapman's Peak to the dramatic clifftops of the Cape of Good Hope.",
+    seoDescription: "Private luxury chauffeur tour of Chapman's Peak Drive and the Cape Point Nature Reserve.",
+    familyDescription: "Great for all ages with smooth private vehicle transit, frequent scenic pull-offs for fresh sea air, and fun funicular rides to the lighthouse.",
+    adventureDescription: "Include a private guided coastal hike along the dramatic shipwreck trail from Dias Beach to the Cape Point lighthouse.",
+    faqs: [
+      { question: "Is lunch included?", answer: "Lunch is arranged at Two Oceans Restaurant or Harbour House in Kalk Bay." },
+      { question: "Are toll gate fees covered?", answer: "All Chapman's Peak toll fees and National Park entry permits are fully included." }
+    ],
+    priceAdult: 1250,
+    priceChild: 650,
+    supplier: "Viemma Private Chauffeur Fleet"
+  },
+  {
+    id: "exp_ri",
+    name: "Robben Island Historic Ferry & Museum Tour",
+    category: "Culture & Heritage",
+    destination: "Cape Town",
+    duration: "4 hours",
+    difficulty: "Easy",
+    location: "Nelson Mandela Gateway, V&A Waterfront",
+    images: [
+      "https://images.unsplash.com/photo-1547471080-7cc2caa01a7e?auto=format&fit=crop&w=1200&q=80"
+    ],
+    featuredImage: "https://images.unsplash.com/photo-1547471080-7cc2caa01a7e?auto=format&fit=crop&w=1200&q=80",
+    highlights: ["⛴️ Scenic Table Bay Catamaran Ferry", "🕊️ Nelson Mandela's Maximum Security Cell", "🏛️ Guided by Former Political Prisoners", "📸 Spectacular return views of Table Mountain"],
+    luxuryDescription: "Board the high-speed ferry from the V&A Waterfront across Table Bay to World Heritage Site Robben Island. Upon arrival, embark on an emotional, deeply moving tour led by former political prisoners who share firsthand testimonies of resilience, human dignity, and the triumph of the human spirit over apartheid.\n\nVisit Nelson Mandela's 8x7-foot cell where he spent 18 of his 27 years of incarceration, the lime quarry where political prisoners forged their unity, and the historic Robert Sobukwe complex.",
+    shortDescription: "Profound, private-access journey to Robben Island guided by former political prisoners.",
+    seoDescription: "Official Robben Island Ferry and Nelson Mandela Cell Museum tour from Cape Town.",
+    familyDescription: "An essential educational experience for older children and teens; includes comfortable bus tour of the entire island.",
+    adventureDescription: "Take in the historic island circuit followed by a private curator briefing at the District Six Museum.",
+    faqs: [
+      { question: "How long is the ferry ride?", answer: "Approximately 35 minutes across Table Bay each way." },
+      { question: "What if the sea is rough?", answer: "If strong swells occur, the ferry is rescheduled or replaced with the Zeitz MOCAA private art walk." }
+    ],
+    priceAdult: 600,
+    priceChild: 310,
+    supplier: "Robben Island Museum Council"
+  },
+  {
+    id: "exp_kb",
+    name: "Kirstenbosch National Botanical Gardens Guided Walk",
+    category: "Nature & Wildlife",
+    destination: "Cape Town",
+    duration: "3 hours",
+    difficulty: "Easy",
+    location: "Rhodes Drive, Newlands, Cape Town",
+    images: [
+      "https://images.unsplash.com/photo-1590418606746-018840f9cd0f?auto=format&fit=crop&w=1200&q=80"
+    ],
+    featuredImage: "https://images.unsplash.com/photo-1590418606746-018840f9cd0f?auto=format&fit=crop&w=1200&q=80",
+    highlights: ["🌿 'Boomslang' Elevated Canopy Treetop Walkway", "🌺 7,000+ Indigenous Southern African Plant Species", "🦅 Rare Sunbirds and Sugarbirds Spotting", "☕ Curated Protea Tea & Scone Tasting"],
+    luxuryDescription: "Nestled against the lush eastern slopes of Table Mountain, Kirstenbosch is acclaimed as one of the great botanical sanctuaries of the world. Stroll along the award-winning Centenary Tree Canopy Walkway ('The Boomslang'), rising above the forest floor with panoramic views of mountain crags and garden vistas.\n\nAccompanied by an expert botanist, discover living collections of rare cycads, King Proteas, and medicinal Fynbos flora before relaxing with artisan botanical teas at the Tea Room.",
+    shortDescription: "Botanist-led garden stroll along the elevated treetop canopy walkway under Table Mountain.",
+    seoDescription: "Guided walking experience at Kirstenbosch National Botanical Garden in Cape Town.",
+    familyDescription: "Completely stroller-friendly with expansive grassy lawns for children to explore safely.",
+    adventureDescription: "Extend into the mountain with a guided hike up Skeleton Gorge to Table Mountain's reservoirs.",
+    faqs: [
+      { question: "Is it wheelchair accessible?", answer: "Yes, paved paths connect the main conservatory and canopy walkway." }
+    ],
+    priceAdult: 250,
+    priceChild: 120,
+    supplier: "SANBI Kirstenbosch Botanical Institute"
+  },
+  {
+    id: "exp_cat",
+    name: "V&A Waterfront Private Sunset Catamaran Cruise",
+    category: "Coastal & Marine",
+    destination: "Cape Town",
+    duration: "2.5 hours",
+    difficulty: "Easy",
+    location: "Quay 5, V&A Waterfront, Cape Town",
+    images: [
+      "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=1200&q=80"
+    ],
+    featuredImage: "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=1200&q=80",
+    highlights: ["🍾 Chilled Local Cap Classique & Artisan Canapés", "🐬 Frequent Dolphin & Cape Fur Seal Sightings", "🌅 Golden Hour Illumination of Table Mountain", "⚓ Luxurious 40ft Catamaran with Private Skipper"],
+    luxuryDescription: "Set sail from the vibrant V&A Waterfront into Table Bay aboard a private 40-foot luxury catamaran. As the Cape sun sinks below the Atlantic horizon, enjoy chilled Méthode Cap Classique sparkling wine and fresh local oysters.\n\nKeep your camera ready for playful Cape fur seals, pods of endemic Heaviside's dolphins, and the amber glow reflecting across the entire face of Table Mountain and Lion's Head.",
+    shortDescription: "Private luxury sailing charter across Table Bay with sparkling wine and sunset mountain views.",
+    seoDescription: "Private sunset catamaran yacht cruise departing from Cape Town's V&A Waterfront.",
+    familyDescription: "Safe, stable twin-hull catamaran with enclosed saloon and life jackets for all passenger sizes.",
+    adventureDescription: "Take the helm with the skipper or enjoy an afternoon offshore marine wildlife safari.",
+    faqs: [
+      { question: "What should we wear?", answer: "Layers and a light windbreaker; the evening breeze over the ocean can be cool." }
+    ],
+    priceAdult: 1800,
+    priceChild: 900,
+    supplier: "Viemma Marine Charters"
+  },
+  {
+    id: "exp_kruger",
+    name: "Greater Kruger Open-Vehicle Sunrise Game Drive",
+    category: "Wildlife & Safari",
+    destination: "Kruger National Park",
+    duration: "4 hours",
+    difficulty: "Easy",
+    location: "Kruger National Park Main Gate",
+    images: [
+      "https://images.unsplash.com/photo-1516426122078-c23e76319801?auto=format&fit=crop&w=1200&q=80"
+    ],
+    featuredImage: "https://images.unsplash.com/photo-1516426122078-c23e76319801?auto=format&fit=crop&w=1200&q=80",
+    highlights: ["🦁 Big Five Wildlife Tracking", "🌅 Golden African Dawn Bushveld Coffee Stop", "🔭 Certified Master Tracker & Field Guide", "📸 Tiered 4x4 Vehicle with Camera Mounts"],
+    luxuryDescription: "Depart at first light in a customized, open-sided 4x4 safari cruiser equipped with fleece blankets and hot water bottles. Accompanied by a veteran FGASA-accredited ranger and indigenous Shangaan master tracker, venture into the pristine bushveld as apex predators conclude their nocturnal hunts.\n\nTrack lion prides, leopards draped in leadwood trees, massive elephant herds, and white rhinos. Pause at a scenic river vantage point for piping-hot bush coffee and traditional rusks.",
+    shortDescription: "Dawn game drive in customized 4x4 safari cruiser tracking the iconic Big Five.",
+    seoDescription: "Luxury private open-vehicle morning safari game drive in Greater Kruger National Park.",
+    familyDescription: "Children aged 6+ welcome on private vehicle drives; ranger provides interactive spoor identification books.",
+    adventureDescription: "Combine with a mid-morning guided bush walk focusing on micro-fauna and medicinal plants.",
+    faqs: [
+      { question: "What time is departure?", answer: "05:30 in summer / 06:00 in winter from lodge reception." }
+    ],
+    priceAdult: 2800,
+    priceChild: 1400,
+    supplier: "Kruger Private Ranger Operations"
+  },
+  {
+    id: "exp_kissama",
+    name: "Kissama National Park Safari & River Trail",
+    category: "Wildlife & Safari",
+    destination: "Angola",
+    duration: "7 hours",
+    difficulty: "Moderate",
+    location: "Kissama (Quiçama) National Park, Angola",
+    images: [
+      "https://images.unsplash.com/photo-1551085254-e96b210db58a?auto=format&fit=crop&w=1200&q=80"
+    ],
+    featuredImage: "https://images.unsplash.com/photo-1551085254-e96b210db58a?auto=format&fit=crop&w=1200&q=80",
+    highlights: ["🐘 Resettled Elephant & Giraffe Tracking", "🚤 Kwanza River Boat Excursion", "🌳 Majestic Ancient Baobab Forests", "🍱 Traditional Angolan Bush Picnic"],
+    luxuryDescription: "Journey south from Luanda across the mighty Kwanza River into Kissama National Park, Angola's premier wildlife rehabilitation sanctuary. Spanning almost 10,000 square kilometers of coastal savannah and dense baobab forest, the park is home to relocated elephant herds, giraffes, zebras, and eland.\n\nEnjoy an open-vehicle 4x4 game drive followed by a private boat excursion along the Kwanza River observing waterbirds, monitor lizards, and lush mangrove ecology.",
+    shortDescription: "Pioneering private safari drive and Kwanza river cruise in Angola's flagship national park.",
+    seoDescription: "Kissama National Park safari game drive and Kwanza river tour from Luanda.",
+    familyDescription: "Full day excursion; comfortable air-conditioned 4x4 transfers with snacks provided.",
+    adventureDescription: "Inquire about overnight lodge stays for evening spotlight game drives.",
+    faqs: [
+      { question: "How far is Kissama from Luanda?", answer: "Approximately 75 km (1.5 - 2 hours driving) each way." }
+    ],
+    priceAdult: 3200,
+    priceChild: 1600,
+    supplier: "Viemma Angola Ground Operations"
+  },
+  {
+    id: "exp_kalandula",
+    name: "Kalandula Waterfalls & Malanje River Canyon",
+    category: "Scenic & Adventure",
+    destination: "Angola",
+    duration: "9 hours",
+    difficulty: "Moderate",
+    location: "Lucala River, Malanje Province, Angola",
+    images: [
+      "https://images.unsplash.com/photo-1580060839134-75a5edca2e99?auto=format&fit=crop&w=1200&q=80"
+    ],
+    featuredImage: "https://images.unsplash.com/photo-1580060839134-75a5edca2e99?auto=format&fit=crop&w=1200&q=80",
+    highlights: ["🌊 Africa's Second Largest Waterfall by Volume", "🌈 Perpetual Rainbow Mists Over the Horseshoe Canyon", "🪨 Black Rocks of Pungo Andongo Scenic Stop", "🍽️ Private Gourmet Riverside Lunch"],
+    luxuryDescription: "Venture east into Malanje Province to stand before the roaring Kalandula Falls, one of Africa's most breathtaking natural wonders. Horseshoe-shaped and tumbling 105 meters over sheer basalt cliffs across a 400-meter span on the Lucala River, the falls generate thunderous spray and perpetual rainbows.\n\nTake the guided cliffside trail for panoramic viewpoints, visit the historic Black Rocks of Pungo Andongo, and savor a catered gourmet lunch overlooking the cascades.",
+    shortDescription: "Bespoke day expedition to Africa's colossal 105-meter horseshoe waterfall in Malanje.",
+    seoDescription: "Kalandula Falls private guided tour and Pungo Andongo Black Rocks in Angola.",
+    familyDescription: "Scenic viewpoints are easily accessible; sturdy walking shoes required for the lower trail.",
+    adventureDescription: "Descend to the base of the gorge with local guides to feel the immense power of the spray.",
+    faqs: [
+      { question: "When is the water volume highest?", answer: "Between February and May during the rainy season, though spectacular year-round." }
+    ],
+    priceAdult: 4500,
+    priceChild: 2200,
+    supplier: "Viemma Angola Expeditions"
   }
 ];
+
