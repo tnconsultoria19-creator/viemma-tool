@@ -22,6 +22,18 @@ service cloud.firestore {
         );
     }
 
+    // Public share documents are bearer links; enforce revocation and expiry
+    // with server time as well as the client-side presentation check.
+    function shareLinkIsLive() {
+      return resource.data.active == true &&
+        (
+          !('accessPolicy' in resource.data) ||
+          !('expiresAtEpochMs' in resource.data.accessPolicy) ||
+          resource.data.accessPolicy.expiresAtEpochMs == null ||
+          request.time.toMillis() < resource.data.accessPolicy.expiresAtEpochMs
+        );
+    }
+
     // Default deny catch-all
     match /{document=**} {
       allow read, write: if false;
@@ -56,7 +68,7 @@ service cloud.firestore {
     // Writes restricted to authenticated staff publishers.
     // ========================================================
     match /clientShares/{token} {
-      allow get: if isValidId(token);
+      allow get: if isValidId(token) && shareLinkIsLive();
       allow list: if false;
       allow write: if isStaff() && isValidId(token);
     }
@@ -68,7 +80,7 @@ service cloud.firestore {
     // Writes restricted to authenticated staff publishers.
     // ========================================================
     match /agentShares/{token} {
-      allow get: if isValidId(token);
+      allow get: if isValidId(token) && shareLinkIsLive();
       allow list: if false;
       allow write: if isStaff() && isValidId(token);
     }
@@ -80,7 +92,7 @@ service cloud.firestore {
     // Writes restricted to authenticated staff publishers.
     // ========================================================
     match /opsShares/{token} {
-      allow get: if isValidId(token);
+      allow get: if isValidId(token) && shareLinkIsLive();
       allow list: if false;
       allow write: if isStaff() && isValidId(token);
     }
