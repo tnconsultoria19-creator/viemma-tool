@@ -594,7 +594,7 @@ export const ActivitiesView: React.FC<ActivitiesViewProps> = ({
                 <Compass size={13} /> EXCURSIONS & DAILY PROGRAMME
               </span>
               <span className="text-xs font-semibold text-slate-600">
-                {state.ref || 'VT-2026-001'} • {tripDaysCount} Itinerary Days • {state.activities?.length || 0} Scheduled Activities
+                {state.ref || 'VT-2026-001'} • {tripDaysCount} Itinerary Days • {state.activities?.filter(a => a.status !== 'Cancelled').length || 0} Scheduled Activities
               </span>
             </div>
             <h1 className="text-2xl md:text-3xl font-extrabold tracking-tight text-[#10233F] font-sans">
