@@ -11,6 +11,16 @@ export const DailyTimelinesView: React.FC<DailyTimelinesViewProps> = ({ state, o
   const [selectedDate, setSelectedDate] = useState<string>(new Date().toISOString().split('T')[0]);
   const [filterType, setFilterType] = useState<'ALL' | 'TRANSFERS' | 'FLIGHTS' | 'ACTIVITIES' | 'HOTELS'>('ALL');
   const [selectedDriver, setSelectedDriver] = useState<string>('ALL');
+  const [selectedGroupId, setSelectedGroupId] = useState<string>('ALL');
+  const namedGroups = state.namedGroups || [];
+
+  const groupIdsForRoster = (travellerIds?: number[], explicitGroupIds?: string[]) => {
+    if (explicitGroupIds?.length) return Array.from(new Set(explicitGroupIds));
+    const ids = travellerIds || [];
+    return namedGroups.filter(group => (group.memberIds || []).some(id => ids.includes(id))).map(group => group.id);
+  };
+  const groupNamesForIds = (groupIds: string[]) =>
+    namedGroups.filter(group => groupIds.includes(group.id)).map(group => group.name);
 
   // Collect all dated items for the selected date or list all
   const transfers = state.transfers || [];
@@ -31,6 +41,8 @@ export const DailyTimelinesView: React.FC<DailyTimelinesViewProps> = ({ state, o
       vehicle: t.vehicle,
       status: t.status,
       paxCount: t.paxCount,
+      groupIds: groupIdsForRoster(t.paxIds),
+      groupNames: groupNamesForIds(groupIdsForRoster(t.paxIds)),
       originalObj: t
     })),
     ...flights.map(f => ({
@@ -44,6 +56,8 @@ export const DailyTimelinesView: React.FC<DailyTimelinesViewProps> = ({ state, o
       vehicle: 'N/A',
       status: f.status,
       paxCount: f.paxIds?.length || 1,
+      groupIds: groupIdsForRoster(f.paxIds),
+      groupNames: groupNamesForIds(groupIdsForRoster(f.paxIds)),
       originalObj: f
     })),
     ...activities.map(a => {
@@ -64,6 +78,8 @@ export const DailyTimelinesView: React.FC<DailyTimelinesViewProps> = ({ state, o
         vehicle: 'Transfer Fleet',
         status: a.status,
         paxCount: a.paxIds?.length || state.guests.length,
+        groupIds: groupIdsForRoster(a.paxIds, a.groupIds),
+        groupNames: groupNamesForIds(groupIdsForRoster(a.paxIds, a.groupIds)),
         originalObj: a
       };
     }),
@@ -78,6 +94,8 @@ export const DailyTimelinesView: React.FC<DailyTimelinesViewProps> = ({ state, o
       vehicle: 'N/A',
       status: r.status || 'Confirmed',
       paxCount: r.guestIds?.length || 2,
+      groupIds: groupIdsForRoster(r.guestIds),
+      groupNames: groupNamesForIds(groupIdsForRoster(r.guestIds)),
       originalObj: r
     }))
   ];
@@ -90,6 +108,8 @@ export const DailyTimelinesView: React.FC<DailyTimelinesViewProps> = ({ state, o
     if (filterType === 'ACTIVITIES' && item.type !== 'ACTIVITY') return false;
     if (filterType === 'HOTELS' && item.type !== 'HOTEL') return false;
     if (selectedDriver !== 'ALL' && item.driver !== selectedDriver) return false;
+    if (selectedGroupId === 'UNASSIGNED' && item.groupIds.length > 0) return false;
+    if (selectedGroupId !== 'ALL' && selectedGroupId !== 'UNASSIGNED' && !item.groupIds.includes(selectedGroupId)) return false;
     return true;
   }).sort((a, b) => a.time.localeCompare(b.time));
 
@@ -174,7 +194,23 @@ export const DailyTimelinesView: React.FC<DailyTimelinesViewProps> = ({ state, o
           ))}
         </div>
 
-        <div className="flex items-center gap-2 text-xs">
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="flex items-center gap-2 text-xs">
+            <span className="text-slate-500 font-bold uppercase tracking-wider">Group:</span>
+            <select
+              value={selectedGroupId}
+              onChange={e => setSelectedGroupId(e.target.value)}
+              className="p-1.5 rounded-xl border border-gray-200 bg-gray-50 text-gray-800 font-bold focus:outline-none"
+              aria-label="Filter daily timeline by traveller group"
+            >
+              <option value="ALL">All Groups</option>
+              {namedGroups.map(group => (
+                <option key={group.id} value={group.id}>{group.name}</option>
+              ))}
+              <option value="UNASSIGNED">Unassigned</option>
+            </select>
+          </div>
+          <div className="flex items-center gap-2 text-xs">
           <span className="text-gray-400 font-bold uppercase tracking-wider">Driver filter:</span>
           <select
             value={selectedDriver}
@@ -186,6 +222,7 @@ export const DailyTimelinesView: React.FC<DailyTimelinesViewProps> = ({ state, o
               <option key={d.id} value={d.name}>{d.name}</option>
             ))}
           </select>
+          </div>
         </div>
       </div>
 
@@ -214,6 +251,14 @@ export const DailyTimelinesView: React.FC<DailyTimelinesViewProps> = ({ state, o
                   </div>
                   <h3 className="text-sm font-bold text-gray-900">{item.title}</h3>
                   <p className="text-xs text-gray-500">{item.subtitle}</p>
+
+                  <div className="flex flex-wrap items-center gap-1.5 pt-1">
+                    {item.groupNames.length > 0 ? item.groupNames.map(name => (
+                      <span key={name} className="inline-flex items-center px-2 py-1 rounded-md bg-emerald-50 border border-emerald-200 text-emerald-800 text-[10px] font-bold">{name}</span>
+                    )) : (
+                      <span className="inline-flex items-center px-2 py-1 rounded-md bg-slate-50 border border-slate-200 text-slate-500 text-[10px] font-semibold">No group assigned</span>
+                    )}
+                  </div>
 
                   <div className="flex flex-wrap items-center gap-4 pt-2 text-xs text-gray-600 font-medium">
                     {item.driver !== 'N/A' && (
