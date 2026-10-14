@@ -376,6 +376,7 @@ export interface Activity {
 
   // Group and Resource Assignments
   groupIds?: string[];
+  groupNames?: string[];
   category?: string;
   driverId?: string;
   driverName?: string;
@@ -634,6 +635,11 @@ export interface AppState {
   namedGroups?: TravellerGroup[];
   dayTitles?: Record<number, string>;
   changeLog?: TripChangeLogEntry[];
+  clientPricing?: {
+    currency: string;
+    total: number;
+    paymentTerms?: string;
+  };
   publishing?: {
     tripId: string;
     publicUrl: string;
