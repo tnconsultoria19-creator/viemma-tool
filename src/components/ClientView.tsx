@@ -30,7 +30,9 @@ import {
   FileCheck,
   Car,
   Plane,
-  HeartHandshake
+  HeartHandshake,
+  Printer,
+  Download
 } from 'lucide-react';
 
 interface Props {
@@ -298,6 +300,26 @@ export const ClientView: React.FC<Props> = ({ state: rawState, onBackToWorkspace
               <Calendar size={12} className="text-[#D4AF37]" /> Daily Itinerary
             </button>
 
+            {state.publishing?.settings?.allowPrinting !== false && (
+              <button
+                type="button"
+                onClick={() => window.print()}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white hover:bg-slate-50 text-[#1A3326] text-[11px] font-bold border border-slate-200 transition"
+                title="Open print dialog"
+              >
+                <Printer size={12} /> Print
+              </button>
+            )}
+            {state.publishing?.settings?.allowDownloads !== false && (
+              <button
+                type="button"
+                onClick={() => window.print()}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#D4AF37] hover:bg-[#c29d2b] text-[#1A3326] text-[11px] font-bold transition"
+                title="Use the print dialog to save the itinerary as PDF"
+              >
+                <Download size={12} /> Save PDF
+              </button>
+            )}
             {handleBack && (
               <button
                 onClick={handleBack}
@@ -479,6 +501,18 @@ export const ClientView: React.FC<Props> = ({ state: rawState, onBackToWorkspace
                 </div>
               </div>
             </div>
+
+            {state.clientPricing && (
+              <div className="rounded-2xl border border-[#D4AF37]/40 bg-white/10 backdrop-blur-md p-4 md:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div>
+                  <span className="text-[10px] uppercase tracking-wider font-bold text-[#D4AF37] block">Approved Journey Price</span>
+                  <span className="text-xs text-gray-200 block mt-1">{state.clientPricing.paymentTerms || 'Pricing as per the approved quotation.'}</span>
+                </div>
+                <strong className="text-xl md:text-2xl font-bold text-white shrink-0">
+                  {new Intl.NumberFormat('en-ZA', { style: 'currency', currency: state.clientPricing.currency || 'ZAR', maximumFractionDigits: 0 }).format(state.clientPricing.total)}
+                </strong>
+              </div>
+            )}
 
             {/* Destination Milestone Timeline (Circular badges as in Screen 3) */}
             <div className="space-y-4">
@@ -685,7 +719,7 @@ export const ClientView: React.FC<Props> = ({ state: rawState, onBackToWorkspace
                                 {act.slot}
                               </span>
                               <span className="text-xs font-semibold text-gray-600 flex items-center gap-1">
-                                <Clock size={13} className="text-emerald-700" /> {act.start || '10:00 AM'} ({act.dur || 'Half Day'})
+                                <Clock size={13} className="text-emerald-700" /> {act.start || 'Time to be confirmed'}{act.endTime ? `–${act.endTime}` : ''} ({act.dur || 'Duration to be confirmed'})
                               </span>
                             </div>
 
@@ -728,6 +762,22 @@ export const ClientView: React.FC<Props> = ({ state: rawState, onBackToWorkspace
                               <div className="flex items-center gap-1.5 text-xs text-gray-600 font-medium pt-1">
                                 <MapPin size={13} className="text-[#D4AF37] shrink-0" />
                                 <span>Meeting / Departure: <strong>{act.pickupLoc}</strong></span>
+                              </div>
+                            )}
+
+                            {act.venue && (
+                              <div className="flex items-center gap-1.5 text-xs text-gray-600 font-medium pt-1">
+                                <MapPin size={13} className="text-[#D4AF37] shrink-0" />
+                                <span>Venue: <strong>{act.venue}</strong></span>
+                              </div>
+                            )}
+
+                            {act.groupNames && act.groupNames.length > 0 && (
+                              <div className="flex flex-wrap items-center gap-1.5 pt-1">
+                                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Assigned group(s):</span>
+                                {act.groupNames.map(groupName => (
+                                  <span key={groupName} className="text-[10px] px-2 py-1 rounded-md bg-emerald-50 border border-emerald-200 text-emerald-800 font-bold">{groupName}</span>
+                                ))}
                               </div>
                             )}
 
