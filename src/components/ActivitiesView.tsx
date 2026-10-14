@@ -541,21 +541,21 @@ export const ActivitiesView: React.FC<ActivitiesViewProps> = ({
     <div className="space-y-8 max-w-[1500px] mx-auto animate-in fade-in duration-500">
       
       {/* Title Header with Mode Switcher and Quick Actions */}
-      <div className="space-y-4 pb-6 border-b border-gray-100">
+      <div className="space-y-4 p-5 md:p-6 bg-white/95 backdrop-blur-md border border-white/80 rounded-2xl shadow-sm">
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
           <div className="space-y-1.5">
             <div className="flex items-center gap-2">
               <span className="text-[10px] uppercase tracking-[0.2em] font-extrabold text-[#D4AF37] flex items-center gap-1.5 bg-[#1A3326] px-3 py-1 rounded-lg">
                 <Compass size={13} /> EXCURSIONS & DAILY PROGRAMME
               </span>
-              <span className="text-xs font-bold text-gray-400">
+              <span className="text-xs font-semibold text-slate-600">
                 {state.ref || 'VT-2026-001'} • {tripDaysCount} Itinerary Days • {state.activities?.length || 0} Scheduled Activities
               </span>
             </div>
-            <h1 className="text-2xl md:text-3xl font-extrabold tracking-tight text-gray-900 font-sans">
+            <h1 className="text-2xl md:text-3xl font-extrabold tracking-tight text-[#10233F] font-sans">
               Daily Activity Programme & Excursions
             </h1>
-            <p className="text-gray-500 max-w-3xl text-xs md:text-sm leading-relaxed">
+            <p className="text-slate-600 max-w-3xl text-xs md:text-sm leading-relaxed">
               Curate and organise activities across daily schedules, assign participant groups, resolve operational conflicts, and build the verified itinerary for participants.
             </p>
           </div>
