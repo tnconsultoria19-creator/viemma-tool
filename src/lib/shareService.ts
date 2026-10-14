@@ -8,7 +8,6 @@ export interface ShareAccessPolicy {
   expiresAt: string | null;
   passwordRequired: boolean;
   passwordSalt?: string;
-  passwordVerifier?: string;
   passwordIterations: number;
   allowDownloads: boolean;
   allowPrinting: boolean;
@@ -253,34 +252,93 @@ function hexToBytes(value: string): Uint8Array {
   return new Uint8Array(value.match(/.{2}/g)!.map(byte => parseInt(byte, 16)));
 }
 
-async function derivePasswordVerifier(password: string, saltHex: string, iterations: number): Promise<string> {
+async function deriveShareEncryptionKey(password: string, saltHex: string, iterations: number): Promise<CryptoKey> {
   const cryptoApi = globalThis.crypto;
-  if (!cryptoApi?.subtle) throw new Error('Secure password verification is unavailable in this browser. Use HTTPS and try again.');
-  const key = await cryptoApi.subtle.importKey('raw', new TextEncoder().encode(password), 'PBKDF2', false, ['deriveBits']);
-  const bits = await cryptoApi.subtle.deriveBits(
+  if (!cryptoApi?.subtle) throw new Error('Secure itinerary protection requires HTTPS and browser Web Crypto.');
+  const material = await cryptoApi.subtle.importKey('raw', new TextEncoder().encode(password), 'PBKDF2', false, ['deriveKey']);
+  return cryptoApi.subtle.deriveKey(
     { name: 'PBKDF2', salt: hexToBytes(saltHex), iterations, hash: 'SHA-256' },
-    key,
-    256
+    material,
+    { name: 'AES-GCM', length: 256 },
+    false,
+    ['encrypt', 'decrypt']
   );
-  return bytesToHex(new Uint8Array(bits));
 }
 
-export async function verifySharePassword(
+function bytesToBase64(bytes: Uint8Array): string {
+  let binary = '';
+  for (let offset = 0; offset < bytes.length; offset += 0x8000) {
+    binary += String.fromCharCode(...bytes.subarray(offset, Math.min(offset + 0x8000, bytes.length)));
+  }
+  return btoa(binary);
+}
+
+function base64ToBytes(value: string): Uint8Array {
+  const binary = atob(value);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+  return bytes;
+}
+
+export interface EncryptedShareEnvelope {
+  token: string;
+  role: 'client' | 'agent' | 'ops';
+  active: boolean;
+  version: number;
+  lastUpdated: string;
+  accessPolicy: ShareAccessPolicy;
+  encryptedPayload: { iv: string; ciphertext: string };
+}
+
+async function encryptShareProjection(docData: any, password: string): Promise<EncryptedShareEnvelope> {
+  const policy: ShareAccessPolicy = docData.accessPolicy;
+  if (!policy?.passwordRequired || !policy.passwordSalt) {
+    throw new Error('Encrypted share payload requires an enabled password policy.');
+  }
+  const iterations = Number(policy.passwordIterations) || SHARE_PASSWORD_ITERATIONS;
+  const key = await deriveShareEncryptionKey(password, policy.passwordSalt, iterations);
+  const iv = new Uint8Array(12);
+  globalThis.crypto.getRandomValues(iv);
+  const encoded = new TextEncoder().encode(JSON.stringify(docData));
+  const encrypted = await globalThis.crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, encoded);
+
+  // Only access metadata and ciphertext are stored in the public share document.
+  return {
+    token: docData.token,
+    role: docData.role,
+    active: docData.active,
+    version: docData.version,
+    lastUpdated: docData.lastUpdated,
+    accessPolicy: policy,
+    encryptedPayload: {
+      iv: bytesToBase64(iv),
+      ciphertext: bytesToBase64(new Uint8Array(encrypted))
+    }
+  };
+}
+
+/**
+ * Decrypts a password-protected share projection. A null result means the password
+ * was incorrect or the encrypted projection was invalid; no plaintext verifier is published.
+ */
+export async function decryptShareProjection(
   password: string,
-  policy?: Partial<ShareAccessPolicy> | null
-): Promise<boolean> {
-  if (!policy?.passwordRequired) return true;
-  if (!password || !policy.passwordSalt || !policy.passwordVerifier) return false;
+  envelope: Partial<EncryptedShareEnvelope> | null | undefined
+): Promise<any | null> {
+  const policy = envelope?.accessPolicy;
+  if (!policy?.passwordRequired || !policy.passwordSalt || !envelope?.encryptedPayload?.iv || !envelope.encryptedPayload.ciphertext || !password) return null;
   try {
     const iterations = Number(policy.passwordIterations) || SHARE_PASSWORD_ITERATIONS;
-    const candidate = await derivePasswordVerifier(password, policy.passwordSalt, iterations);
-    if (candidate.length !== policy.passwordVerifier.length) return false;
-    // Constant-work byte comparison for the public password gate.
-    let difference = 0;
-    for (let i = 0; i < candidate.length; i++) difference |= candidate.charCodeAt(i) ^ policy.passwordVerifier.charCodeAt(i);
-    return difference === 0;
+    const key = await deriveShareEncryptionKey(password, policy.passwordSalt, iterations);
+    const plain = await globalThis.crypto.subtle.decrypt(
+      { name: 'AES-GCM', iv: base64ToBytes(envelope.encryptedPayload.iv) },
+      key,
+      base64ToBytes(envelope.encryptedPayload.ciphertext)
+    );
+    const decoded = JSON.parse(new TextDecoder().decode(plain));
+    return decoded && decoded.token === envelope.token && decoded.role === envelope.role ? decoded : null;
   } catch {
-    return false;
+    return null;
   }
 }
 
@@ -288,7 +346,6 @@ async function buildShareAccessPolicy(trip: AppState): Promise<ShareAccessPolicy
   const settings = trip.publishing?.settings || {};
   const passwordRequired = Boolean(settings.requirePassword);
   let passwordSalt: string | undefined;
-  let passwordVerifier: string | undefined;
   if (passwordRequired) {
     const password = (settings.password || '').trim();
     if (!password) throw new Error('Password protection is enabled, but no access password has been configured.');
@@ -298,7 +355,6 @@ async function buildShareAccessPolicy(trip: AppState): Promise<ShareAccessPolicy
     const salt = new Uint8Array(16);
     globalThis.crypto.getRandomValues(salt);
     passwordSalt = bytesToHex(salt);
-    passwordVerifier = await derivePasswordVerifier(password, passwordSalt, SHARE_PASSWORD_ITERATIONS);
   }
 
   let expiresAt: string | null = null;
@@ -317,7 +373,6 @@ async function buildShareAccessPolicy(trip: AppState): Promise<ShareAccessPolicy
     expiresAt,
     passwordRequired,
     passwordSalt,
-    passwordVerifier,
     passwordIterations: SHARE_PASSWORD_ITERATIONS,
     allowDownloads: settings.allowDownloads !== false,
     allowPrinting: settings.allowPrinting !== false,
@@ -629,12 +684,19 @@ export async function syncProjectionsToFirestore(trip: AppState): Promise<{
   agentDoc.accessPolicy = accessPolicy;
   opsDoc.accessPolicy = accessPolicy;
 
+  // For password-protected links, encrypt all itinerary content before any cache or cloud write.
+  // A public share document then contains only access metadata and ciphertext.
+  const password = (trip.publishing?.settings?.password || '').trim();
+  const storedClientDoc = accessPolicy.passwordRequired ? await encryptShareProjection(clientDoc, password) : clientDoc;
+  const storedAgentDoc = accessPolicy.passwordRequired ? await encryptShareProjection(agentDoc, password) : agentDoc;
+  const storedOpsDoc = accessPolicy.passwordRequired ? await encryptShareProjection(opsDoc, password) : opsDoc;
+
   // Local caching follows the owner's offline-access setting.
   try {
     const cacheEntries: Array<[string, string]> = [
-      [`viemma_share_cli_${clientToken}`, JSON.stringify(clientDoc)],
-      [`viemma_share_agt_${agentToken}`, JSON.stringify(agentDoc)],
-      [`viemma_share_ops_${opsToken}`, JSON.stringify(opsDoc)]
+      [`viemma_share_cli_${clientToken}`, JSON.stringify(storedClientDoc)],
+      [`viemma_share_agt_${agentToken}`, JSON.stringify(storedAgentDoc)],
+      [`viemma_share_ops_${opsToken}`, JSON.stringify(storedOpsDoc)]
     ];
     if (accessPolicy.enableOfflineAccess) {
       cacheEntries.forEach(([key, value]) => localStorage.setItem(key, value));
@@ -649,9 +711,9 @@ export async function syncProjectionsToFirestore(trip: AppState): Promise<{
   if (db && isCloudConnected) {
     try {
       await Promise.all([
-        setDoc(doc(db, 'clientShares', clientToken), clientDoc, { merge: true }),
-        setDoc(doc(db, 'agentShares', agentToken), agentDoc, { merge: true }),
-        setDoc(doc(db, 'opsShares', opsToken), opsDoc, { merge: true })
+        setDoc(doc(db, 'clientShares', clientToken), storedClientDoc, { merge: true }),
+        setDoc(doc(db, 'agentShares', agentToken), storedAgentDoc, { merge: true }),
+        setDoc(doc(db, 'opsShares', opsToken), storedOpsDoc, { merge: true })
       ]);
     } catch (err) {
       console.warn('Firestore share projections sync warning:', err);
@@ -769,7 +831,8 @@ export function subscribeToShareDoc(
 ): () => void {
   // Check local fallback first
   try {
-    const localKey = `viemma_share_${role}_${token}`;
+    const cachePrefix = role === 'client' ? 'cli' : role === 'agent' ? 'agt' : 'ops';
+    const localKey = `viemma_share_${cachePrefix}_${token}`;
     const cached = localStorage.getItem(localKey);
     if (cached) {
       const parsed = JSON.parse(cached);
