@@ -906,18 +906,13 @@ export const PrintHubView: React.FC<PrintHubViewProps> = (props) => {
                 />
               </div>
 
-              {/* Setting 4: Hide Internal Notes & Supplier Rates */}
-              <div className="p-3.5 bg-slate-50 rounded-xl border border-slate-200 flex items-center justify-between">
+              {/* Mandatory client confidentiality: internal notes and supplier cost data are never projected */}
+              <div className="p-3.5 bg-emerald-50 rounded-xl border border-emerald-200 flex items-center justify-between">
                 <div>
-                  <span className="font-bold text-slate-900 block">Strict Confidential Shield</span>
-                  <span className="text-slate-500 text-[11px]">Prevent supplier net costs, commercial margins, and internal notes from leaking</span>
+                  <span className="font-bold text-emerald-900 block">Internal Notes Protection · Always On</span>
+                  <span className="text-emerald-800 text-[11px]">Supplier net costs, commercial margins and internal operational notes are excluded from client-facing data.</span>
                 </div>
-                <input
-                  type="checkbox"
-                  checked={Boolean(currentPublishing.settings.hideInternalNotes !== false)}
-                  onChange={(e) => handleToggleSetting('hideInternalNotes', e.target.checked)}
-                  className="rounded text-[#10233F] focus:ring-[#D4AF37] w-4 h-4 cursor-pointer"
-                />
+                <span className="px-2.5 py-1 rounded-lg bg-emerald-100 border border-emerald-200 text-emerald-800 text-[10px] font-extrabold uppercase">Protected</span>
               </div>
 
               {/* Setting 5: Allow Offline Access */}
@@ -934,16 +929,44 @@ export const PrintHubView: React.FC<PrintHubViewProps> = (props) => {
                 />
               </div>
 
-              {/* Setting 6: Allow Downloads & Print */}
+              {/* Setting 6: Allow Downloads */}
               <div className="p-3.5 bg-slate-50 rounded-xl border border-slate-200 flex items-center justify-between">
                 <div>
                   <span className="font-bold text-slate-900 block">Allow Client PDF Downloads</span>
-                  <span className="text-slate-500 text-[11px]">Enable PDF download button on client portal</span>
+                  <span className="text-slate-500 text-[11px]">Show the Save PDF control on the client itinerary.</span>
                 </div>
                 <input
                   type="checkbox"
                   checked={Boolean(currentPublishing.settings.allowDownloads !== false)}
                   onChange={(e) => handleToggleSetting('allowDownloads', e.target.checked)}
+                  className="rounded text-[#10233F] focus:ring-[#D4AF37] w-4 h-4 cursor-pointer"
+                />
+              </div>
+
+              {/* Setting 7: Allow Printing */}
+              <div className="p-3.5 bg-slate-50 rounded-xl border border-slate-200 flex items-center justify-between">
+                <div>
+                  <span className="font-bold text-slate-900 block">Allow Client Printing</span>
+                  <span className="text-slate-500 text-[11px]">Show the Print control on the client itinerary. Browser-level printing cannot be fully prevented.</span>
+                </div>
+                <input
+                  type="checkbox"
+                  checked={Boolean(currentPublishing.settings.allowPrinting !== false)}
+                  onChange={(e) => handleToggleSetting('allowPrinting', e.target.checked)}
+                  className="rounded text-[#10233F] focus:ring-[#D4AF37] w-4 h-4 cursor-pointer"
+                />
+              </div>
+
+              {/* Setting 8: Supplier Details Visibility */}
+              <div className="p-3.5 bg-slate-50 rounded-xl border border-slate-200 flex items-center justify-between">
+                <div>
+                  <span className="font-bold text-slate-900 block">Show Supplier Details to Client</span>
+                  <span className="text-slate-500 text-[11px]">When enabled, only supplier name and contact are shared; internal rates and notes remain hidden.</span>
+                </div>
+                <input
+                  type="checkbox"
+                  checked={Boolean(currentPublishing.settings.showSupplierDetails)}
+                  onChange={(e) => handleToggleSetting('showSupplierDetails', e.target.checked)}
                   className="rounded text-[#10233F] focus:ring-[#D4AF37] w-4 h-4 cursor-pointer"
                 />
               </div>
