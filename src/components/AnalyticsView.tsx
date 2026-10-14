@@ -34,35 +34,25 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
   netProfit
 }) => {
   const marginPercent = totalCost > 0 ? ((netProfit / totalCost) * 100).toFixed(1) : "0.0";
-  const revenueTotal = totalCost + (state.finance.marginType === '%' ? totalCost * (state.finance.margin / 100) : state.finance.margin);
+  const finance = state.finance;
+  const markupTotal = finance.marginType === '%' ? totalCost * (finance.margin / 100) : finance.margin;
+  const cardRate = finance.paymentMethod === 'visa' || finance.paymentMethod === 'master'
+    ? 0.025
+    : finance.paymentMethod === 'amex'
+      ? 0.038
+      : 0;
+  const cardTotal = totalCost * cardRate;
+  const revenueTotal = Math.max(0, totalCost + markupTotal + finance.buffer + cardTotal - finance.discount);
+  const comparisonMaximum = Math.max(totalCost, revenueTotal, 1);
+  const costBarWidth = Math.min(100, (totalCost / comparisonMaximum) * 100);
+  const revenueBarWidth = Math.min(100, (revenueTotal / comparisonMaximum) * 100);
 
-  // Sample static trends matching workspace metrics
-  const weekDays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-  const revenueTrend = [120, 240, 180, 310, 290, 420, 380];
-  const costTrend = [80, 160, 130, 210, 200, 280, 260];
-
-  const chartWidth = 500;
-  const chartHeight = 150;
-  const maxVal = 450;
-
-  // Generate SVG polyline coordinates
-  const pointsRev = revenueTrend.map((val, idx) => {
-    const x = (idx / (revenueTrend.length - 1)) * chartWidth;
-    const y = chartHeight - (val / maxVal) * chartHeight;
-    return `${x},${y}`;
-  }).join(' ');
-
-  const pointsCost = costTrend.map((val, idx) => {
-    const x = (idx / (costTrend.length - 1)) * chartWidth;
-    const y = chartHeight - (val / maxVal) * chartHeight;
-    return `${x},${y}`;
-  }).join(' ');
-
-  // SVG Circular progress breakdown
-  const flightCost = state.flights.reduce((sum, f) => sum + (f.cost * f.qty), 0);
-  const transferCost = state.transfers.reduce((sum, t) => sum + t.cost + t.tolls + t.parking, 0);
-  const hotelCost = state.rooms.reduce((sum, r) => sum + (r.rate * r.nights) + r.supp, 0);
-  const activityCost = state.activities.reduce((sum, a) => sum + (a.isFree ? 0 : a.total), 0);
+  // Service breakdown uses current trip records; cancelled items are excluded consistently
+  // with the Finance Workspace. It is not a historical sales chart.
+  const flightCost = state.flights.reduce((sum, f) => sum + (f.status === 'Cancelled' ? 0 : f.cost * f.qty), 0);
+  const transferCost = state.transfers.reduce((sum, t) => sum + (t.status === 'Cancelled' ? 0 : t.cost + t.tolls + t.parking), 0);
+  const hotelCost = state.rooms.reduce((sum, r) => sum + (r.status === 'Cancelled' ? 0 : (r.rate * r.nights) + r.supp), 0);
+  const activityCost = state.activities.reduce((sum, a) => sum + (a.isFree || a.status === 'Cancelled' ? 0 : a.total), 0);
 
   const totalServices = flightCost + transferCost + hotelCost + activityCost || 1;
   const hotelPct = Math.round((hotelCost / totalServices) * 100);
@@ -254,60 +244,66 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
       {/* ROW 1 - Trends Chart & Distribution Donut */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         
-        {/* Card 1: Revenue Trends & Projections */}
-        <div className="lg:col-span-2 bg-white rounded-[24px] p-8 shadow-sm border border-gray-100 hover:shadow-md transition-all duration-300 flex flex-col justify-between">
+        {/* Card 1: Current Trip Estimate — live values, not fabricated historical trends */}
+        <div className="lg:col-span-2 bg-white rounded-2xl p-6 md:p-8 shadow-sm border border-gray-100 flex flex-col justify-between">
           <div>
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-7">
               <div className="space-y-1">
                 <div className="flex items-center gap-2">
                   <span className="p-1.5 rounded-lg bg-emerald-50 text-emerald-700">
                     <TrendingUp size={14} />
                   </span>
-                  <h3 className="font-bold text-gray-900 text-base">Revenue & Cost Projections</h3>
+                  <h3 className="font-bold text-gray-900 text-base">Current Trip Estimate</h3>
                 </div>
-                <p className="text-xs text-gray-400 font-medium">Visualizing weekly sales pipeline relative to outlays (ZAR thousands)</p>
+                <p className="text-xs text-slate-600 font-medium">
+                  Calculated from this trip's saved costs, margin, fees and discount. Currency: ZAR.
+                </p>
               </div>
-              
-              <div className="flex items-center gap-4 shrink-0">
-                <span className="text-[10px] font-semibold text-emerald-800 flex items-center gap-1.5">
-                  <span className="w-2.5 h-2.5 bg-[#065f46] rounded-full"></span> Revenue
-                </span>
-                <span className="text-[10px] font-semibold text-gray-500 flex items-center gap-1.5">
-                  <span className="w-2.5 h-2.5 bg-gray-400 rounded-full"></span> Cost
-                </span>
-                <button className="px-3 py-1.5 rounded-lg border border-gray-100 hover:bg-gray-50 text-[10px] font-bold text-gray-600 transition-colors">
-                  Last 7 Days
-                </button>
-              </div>
+              <span className="text-[10px] uppercase tracking-wider font-bold text-slate-500 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2">
+                Live trip calculation
+              </span>
             </div>
 
-            <div className="w-full relative h-[180px] mt-4">
-              <svg viewBox={`0 0 ${chartWidth} ${chartHeight}`} className="w-full h-full overflow-visible" preserveAspectRatio="none">
-                {/* Grid Lines */}
-                <line x1="0" y1={chartHeight * 0.25} x2={chartWidth} y2={chartHeight * 0.25} stroke="#f8fafc" strokeWidth="1.5" />
-                <line x1="0" y1={chartHeight * 0.5} x2={chartWidth} y2={chartHeight * 0.5} stroke="#f1f5f9" strokeWidth="1.5" />
-                <line x1="0" y1={chartHeight * 0.75} x2={chartWidth} y2={chartHeight * 0.75} stroke="#f1f5f9" strokeWidth="1.5" />
-                <line x1="0" y1={chartHeight} x2={chartWidth} y2={chartHeight} stroke="#cbd5e1" strokeWidth="2" />
+            <div className="space-y-6">
+              <div>
+                <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
+                  <span className="text-xs font-semibold text-slate-700">Estimated operating cost</span>
+                  <span className="text-sm md:text-base font-bold text-slate-900">R {totalCost.toLocaleString('en-ZA', { maximumFractionDigits: 2 })}</span>
+                </div>
+                <div className="h-3 w-full bg-slate-100 rounded-full overflow-hidden" role="img" aria-label={`Operating cost R ${totalCost.toLocaleString('en-ZA')}`}>
+                  <div className="h-full bg-slate-400 rounded-full transition-all" style={{ width: `${costBarWidth}%` }} />
+                </div>
+              </div>
 
-                {/* Area Shading with clean opacity */}
-                <polyline fill="rgba(6, 95, 70, 0.06)" stroke="none" points={`0,${chartHeight} ${pointsRev} ${chartWidth},${chartHeight}`} />
-                <polyline fill="rgba(148, 163, 184, 0.03)" stroke="none" points={`0,${chartHeight} ${pointsCost} ${chartWidth},${chartHeight}`} />
-
-                {/* Cost Line */}
-                <polyline fill="none" stroke="#94a3b8" strokeWidth="2" strokeDasharray="5,3" points={pointsCost} />
-
-                {/* Revenue Line */}
-                <polyline fill="none" stroke="#065f46" strokeWidth="3.5" points={pointsRev} />
-              </svg>
+              <div>
+                <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
+                  <span className="text-xs font-semibold text-slate-700">Estimated selling price</span>
+                  <span className="text-sm md:text-base font-bold text-emerald-800">R {revenueTotal.toLocaleString('en-ZA', { maximumFractionDigits: 2 })}</span>
+                </div>
+                <div className="h-3 w-full bg-slate-100 rounded-full overflow-hidden" role="img" aria-label={`Estimated selling price R ${revenueTotal.toLocaleString('en-ZA')}`}>
+                  <div className="h-full bg-emerald-700 rounded-full transition-all" style={{ width: `${revenueBarWidth}%` }} />
+                </div>
+              </div>
             </div>
           </div>
-          
-          <div className="flex justify-between items-center text-[10px] text-gray-400 font-bold uppercase tracking-wider mt-6 pt-4 border-t border-gray-50">
-            {weekDays.map(d => <span key={d}>{d}</span>)}
+
+          <div className="mt-7 pt-5 border-t border-slate-100 grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div>
+              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block mb-1">Gross uplift</span>
+              <span className="text-sm font-bold text-slate-900">R {(revenueTotal - totalCost).toLocaleString('en-ZA', { maximumFractionDigits: 2 })}</span>
+            </div>
+            <div>
+              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block mb-1">Target net profit</span>
+              <span className="text-sm font-bold text-emerald-800">R {netProfit.toLocaleString('en-ZA', { maximumFractionDigits: 2 })}</span>
+            </div>
+            <div>
+              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block mb-1">Net margin / cost</span>
+              <span className="text-sm font-bold text-slate-900">{marginPercent}%</span>
+            </div>
           </div>
         </div>
 
-        {/* Card 2: Itinerary Distribution */}
+                {/* Card 2: Itinerary Distribution */}
         <div className="bg-white rounded-[24px] p-8 shadow-sm border border-gray-100 hover:shadow-md transition-all duration-300 flex flex-col justify-between">
           <div>
             <div className="space-y-1 mb-6">
