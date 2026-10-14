@@ -234,7 +234,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
               <Activity size={14} />
             </div>
           </div>
-          <p className="text-2xl font-bold text-gray-900 font-sans">{state.activities.length} Excursions</p>
+          <p className="text-2xl font-bold text-gray-900 font-sans">{state.activities.filter(a => a.status !== 'Cancelled').length} Excursions</p>
           <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider block mt-2">
             R {activityCost.toLocaleString()} Cost Allocated
           </span>
@@ -450,7 +450,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
               </li>
               <li className="flex justify-between items-center pb-1">
                 <span className="font-semibold text-gray-500">Activities booked</span>
-                <strong className="text-[#065f46] font-bold font-sans">{state.activities.length} Excursions</strong>
+                <strong className="text-[#065f46] font-bold font-sans">{state.activities.filter(a => a.status !== 'Cancelled').length} Excursions</strong>
               </li>
             </ul>
           </div>
