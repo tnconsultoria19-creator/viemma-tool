@@ -34,6 +34,14 @@ service cloud.firestore {
         );
     }
 
+    // Never return a plaintext document if it declares password protection.
+    // Older protected links must be republished through the encrypted share workflow.
+    function protectedSharePayloadIsEncrypted() {
+      return !('accessPolicy' in resource.data) ||
+        resource.data.accessPolicy.passwordRequired != true ||
+        'encryptedPayload' in resource.data;
+    }
+
     // Default deny catch-all
     match /{document=**} {
       allow read, write: if false;
@@ -68,7 +76,7 @@ service cloud.firestore {
     // Writes restricted to authenticated staff publishers.
     // ========================================================
     match /clientShares/{token} {
-      allow get: if isValidId(token) && shareLinkIsLive();
+      allow get: if isValidId(token) && shareLinkIsLive() && protectedSharePayloadIsEncrypted();
       allow list: if false;
       allow write: if isStaff() && isValidId(token);
     }
@@ -80,7 +88,7 @@ service cloud.firestore {
     // Writes restricted to authenticated staff publishers.
     // ========================================================
     match /agentShares/{token} {
-      allow get: if isValidId(token) && shareLinkIsLive();
+      allow get: if isValidId(token) && shareLinkIsLive() && protectedSharePayloadIsEncrypted();
       allow list: if false;
       allow write: if isStaff() && isValidId(token);
     }
@@ -92,7 +100,7 @@ service cloud.firestore {
     // Writes restricted to authenticated staff publishers.
     // ========================================================
     match /opsShares/{token} {
-      allow get: if isValidId(token) && shareLinkIsLive();
+      allow get: if isValidId(token) && shareLinkIsLive() && protectedSharePayloadIsEncrypted();
       allow list: if false;
       allow write: if isStaff() && isValidId(token);
     }
