@@ -1106,7 +1106,7 @@ export const PrintHubView: React.FC<PrintHubViewProps> = (props) => {
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-200">
-                        {group.travellers.map((t) => (
+                        {printGroup.travellers.map((t) => (
                           <tr key={t.id}>
                             <td className="py-1.5 px-2 font-semibold">{t.fullName}</td>
                             <td className="py-1.5 px-2">
@@ -1204,8 +1204,8 @@ export const PrintHubView: React.FC<PrintHubViewProps> = (props) => {
                 </div>
 
                 <footer className="pt-3 border-t border-slate-200 flex justify-between text-[10px] text-slate-500">
-                  <span>{group.tripId} • Internal Operator Ground Sheet</span>
-                  <span className="font-mono">Page 1 of 1</span>
+                  <span>{printGroup.tripId} • Internal Operator Ground Sheet</span>
+                  <span className="font-mono">Operator schedule · selected scope</span>
                 </footer>
               </article>
             )}
