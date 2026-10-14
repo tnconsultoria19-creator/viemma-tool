@@ -205,8 +205,6 @@ export const ActivitiesView: React.FC<ActivitiesViewProps> = ({
     };
 
     const times = slotTimes[slot] || slotTimes['Morning'];
-    const adCount = state.guests.filter(g => g.age !== 'Child' && g.age !== 'Infant').length;
-    const chCount = state.guests.filter(g => g.age === 'Child' || g.age === 'Infant').length;
     // Preserve explicit zero prices; missing values remain visibly unpriced until confirmed.
     const priceAd = Number(catalogItem.priceAdult ?? catalogItem.adPrice ?? 0);
     const priceCh = Number(catalogItem.priceChild ?? catalogItem.chPrice ?? Math.round(priceAd * 0.5));
