@@ -1008,10 +1008,22 @@ export default function App() {
 
   // DYNAMIC FINANCIAL TOTALS (ZAR)
   const totalCost = useMemo(() => {
-    const flightCosts = state.flights.reduce((sum, f) => sum + (f.cost * f.qty), 0);
-    const transferCosts = state.transfers.reduce((sum, t) => sum + t.cost + t.tolls + t.parking, 0);
-    const roomCosts = state.rooms.reduce((sum, r) => sum + (r.rate * r.nights) + r.supp, 0);
-    const activityCosts = state.activities.reduce((sum, a) => sum + (a.isFree ? 0 : a.total), 0);
+    const flightCosts = state.flights.reduce(
+      (sum, f) => sum + (f.status === 'Cancelled' ? 0 : f.cost * f.qty),
+      0
+    );
+    const transferCosts = state.transfers.reduce(
+      (sum, t) => sum + (t.status === 'Cancelled' ? 0 : t.cost + t.tolls + t.parking),
+      0
+    );
+    const roomCosts = state.rooms.reduce(
+      (sum, r) => sum + (r.status === 'Cancelled' ? 0 : (r.rate * r.nights) + r.supp),
+      0
+    );
+    const activityCosts = state.activities.reduce(
+      (sum, a) => sum + (a.isFree || a.status === 'Cancelled' ? 0 : a.total),
+      0
+    );
     return flightCosts + transferCosts + roomCosts + activityCosts;
   }, [state.flights, state.transfers, state.rooms, state.activities]);
 
