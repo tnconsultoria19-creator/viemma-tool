@@ -6,6 +6,7 @@ import { buildNormalizedTimeline, TimelineEvent } from '../utils/timelineEngine'
 
 export interface ShareAccessPolicy {
   expiresAt: string | null;
+  expiresAtEpochMs?: number | null;
   passwordRequired: boolean;
   passwordSalt?: string;
   passwordIterations: number;
@@ -371,6 +372,7 @@ async function buildShareAccessPolicy(trip: AppState): Promise<ShareAccessPolicy
 
   return {
     expiresAt,
+    expiresAtEpochMs: expiresAt ? new Date(expiresAt).getTime() : null,
     passwordRequired,
     passwordSalt,
     passwordIterations: SHARE_PASSWORD_ITERATIONS,
