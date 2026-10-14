@@ -207,9 +207,10 @@ export const ActivitiesView: React.FC<ActivitiesViewProps> = ({
     const times = slotTimes[slot] || slotTimes['Morning'];
     const adCount = state.guests.filter(g => g.age !== 'Child' && g.age !== 'Infant').length;
     const chCount = state.guests.filter(g => g.age === 'Child' || g.age === 'Infant').length;
-    const priceAd = catalogItem.priceAdult || catalogItem.adPrice || 420;
-    const priceCh = catalogItem.priceChild || catalogItem.chPrice || Math.round(priceAd * 0.5);
-    const calculatedTotal = (priceAd * adCount) + (priceCh * chCount);
+    // Preserve explicit zero prices; missing values remain visibly unpriced until confirmed.
+    const priceAd = Number(catalogItem.priceAdult ?? catalogItem.adPrice ?? 0);
+    const priceCh = Number(catalogItem.priceChild ?? catalogItem.chPrice ?? Math.round(priceAd * 0.5));
+    const calculatedTotal = 0; // Recalculated after participants are explicitly assigned.
 
     const newActivity: Activity = {
       id: Date.now(),
@@ -222,43 +223,44 @@ export const ActivitiesView: React.FC<ActivitiesViewProps> = ({
       start: times.start,
       endTime: times.end,
       dur: catalogItem.duration || '3 hours',
-      venue: catalogItem.location || catalogItem.destination || 'Cape Town',
-      pickupLoc: 'Hotel Reception',
-      responsiblePerson: 'Lead Tour Leader / Guide',
+      venue: catalogItem.location || '',
+      pickupLoc: catalogItem.pickupLoc || catalogItem.pickupLocation || '',
+      responsiblePerson: catalogItem.responsiblePerson || '',
       status: 'Planned',
       conf: '',
-      supplier: catalogItem.supplier || 'Viemma Selected Operator',
-      supPhone: '+27 21 555 0100',
-      paxIds: state.guests.map(g => g.id),
+      supplier: catalogItem.supplier || '',
+      supPhone: catalogItem.supplierPhone || catalogItem.supPhone || '',
+      paxIds: [],
       pAdult: priceAd,
       pChild: priceCh,
-      nAdult: adCount,
-      nChild: chCount,
+      nAdult: 0,
+      nChild: 0,
       flat: 0,
       total: calculatedTotal,
-      inc: catalogItem.highlights || ["Entrance Tickets", "Viemma Bottled Water"],
-      backup: 'In case of inclement weather, pivot to indoor cultural art & museum gallery excursion.',
-      notes: `Curated from Viemma Experience Catalog. Destination: ${catalogItem.destination || 'South Africa'}.`,
+      inc: catalogItem.inclusions || [],
+      backup: catalogItem.backupPlan || catalogItem.backup || '',
+      notes: catalogItem.destination ? `Curated from Viemma Experience Catalog. Destination: ${catalogItem.destination}.` : 'Curated from Viemma Experience Catalog.',
       isFree: false,
-      heroImage: catalogItem.featuredImage || catalogItem.images?.[0] || 'https://images.unsplash.com/photo-1580618672591-eb180b1a973f?auto=format&fit=crop&q=80&w=800',
+      heroImage: catalogItem.featuredImage || catalogItem.images?.[0] || '',
       gallery: catalogItem.images || [],
-      difficulty: (catalogItem.difficulty as any) || 'Easy',
-      suitableAges: 'All Ages',
-      accessibility: ['Stroller Accessible', 'Wheelchair accessible walkways'],
-      weatherDependency: catalogItem.name.toLowerCase().includes('mountain') || catalogItem.name.toLowerCase().includes('cruise') ? 'High' : 'Low',
-      dropoffLoc: 'Return to Hotel Lobby',
-      excluded: ["Personal Curios", "Driver Gratuities", "Alcoholic Beverages (unless specified)"],
-      packingAdvice: 'Comfortable outdoor footwear, sun protection, light windbreaker jacket, camera.',
-      dressCode: 'Casual Outdoor Luxury',
-      safetyNotes: 'Always stay with your designated field guide and adhere to site safety markers.',
-      photographyOpportunities: catalogItem.highlights?.[0] || 'Spectacular panoramic and wildlife capture points.',
-      seasonalAvailability: 'Year-round',
+      difficulty: catalogItem.difficulty || '',
+      suitableAges: catalogItem.suitableAges || '',
+      accessibility: catalogItem.accessibility || [],
+      weatherDependency: catalogItem.weatherDependency || '',
+      dropoffLoc: catalogItem.dropoffLoc || '',
+      excluded: catalogItem.excluded || [],
+      packingAdvice: catalogItem.packingAdvice || '',
+      dressCode: catalogItem.dressCode || '',
+      safetyNotes: catalogItem.safetyNotes || '',
+      photographyOpportunities: catalogItem.photographyOpportunities || '',
+      seasonalAvailability: catalogItem.seasonalAvailability || '',
       faqs: catalogItem.faqs || [],
-      guideNotes: 'Confirm group entry tickets and timing with venue dispatch 24 hours prior.'
+      guideNotes: catalogItem.guideNotes || ''
     };
 
     onAddActivity(newActivity);
-    setToastMessage(`✨ Added "${catalogItem.name}" to Day ${targetDayNum}!`);
+    setAssigningActivityId(newActivity.id);
+    setToastMessage(`Added "${catalogItem.name}" to Day ${targetDayNum}. Assign the participating travellers to complete setup.`);
     setTimeout(() => setToastMessage(null), 3500);
   };
 
@@ -270,7 +272,7 @@ export const ActivitiesView: React.FC<ActivitiesViewProps> = ({
 
   const getActivityConflicts = (a: Activity): string[] => {
     const issues: string[] = [];
-    const actDate = a.date || (state.client?.startDate ? state.client.startDate : '');
+    const actDate = a.date || getDayIsoDate(a.day);
     
     const parseMins = (t?: string) => {
       if (!t) return null;
@@ -287,9 +289,15 @@ export const ActivitiesView: React.FC<ActivitiesViewProps> = ({
     if (aStart !== null && aEnd !== null) {
       for (const other of state.activities) {
         if (other.id === a.id || other.status === 'Cancelled') continue;
-        const otherDate = other.date || (state.client?.startDate ? state.client.startDate : '');
-        const sameDay = (actDate && otherDate && actDate === otherDate) || (a.day === other.day);
-        if (sameDay) {
+        const otherDate = other.date || getDayIsoDate(other.day);
+        const sameDay = actDate && otherDate
+          ? actDate === otherDate
+          : a.day === other.day;
+        const aPax = a.paxIds || [];
+        const otherPax = other.paxIds || [];
+        // Disjoint traveller assignments can run in parallel; missing assignments remain potential conflicts.
+        const participantOverlap = aPax.length === 0 || otherPax.length === 0 || otherPax.some(id => aPax.includes(id));
+        if (sameDay && participantOverlap) {
           const oStart = parseMins(other.start);
           const oEnd = other.endTime ? parseMins(other.endTime) : (oStart !== null ? oStart + 180 : null);
           if (oStart !== null && oEnd !== null) {
@@ -325,54 +333,56 @@ export const ActivitiesView: React.FC<ActivitiesViewProps> = ({
   };
 
   const handleOpenAddForm = () => {
-    const defaultDate = state.client?.startDate || new Date().toISOString().split('T')[0];
+    // Start from an empty activity record. Operational details must be confirmed for this trip.
     setAForm({
       day: 1,
-      date: defaultDate,
+      date: state.client?.startDate || '',
       slot: 'Morning',
-      name: 'Table Mountain Cableway Scenic Excursion',
-      desc: 'Bespoke aerial cableway return trip to Table Mountain summit.',
-      pickup: '09:00',
-      start: '09:30',
-      endTime: '12:30',
-      dur: '3 hours',
-      venue: 'Table Mountain Summit Station',
-      pickupLoc: 'The Silo Hotel Lobby',
-      responsiblePerson: 'Lead Tour Leader / Guide',
-      status: 'Planned',
+      name: '',
+      desc: '',
+      pickup: '',
+      start: '',
+      endTime: '',
+      dur: '',
+      venue: '',
+      pickupLoc: '',
+      responsiblePerson: '',
+      status: 'Draft',
       conf: '',
-      supplier: 'Table Mountain Aerial Cableway Co.',
-      supPhone: '+27 21 424 8408',
-      paxIds: state.guests.map(g => g.id),
-      pAdult: 420,
-      pChild: 210,
-      nAdult: state.guests.filter(g => g.age !== 'Child' && g.age !== 'Infant').length,
-      nChild: state.guests.filter(g => g.age === 'Child' || g.age === 'Infant').length,
+      supplier: '',
+      supPhone: '',
+      paxIds: [],
+      pAdult: 0,
+      pChild: 0,
+      nAdult: 0,
+      nChild: 0,
       flat: 0,
       total: 0,
-      inc: ["Entrance Tickets", "Chartered Vehicle Transfers", "Bottled Water"],
-      backup: 'In case of strong winds, replace Table Mountain Cableway with Kirstenbosch National Botanical Gardens Guided Hike.',
-      notes: 'Honeymoon couple traveling. Spotting Cape Rock Hyrax (Dassies) is a high interest.',
+      inc: [],
+      backup: '',
+      notes: '',
       isFree: false,
-
-      // Expanded Operational Knowledge Object Fields
-      heroImage: 'https://images.unsplash.com/photo-1580618672591-eb180b1a973f?auto=format&fit=crop&q=80&w=600',
+      heroImage: '',
       gallery: [],
-      difficulty: 'Easy',
-      suitableAges: 'All Ages',
-      accessibility: ['Stroller Accessible', 'Wheelchair accessible summit walkways'],
-      weatherDependency: 'High (Wind & Cloud Cover dependent)',
-      dropoffLoc: 'Return to Hotel',
-      excluded: ['Lunch', 'Gratuities', 'Personal Curios'],
-      packingAdvice: 'Windbreaker jacket, sunglasses, comfortable walking shoes, sun protection.',
-      dressCode: 'Casual Outdoor Luxury',
-      safetyNotes: 'Always stay on demarcated stone pathways at the summit. Hydrate.',
-      photographyOpportunities: 'Unparalleled 360-degree Cape Town skyline views, Twelve Apostles mountain chain, and Robben Island.',
-      seasonalAvailability: 'Year-round (Best during clear summer months)',
-      faqs: [
-        { question: 'Is there food at the summit?', answer: 'Yes, a café and souvenir shop are fully operational at the top station.' }
-      ],
-      guideNotes: 'Ensure the driver-guide registers ticket codes before arriving to bypass the main visitor ticketing queue.'
+      difficulty: '',
+      suitableAges: '',
+      accessibility: [],
+      weatherDependency: '',
+      dropoffLoc: '',
+      excluded: [],
+      packingAdvice: '',
+      dressCode: '',
+      safetyNotes: '',
+      photographyOpportunities: '',
+      seasonalAvailability: '',
+      faqs: [],
+      guideNotes: '',
+      guideId: '',
+      guideName: '',
+      guidePhone: '',
+      guideSourceAgentId: '',
+      guideSourceAgentName: '',
+      attachments: []
     });
     setActiveTab('basic');
     setEditingActivityId(-1);
@@ -386,17 +396,17 @@ export const ActivitiesView: React.FC<ActivitiesViewProps> = ({
       venue: a.venue || a.pickupLoc || '',
       responsiblePerson: a.responsiblePerson || a.guideName || '',
       status: a.status || 'Planned',
-      difficulty: a.difficulty || 'Easy',
-      suitableAges: a.suitableAges || 'All Ages',
+      difficulty: a.difficulty || '',
+      suitableAges: a.suitableAges || '',
       accessibility: a.accessibility || [],
-      weatherDependency: a.weatherDependency || 'Low',
-      dropoffLoc: a.dropoffLoc || 'Return to Hotel',
+      weatherDependency: a.weatherDependency || '',
+      dropoffLoc: a.dropoffLoc || '',
       excluded: a.excluded || [],
       packingAdvice: a.packingAdvice || '',
       dressCode: a.dressCode || '',
       safetyNotes: a.safetyNotes || '',
       photographyOpportunities: a.photographyOpportunities || '',
-      seasonalAvailability: a.seasonalAvailability || 'Year-round',
+      seasonalAvailability: a.seasonalAvailability || '',
       faqs: a.faqs || [],
       guideNotes: a.guideNotes || a.notes || '',
       guideId: a.guideId || '',
@@ -2158,7 +2168,7 @@ export const ActivitiesView: React.FC<ActivitiesViewProps> = ({
                       className="w-full h-full object-cover group-hover:scale-105 transition duration-300" 
                     />
                     <span className="absolute bottom-1 right-1 bg-black/70 px-1.5 py-0.5 rounded text-[9px] font-bold text-white">
-                      R{item.priceAdult || (item as any).adPrice || 420}
+                      R{item.priceAdult ?? (item as any).adPrice ?? 0}
                     </span>
                   </div>
 
@@ -2179,7 +2189,7 @@ export const ActivitiesView: React.FC<ActivitiesViewProps> = ({
 
                     <div className="flex items-center justify-between pt-1">
                       <span className="text-[10px] font-mono font-bold text-[#1A3326]">
-                        R{item.priceAdult || (item as any).adPrice || 420} ad / R{item.priceChild || (item as any).chPrice || 210} ch
+                        R{item.priceAdult ?? (item as any).adPrice ?? 0} ad / R{item.priceChild ?? (item as any).chPrice ?? 0} ch
                       </span>
                       <button
                         onClick={() => {
