@@ -528,6 +528,9 @@ export default function App() {
       }
 
       setShareDocData(data);
+    }, (error) => {
+      console.warn('Public share link is unavailable or expired:', error);
+      setShareDocData(null);
     });
     return () => unsubscribe();
   }, [publicShare]);
