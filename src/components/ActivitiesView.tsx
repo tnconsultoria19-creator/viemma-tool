@@ -1168,7 +1168,7 @@ export const ActivitiesView: React.FC<ActivitiesViewProps> = ({
                       ))}
                     </div>
                   )}
-                  <p className="text-[11px] text-slate-500">Selecting groups assigns their current members. Fine-tune the roster in Traveler Alignment.</p>
+                  <p className="text-[11px] text-slate-500">Selecting groups assigns their current members. Individual traveller changes replace the named-group assignment for this activity.</p>
                 </div>
                 <div className="bg-gradient-to-r from-yellow-500/5 to-yellow-500/10 rounded-[20px] p-6 border border-[#D4AF37]/20 shadow-xs space-y-3">
                   <label className="text-[11px] text-[#1A3326] font-bold uppercase tracking-wider block">Autofill from Master Experience Presets (Optional)</label>
@@ -1799,7 +1799,7 @@ export const ActivitiesView: React.FC<ActivitiesViewProps> = ({
         <div className="space-y-8">
 
           {/* EMPTY STATE */}
-          {state.activities.length === 0 ? (
+          {visibleActivities.length === 0 ? (
             <div className="text-center py-16 bg-white border border-gray-100 rounded-[28px] shadow-sm max-w-xl mx-auto w-full p-8 space-y-5 animate-in zoom-in-95">
               <div className="w-18 h-18 bg-emerald-50 text-[#1A3326] rounded-2xl flex items-center justify-center mx-auto shadow-inner border border-emerald-100">
                 <Compass size={32} className="text-[#D4AF37]" />
