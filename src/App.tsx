@@ -1164,7 +1164,7 @@ export default function App() {
     const publicAccessPolicy = shareDocData.accessPolicy;
     const expiryValue = publicAccessPolicy?.expiresAt;
     const expiryTime = expiryValue
-      ? new Date(/^\\d{4}-\\d{2}-\\d{2}$/.test(expiryValue) ? `${expiryValue}T23:59:59.999` : expiryValue).getTime()
+      ? new Date(/^\d{4}-\d{2}-\d{2}$/.test(expiryValue) ? `${expiryValue}T23:59:59.999` : expiryValue).getTime()
       : null;
     const isShareExpired = expiryTime !== null && Number.isFinite(expiryTime) && Date.now() > expiryTime;
 
