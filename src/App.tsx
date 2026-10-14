@@ -121,6 +121,8 @@ export const INITIAL_STATE: AppState = {
     bufferNotes: ''
   },
   internalNotes: '',
+  namedGroups: [],
+  dayTitles: {},
   publishing: {
     tripId: 'VT-2026-1048',
     publicUrl: 'https://portal.viemmatours.com/trip/VT-2026-1048',

@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { AppState, Activity, Guide, AttachmentItem } from '../types';
+import { AppState, Activity, Guide, AttachmentItem, TravellerGroup } from '../types';
 import { DB_DEFAULT } from '../dbDefaults';
 import { DEFAULT_EXPERIENCES } from '../data/libraryDefaults';
 import { AttachmentManager } from './AttachmentManager';
@@ -310,8 +310,21 @@ export const ActivitiesView: React.FC<ActivitiesViewProps> = ({
     const aEnd = a.endTime
       ? parseMins(a.endTime)
       : (aStart !== null && aDuration !== null ? aStart + aDuration : null);
+
+    if (aStart === null) {
+      issues.push('Missing or invalid start time (format HH:MM).');
+    }
     if (aStart !== null && aEnd === null) {
       issues.push('Add an end time or a valid duration before schedule conflicts can be checked.');
+    }
+    if (aStart !== null && aEnd !== null && aEnd < aStart) {
+      issues.push(`Invalid times: End time (${a.endTime}) cannot be earlier than start time (${a.start}).`);
+    }
+
+    if (state.client?.startDate && state.client?.endDate && actDate) {
+      if (actDate < state.client.startDate || actDate > state.client.endDate) {
+        issues.push(`Scheduled date (${actDate}) is outside trip dates (${state.client.startDate} to ${state.client.endDate}).`);
+      }
     }
 
     if (aStart !== null && aEnd !== null) {
@@ -321,20 +334,58 @@ export const ActivitiesView: React.FC<ActivitiesViewProps> = ({
         const sameDay = actDate && otherDate
           ? actDate === otherDate
           : a.day === other.day;
-        const aPax = a.paxIds || [];
-        const otherPax = other.paxIds || [];
-        // Disjoint traveller assignments can run in parallel; missing assignments remain potential conflicts.
-        const participantOverlap = aPax.length === 0 || otherPax.length === 0 || otherPax.some(id => aPax.includes(id));
-        if (sameDay && participantOverlap) {
+
+        if (sameDay) {
           const oStart = parseMins(other.start);
           const otherDuration = parseDurationMinutes(other.dur);
           const oEnd = other.endTime
             ? parseMins(other.endTime)
             : (oStart !== null && otherDuration !== null ? oStart + otherDuration : null);
+
           if (oStart !== null && oEnd !== null) {
-            if (aStart < oEnd && aEnd > oStart) {
-              issues.push(`Overlaps with "${other.name}" (${other.start}${other.endTime ? `–${other.endTime}` : ''}) on Day ${other.day}`);
-            } else if (a.venue && other.venue && a.venue.trim().toLowerCase() !== other.venue.trim().toLowerCase()) {
+            const hasTimeOverlap = aStart < oEnd && aEnd > oStart;
+
+            const aPax = a.paxIds || [];
+            const otherPax = other.paxIds || [];
+            const overlappingPax = aPax.filter(id => otherPax.includes(id));
+            const hasPaxOverlap = aPax.length === 0 || otherPax.length === 0 || overlappingPax.length > 0;
+
+            const aGroups = a.groupIds || [];
+            const oGroups = other.groupIds || [];
+            const hasGroupOverlap = aGroups.length === 0 || oGroups.length === 0 || aGroups.some(gid => oGroups.includes(gid));
+
+            if (hasTimeOverlap && (hasPaxOverlap || hasGroupOverlap)) {
+              if (overlappingPax.length > 0) {
+                const names = state.guests.filter(g => overlappingPax.includes(g.id)).map(g => `${g.first} ${g.last}`).join(', ');
+                issues.push(`Traveller double-booked: ${names} assigned to simultaneous activities ("${a.name}" and "${other.name}").`);
+              } else {
+                issues.push(`Overlaps with "${other.name}" (${other.start}${other.endTime ? `–${other.endTime}` : ''}) on Day ${other.day}`);
+              }
+            }
+
+            // Guide conflict check
+            const aGuide = (a.responsiblePerson || a.guideName || a.guideId || '').trim().toLowerCase();
+            const oGuide = (other.responsiblePerson || other.guideName || other.guideId || '').trim().toLowerCase();
+            if (hasTimeOverlap && aGuide && oGuide && aGuide === oGuide) {
+              issues.push(`Guide conflict: Guide "${a.responsiblePerson || a.guideName}" double-booked on "${a.name}" and "${other.name}".`);
+            }
+
+            // Driver conflict check
+            const aDriver = (a.driverName || a.driverId || '').trim().toLowerCase();
+            const oDriver = (other.driverName || other.driverId || '').trim().toLowerCase();
+            if (hasTimeOverlap && aDriver && oDriver && aDriver === oDriver) {
+              issues.push(`Driver conflict: Driver "${a.driverName}" double-booked on "${a.name}" and "${other.name}".`);
+            }
+
+            // Vehicle conflict check
+            const aVehicle = (a.vehicleName || a.vehicleId || '').trim().toLowerCase();
+            const oVehicle = (other.vehicleName || other.vehicleId || '').trim().toLowerCase();
+            if (hasTimeOverlap && aVehicle && oVehicle && aVehicle === oVehicle) {
+              issues.push(`Vehicle conflict: Vehicle "${a.vehicleName}" double-booked on "${a.name}" and "${other.name}".`);
+            }
+
+            // Insufficient transfer time between different venues
+            if (a.venue && other.venue && a.venue.trim().toLowerCase() !== other.venue.trim().toLowerCase()) {
               if (aStart >= oEnd && (aStart - oEnd) < 30) {
                 issues.push(`Insufficient transfer time: Only ${aStart - oEnd}m between "${other.name}" (${other.venue}) and "${a.name}" (${a.venue}). Minimum 30m transfer recommended.`);
               } else if (oStart >= aEnd && (oStart - aEnd) < 30) {
@@ -345,6 +396,7 @@ export const ActivitiesView: React.FC<ActivitiesViewProps> = ({
         }
       }
 
+      // Check against Ground Transfers
       const activityPax = a.paxIds || [];
       for (const tr of state.transfers) {
         if (tr.status === 'Cancelled') continue;

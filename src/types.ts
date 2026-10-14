@@ -374,6 +374,21 @@ export interface Activity {
   notes: string;
   isFree: boolean;
 
+  // Group and Resource Assignments
+  groupIds?: string[];
+  category?: string;
+  driverId?: string;
+  driverName?: string;
+  vehicleId?: string;
+  vehicleName?: string;
+  destination?: string;
+  voucherRef?: string;
+  clientDescription?: string;
+  costSupplier?: number;
+  sellingPrice?: number;
+  createdAt?: string;
+  updatedAt?: string;
+
   // Improved Activities Fields
   heroImage?: string;
   gallery?: string[];
@@ -396,6 +411,15 @@ export interface Activity {
   guideSourceAgentId?: string;
   guideSourceAgentName?: string;
   attachments?: AttachmentItem[];
+}
+
+export interface TravellerGroup {
+  id: string;
+  name: string;
+  color?: string;
+  leaderId?: number;
+  notes?: string;
+  memberIds: number[];
 }
 
 export interface ExperienceLibraryItem {
@@ -607,6 +631,8 @@ export interface AppState {
     videoUrl?: string;
   };
   groupManagement?: GroupManagement;
+  namedGroups?: TravellerGroup[];
+  dayTitles?: Record<number, string>;
   changeLog?: TripChangeLogEntry[];
   publishing?: {
     tripId: string;
