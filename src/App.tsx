@@ -501,7 +501,14 @@ export default function App() {
 
   // Real-time listener for public share projection
   useEffect(() => {
-    if (!publicShare) return;
+    // Do not display the previous token's cached or decrypted itinerary while a new link loads.
+    setShareDocData(undefined);
+    sharePasswordSecretRef.current = '';
+    setSharePasswordVerified(false);
+    if (!publicShare) {
+      setShareDocData(null);
+      return;
+    }
     const unsubscribe = subscribeToShareDoc(publicShare.role, publicShare.token, async (data) => {
       if (!data) {
         setShareDocData(null);
@@ -530,7 +537,19 @@ export default function App() {
       setShareDocData(data);
     }, (error) => {
       console.warn('Public share link is unavailable or expired:', error);
-      setShareDocData(null);
+      const errorCode = (error as { code?: string } | null)?.code || '';
+      if (errorCode === 'permission-denied' || errorCode === 'not-found') {
+        // Server-denied reads indicate a revoked, expired or unavailable link. Never fall back
+        // to a stale local copy in these cases.
+        sharePasswordSecretRef.current = '';
+        setSharePasswordVerified(false);
+        setShareDocData(null);
+        return;
+      }
+      // Keep a previously validated share only when offline viewing was explicitly allowed.
+      setShareDocData(current =>
+        current && current.accessPolicy?.enableOfflineAccess !== false ? current : null
+      );
     });
     return () => unsubscribe();
   }, [publicShare]);
