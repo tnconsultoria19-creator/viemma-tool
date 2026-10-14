@@ -101,6 +101,8 @@ export interface ActivityRecord {
   id: string;
   tripId: string;
   groupId: string;
+  groupIds?: string[];
+  groupNames?: string[];
   title: string;
   date: string;
   startTime: string;
@@ -114,6 +116,10 @@ export interface ActivityRecord {
   internalNotes?: string;
   responsiblePerson?: string;
   venue?: string;
+  driverId?: string;
+  driverName?: string;
+  vehicleId?: string;
+  vehicleName?: string;
   durationMinutes?: number;
   cost?: number;
   updatedAt?: string;
