@@ -1,0 +1,29 @@
+name: Viemma Tours Verification
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Install dependencies
+        run: npm install
+      - name: TypeScript validation
+        run: npm run lint
+      - name: Regression tests
+        run: npx tsx -e "import('./src/utils/__tests__/argonDirective.test.ts').then(async m => { const r = await m.runArgonRegressionSuite(); console.log(JSON.stringify(r, null, 2)); if (r.failed) process.exit(1); })"
+      - name: Activity, PDF and finance acceptance tests
+        run: npx tsx -e "import('./test-e2e-acceptance.ts').then(async m => { const r = await m.runFullAcceptanceTest(); console.log(JSON.stringify(r, null, 2)); if (!r.allPassed) process.exit(1); })"
+      - name: Production build
+        run: npm run build
