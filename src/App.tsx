@@ -1305,11 +1305,10 @@ export default function App() {
           isScrolled ? 'h-[72px]' : 'h-[80px]'
         }`}
       >
-        <div className="w-full max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between gap-3 h-full">
+        <div className="w-full max-w-none mx-auto px-3 sm:px-4 lg:px-5 flex items-center justify-start gap-3 h-full">
           
-          {/* LEFT: [VIEMMA LOGO] + [FILE MASTER / ACTIVE TRIP] */}
-          <div className="shrink-0 flex items-center gap-3 text-left">
-            {/* Logo */}
+          {/* LEFT: VIEMMA TOURS LOGO */}
+          <div className="shrink-0 flex items-center text-left">
             <button 
               onClick={() => { setAppMode('landing'); setIsClientView(false); }}
               className="flex items-center gap-2.5 shrink-0 focus-visible:ring-2 focus-visible:ring-[#D4AF37] focus:outline-none rounded-xl p-1 transition-all hover:opacity-90 hover:scale-105 active:scale-95"
@@ -1323,31 +1322,12 @@ export default function App() {
                 }`} 
               />
             </button>
-            
-            <div className="border-l border-white/20 h-7 mx-0.5 shrink-0"></div>
-            
-            {/* File Master Info */}
-            <div className="flex flex-col select-none text-left min-w-0">
-              <div className="flex items-center gap-1.5 flex-wrap">
-                <span className="text-[10px] text-[#D4AF37] font-black tracking-widest uppercase">FILE MASTER</span>
-                <span className="text-[#D4AF37] text-[10px] font-black tracking-widest uppercase">{state.ref || 'VT-2026-1048'}</span>
-                <span className="text-[9px] bg-emerald-500/20 text-emerald-300 font-bold px-1.5 py-0.2 rounded uppercase tracking-wider">{state.status || 'Draft'}</span>
-                {isCloudConnected && (
-                  <span className="text-[9px] bg-amber-400/20 text-amber-300 font-bold px-1.5 py-0.2 rounded flex items-center gap-1" title="Connected to Cloud Firestore">
-                    ⚡ Synced
-                  </span>
-                )}
-              </div>
-              <span className="text-xs font-bold text-white truncate max-w-[160px] lg:max-w-[200px] xl:max-w-[240px]" title={state.client.name || 'Luxury Safari Package'}>
-                {state.client.name || 'Luxury Safari Package'}
-              </span>
-            </div>
           </div>
 
           {/* CENTER: Navigation [HOME] [CLIENTS] [FLIGHTS] [HOTELS] [FINANCE] [ANALYTICS] */}
-          <div className="hidden md:flex flex-1 items-center justify-center gap-1 lg:gap-1.5 xl:gap-2 h-full min-w-0">
+          <div className="hidden md:flex flex-1 items-center justify-start gap-1 lg:gap-1.5 xl:gap-2 h-full min-w-0">
             {!isClientView && (
-              <nav className="flex items-center justify-center gap-1 lg:gap-1.5 xl:gap-2 h-full">
+              <nav className="flex items-center justify-start gap-1 lg:gap-1.5 xl:gap-2 h-full">
                 {/* Primary Navigation Tabs */}
                 {[
                   { id: 'home', label: 'Home', icon: <Home size={14} /> },
@@ -1379,7 +1359,7 @@ export default function App() {
           </div>
 
           {/* RIGHT: Actions [SAVE & SYNC] [PRINT HUB] [SHARE] */}
-          <div className="shrink-0 flex items-center gap-1.5 xl:gap-2 justify-end">
+          <div className="ml-auto shrink-0 flex items-center gap-1.5 xl:gap-2 justify-end">
             {windowWidth >= 768 ? (
               <div className="flex items-center gap-1.5 xl:gap-2">
                 {/* [SAVE & SYNC] */}
