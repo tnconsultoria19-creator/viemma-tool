@@ -46,7 +46,7 @@ import {
   Sliders
 } from 'lucide-react';
 
-export type PdfDocumentMode = 'client-editorial' | 'driver-pickup-board' | 'operator-ground-sheet';
+export type PdfDocumentMode = 'client-editorial' | 'driver-pickup-board' | 'operator-ground-sheet' | 'financial-audit';
 export type HubViewTab = 'pdf-qc' | 'digital-publishing';
 
 export interface PrintHubViewProps {
@@ -334,6 +334,57 @@ export const PrintHubView: React.FC<PrintHubViewProps> = (props) => {
     });
   };
 
+  const financialAudit = useMemo(() => {
+    const source = props.state;
+    if (!source) return null;
+    const flightsActive = (source.flights || []).filter(item => item.status !== 'Cancelled');
+    const transfersActive = (source.transfers || []).filter(item => item.status !== 'Cancelled');
+    const roomsActive = (source.rooms || []).filter(item => item.status !== 'Cancelled');
+    const activitiesActive = (source.activities || []).filter(item => item.status !== 'Cancelled');
+    const flightCost = flightsActive.reduce((sum, item) => sum + item.cost * item.qty, 0);
+    const transferCost = transfersActive.reduce((sum, item) => sum + item.cost + item.tolls + item.parking, 0);
+    const accommodationCost = roomsActive.reduce((sum, item) => sum + item.rate * item.nights + item.supp, 0);
+    const activityCost = activitiesActive.reduce((sum, item) => sum + (item.isFree ? 0 : item.total), 0);
+    const totalCost = flightCost + transferCost + accommodationCost + activityCost;
+    const finance = source.finance;
+    const markup = finance.marginType === '%' ? totalCost * finance.margin / 100 : finance.margin;
+    const processingRate = finance.paymentMethod === 'visa' || finance.paymentMethod === 'master'
+      ? 0.025
+      : finance.paymentMethod === 'amex' ? 0.038 : 0;
+    const processingFee = totalCost * processingRate;
+    const commission = finance.commType === '%' ? (totalCost + markup) * finance.comm / 100 : finance.comm;
+    const sellingPrice = Math.max(0, totalCost + markup + finance.buffer + processingFee - finance.discount);
+    const netProfit = Math.max(0, markup + finance.buffer + processingFee - finance.discount - commission);
+    const money = (value: number) => Number.isFinite(value) ? value : 0;
+    const rows = [
+      ...source.flights.map(item => ({
+        id: `flight-${item.id}`, category: 'Flight', date: item.date || 'TBC',
+        description: `${item.airline || 'Airline TBC'} ${item.flightNo || ''} · ${item.from || '?'} → ${item.to || '?'}`,
+        status: item.status || 'Planned', amount: item.status === 'Cancelled' ? 0 : money(item.cost * item.qty),
+        excluded: item.status === 'Cancelled'
+      })),
+      ...source.transfers.map(item => ({
+        id: `transfer-${item.id}`, category: 'Transfer', date: item.date || 'TBC',
+        description: `${item.type}: ${item.from || '?'} → ${item.to || '?'}`,
+        status: item.status || 'Planned', amount: item.status === 'Cancelled' ? 0 : money(item.cost + item.tolls + item.parking),
+        excluded: item.status === 'Cancelled'
+      })),
+      ...source.rooms.map(item => ({
+        id: `room-${item.id}`, category: 'Accommodation', date: item.cin || 'TBC',
+        description: `${item.hotel || 'Property TBC'} · ${item.roomType || 'Room type TBC'} · ${item.nights || 0} night(s)`,
+        status: item.status || 'Planned', amount: item.status === 'Cancelled' ? 0 : money(item.rate * item.nights + item.supp),
+        excluded: item.status === 'Cancelled'
+      })),
+      ...source.activities.map(item => ({
+        id: `activity-${item.id}`, category: 'Activity', date: item.date || `Day ${item.day || 1}`,
+        description: `${item.name || 'Activity TBC'} · ${item.start || 'Time TBC'}${item.endTime ? `–${item.endTime}` : ''}`,
+        status: item.status || 'Planned', amount: item.status === 'Cancelled' || item.isFree ? 0 : money(item.total),
+        excluded: item.status === 'Cancelled' || item.isFree
+      }))
+    ];
+    return { rows, flightCost, transferCost, accommodationCost, activityCost, totalCost, markup, processingFee, commission, sellingPrice, netProfit };
+  }, [props.state]);
+
   const visibleEditorialPages: ClientEditorialPageData[] =
     activePageFilter === 'all'
       ? editorialPages
@@ -464,6 +515,17 @@ export const PrintHubView: React.FC<PrintHubViewProps> = (props) => {
                 }`}
               >
                 Operator Ground Sheet
+              </button>
+              <button
+                type="button"
+                onClick={() => setMode('financial-audit')}
+                className={`px-3 py-1.5 rounded-lg font-semibold transition cursor-pointer ${
+                  mode === 'financial-audit'
+                    ? 'bg-rose-800 text-white shadow-xs'
+                    : 'bg-white text-slate-700 border border-slate-200 hover:bg-slate-50'
+                }`}
+              >
+                Final Financial Audit
               </button>
             </div>
 
@@ -1147,6 +1209,94 @@ export const PrintHubView: React.FC<PrintHubViewProps> = (props) => {
                 </footer>
               </article>
             )}
+            {/* MODE 4: FINAL FINANCIAL AUDIT — source-linked figures only */}
+            {mode === 'financial-audit' && (
+              <article
+                className="viemma-pdf-page bg-white text-slate-900 border border-slate-200 shadow-md mx-auto flex flex-col"
+                style={{ width: '210mm', minHeight: '297mm', padding: '15mm 16mm' }}
+              >
+                <header className="border-b-2 border-[#1A3326] pb-4 mb-5 flex items-start justify-between gap-4">
+                  <div>
+                    <span className="text-[10px] uppercase tracking-[0.25em] font-bold text-rose-700">Confidential · Internal Finance</span>
+                    <h1 className="text-2xl font-bold text-[#1A3326] mt-1">Final Financial Audit</h1>
+                    <p className="text-xs text-slate-600 mt-1">{props.state?.title || group.groupName} · {group.tripId}</p>
+                    <p className="text-[10px] text-slate-500 mt-1">{group.defaults.startDate || 'Start date TBC'} to {group.defaults.endDate || 'End date TBC'} · Generated {new Date().toLocaleDateString('en-ZA')}</p>
+                  </div>
+                  <div className="text-right text-xs text-slate-500 shrink-0">
+                    <div className="font-bold text-slate-900">Base currency: ZAR</div>
+                    <div>Cancelled items excluded from totals</div>
+                  </div>
+                </header>
+
+                {financialAudit ? (
+                  <>
+                    <div className="grid grid-cols-2 gap-3 mb-5">
+                      {[
+                        { label: 'Operating cost', value: financialAudit.totalCost },
+                        { label: 'Estimated selling price', value: financialAudit.sellingPrice },
+                        { label: 'Target net profit', value: financialAudit.netProfit },
+                        { label: 'Agent commission', value: financialAudit.commission },
+                      ].map(item => (
+                        <div key={item.label} className="border border-slate-200 rounded-xl p-3">
+                          <span className="text-[9px] uppercase tracking-wider font-bold text-slate-500 block">{item.label}</span>
+                          <strong className="text-lg text-[#1A3326] mt-1 block">R {item.value.toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</strong>
+                        </div>
+                      ))}
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-x-5 gap-y-2 mb-5 border-b border-slate-200 pb-4 text-xs">
+                      <div className="flex justify-between gap-3"><span className="text-slate-600">Flights</span><strong>R {financialAudit.flightCost.toLocaleString('en-ZA', { maximumFractionDigits: 2 })}</strong></div>
+                      <div className="flex justify-between gap-3"><span className="text-slate-600">Transfers / tolls / parking</span><strong>R {financialAudit.transferCost.toLocaleString('en-ZA', { maximumFractionDigits: 2 })}</strong></div>
+                      <div className="flex justify-between gap-3"><span className="text-slate-600">Accommodation</span><strong>R {financialAudit.accommodationCost.toLocaleString('en-ZA', { maximumFractionDigits: 2 })}</strong></div>
+                      <div className="flex justify-between gap-3"><span className="text-slate-600">Activities</span><strong>R {financialAudit.activityCost.toLocaleString('en-ZA', { maximumFractionDigits: 2 })}</strong></div>
+                    </div>
+
+                    <h2 className="text-xs font-bold uppercase tracking-wider text-slate-700 mb-2">Service-level reconciliation</h2>
+                    <table className="w-full text-left border-collapse text-[10px]">
+                      <thead>
+                        <tr className="bg-slate-100 border-y border-slate-300">
+                          <th className="py-1.5 px-2">Category</th>
+                          <th className="py-1.5 px-2">Date / Day</th>
+                          <th className="py-1.5 px-2">Description</th>
+                          <th className="py-1.5 px-2">Status</th>
+                          <th className="py-1.5 px-2 text-right">Cost (ZAR)</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-200">
+                        {financialAudit.rows.map(row => (
+                          <tr key={row.id} className={row.excluded ? 'text-slate-400' : 'text-slate-700'}>
+                            <td className="py-1.5 px-2 font-semibold">{row.category}</td>
+                            <td className="py-1.5 px-2">{row.date}</td>
+                            <td className="py-1.5 px-2">{row.description}</td>
+                            <td className="py-1.5 px-2">{row.excluded ? `${row.status} · excluded` : row.status}</td>
+                            <td className="py-1.5 px-2 text-right whitespace-nowrap">{row.excluded ? 'R 0.00' : `R ${row.amount.toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+
+                    <div className="mt-5 pt-4 border-t-2 border-slate-300 space-y-2 text-xs">
+                      <div className="flex justify-between"><span>Cost subtotal</span><strong>R {financialAudit.totalCost.toLocaleString('en-ZA', { maximumFractionDigits: 2 })}</strong></div>
+                      <div className="flex justify-between"><span>Markup</span><strong>R {financialAudit.markup.toLocaleString('en-ZA', { maximumFractionDigits: 2 })}</strong></div>
+                      <div className="flex justify-between"><span>Payment processing fee</span><strong>R {financialAudit.processingFee.toLocaleString('en-ZA', { maximumFractionDigits: 2 })}</strong></div>
+                      <div className="flex justify-between"><span>Buffer</span><strong>R {props.state?.finance.buffer.toLocaleString('en-ZA', { maximumFractionDigits: 2 })}</strong></div>
+                      <div className="flex justify-between"><span>Discount</span><strong>− R {props.state?.finance.discount.toLocaleString('en-ZA', { maximumFractionDigits: 2 })}</strong></div>
+                      <div className="flex justify-between border-t border-slate-200 pt-2 font-bold"><span>Estimated selling price</span><strong>R {financialAudit.sellingPrice.toLocaleString('en-ZA', { maximumFractionDigits: 2 })}</strong></div>
+                      <div className="flex justify-between font-bold text-emerald-800"><span>Target net profit after commission</span><strong>R {financialAudit.netProfit.toLocaleString('en-ZA', { maximumFractionDigits: 2 })}</strong></div>
+                    </div>
+                    <p className="text-[9px] leading-relaxed text-slate-500 mt-4">Audit basis: saved service costs and current finance settings at the time of generation. Figures are estimates unless reconciled against supplier invoices and actual payments. No cancelled service contributes to the active operating-cost total.</p>
+                  </>
+                ) : (
+                  <p className="text-sm text-rose-800 bg-rose-50 border border-rose-200 rounded-xl p-4">Financial data is unavailable for this document. Reopen the Print Hub from the active trip workspace.</p>
+                )}
+
+                <footer className="mt-auto pt-3 border-t border-slate-200 flex justify-between text-[10px] text-slate-500">
+                  <span>{group.tripId} · Confidential Financial Audit</span>
+                  <span>Generated from saved trip data</span>
+                </footer>
+              </article>
+            )}
+
           </div>
         </div>
       )}
