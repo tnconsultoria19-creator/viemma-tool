@@ -407,7 +407,12 @@ export function buildClientProjection(trip: AppState, token: string): ClientShar
   const retailTotalZAR = Math.max(0, totalCost + margin + finance.buffer + totalCost * paymentRate - finance.discount);
   const requestedCurrency = (clientSettings.currency || finance.currency || 'ZAR').toUpperCase();
   const pricingCurrency = (['ZAR', 'USD', 'EUR', 'BRL'].includes(requestedCurrency) ? requestedCurrency : 'ZAR') as 'ZAR' | 'USD' | 'EUR' | 'BRL';
-  const displayRate = pricingCurrency === 'ZAR' ? 1 : (finance.rates?.[pricingCurrency] || 1);
+  const configuredRate = pricingCurrency === 'ZAR' ? 1 : Number(finance.rates?.[pricingCurrency]);
+  if (clientSettings.showPricing !== false && pricingCurrency !== 'ZAR' &&
+      (!Number.isFinite(configuredRate) || configuredRate <= 0)) {
+    throw new Error(`Cannot publish client pricing in ${pricingCurrency}: configure a valid exchange rate in Finance first.`);
+  }
+  const displayRate = pricingCurrency === 'ZAR' ? 1 : (Number.isFinite(configuredRate) && configuredRate > 0 ? configuredRate : 1);
   const clientRetailTotal = retailTotalZAR * displayRate;
 
   return {
