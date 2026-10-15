@@ -103,6 +103,7 @@ export interface ActivityRecord {
   groupId: string;
   groupIds?: string[];
   groupNames?: string[];
+  dayTitle?: string;
   title: string;
   date: string;
   startTime: string;
