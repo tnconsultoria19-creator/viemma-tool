@@ -267,6 +267,8 @@ export const ActivitiesView: React.FC<ActivitiesViewProps> = ({
   const availableVehicles = (state.vehicles || []).filter(vehicle =>
     vehicle.status === 'Available' || vehicle.status === 'Assigned' || vehicle.id === aForm.vehicleId
   );
+  const selectedActivityVehicle = availableVehicles.find(vehicle => vehicle.id === aForm.vehicleId);
+  const selectedActivityPaxCount = Array.from(new Set(aForm.paxIds || [])).length;
 
   // Calculate total days of trip
   const tripDaysCount = useMemo(() => {
@@ -1619,6 +1621,14 @@ export const ActivitiesView: React.FC<ActivitiesViewProps> = ({
                         </p>
                       )}
                       {availableVehicles.length === 0 && <p className="text-[11px] text-amber-700">No serviceable vehicles are registered. Add one in Fleet Management.</p>}
+                      {selectedActivityVehicle && selectedActivityVehicle.capacity > 0 && selectedActivityPaxCount > selectedActivityVehicle.capacity && (
+                        <p role="alert" className="text-[11px] text-rose-700 font-semibold">
+                          Capacity warning: {selectedActivityPaxCount} assigned travellers exceed this vehicle's capacity of {selectedActivityVehicle.capacity}.
+                        </p>
+                      )}
+                      {selectedActivityVehicle?.status === 'Maintenance' && (
+                        <p role="alert" className="text-[11px] text-rose-700 font-semibold">This vehicle is in maintenance and should not be assigned.</p>
+                      )}
                     </div>
 
                     <div className="space-y-1.5">
