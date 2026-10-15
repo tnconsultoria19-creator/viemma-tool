@@ -27,7 +27,6 @@ import {
   ChevronDown,
   ChevronUp,
   Upload,
-  Sparkles,
   Search,
   Copy,
   ArrowRight,
@@ -868,7 +867,7 @@ export const ActivitiesView: React.FC<ActivitiesViewProps> = ({
                 className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-[#D4AF37] text-[#1A3326] hover:bg-[#c29d2b] text-xs font-black shadow-md hover:scale-102 active:scale-95 transition cursor-pointer"
                 title="Browse and select activities from curated DMC library"
               >
-                <Sparkles size={14} />
+                <BookOpen size={14} />
                 <span>Select from Catalogue</span>
               </button>
 
@@ -1118,10 +1117,10 @@ export const ActivitiesView: React.FC<ActivitiesViewProps> = ({
 
       {/* DETAILED WORKSPACE FORM */}
       {editingActivityId !== null && (
-        <div className="bg-white rounded-[24px] border border-gray-100 shadow-xl overflow-hidden animate-in slide-in-from-bottom duration-300">
+        <div className="bg-white rounded-md border border-gray-100 shadow-sm overflow-hidden ">
           
           {/* Header */}
-          <div className="bg-gradient-to-r from-[#1A3326] to-[#224433] text-white p-6 md:p-8 flex items-center justify-between">
+          <div className="bg-[#1A3326] text-white p-5 md:p-6 flex items-center justify-between">
             <div>
               <span className="text-[10px] uppercase tracking-[0.2em] font-bold text-[#D4AF37] block mb-1">Interactive Catalog Dispatch</span>
               <h2 className="text-xl md:text-2xl font-bold font-sans flex items-center gap-2">
@@ -1189,7 +1188,7 @@ export const ActivitiesView: React.FC<ActivitiesViewProps> = ({
             {/* TAB 1: BASIC OUTING DETAILS */}
             {activeTab === 'basic' && (
               <div className="space-y-6 animate-in fade-in duration-150">
-                <div className="bg-white rounded-[20px] p-6 border border-slate-200 shadow-sm space-y-3">
+                <div className="bg-white rounded-md p-6 border border-slate-200 shadow-sm space-y-3">
                   <div className="flex items-center justify-between gap-2 border-b border-slate-100 pb-2">
                     <h3 className="text-xs uppercase font-bold text-[#1A3326] tracking-wider flex items-center gap-2"><Users size={14} className="text-[#D4AF37]" /> Traveller Group Assignment</h3>
                     <span className="text-[11px] text-slate-500">{(aForm.groupIds || []).length} group(s) selected</span>
@@ -1208,7 +1207,7 @@ export const ActivitiesView: React.FC<ActivitiesViewProps> = ({
                   )}
                   <p className="text-[11px] text-slate-500">Selecting groups assigns their current members. Individual traveller changes replace the named-group assignment for this activity.</p>
                 </div>
-                <div className="bg-gradient-to-r from-yellow-500/5 to-yellow-500/10 rounded-[20px] p-6 border border-[#D4AF37]/20 shadow-xs space-y-3">
+                <div className="bg-white rounded-md p-5 border border-slate-200 space-y-3">
                   <label className="text-[11px] text-[#1A3326] font-bold uppercase tracking-wider block">Autofill from Master Experience Presets (Optional)</label>
                   <select 
                     onChange={handleDbPrefill}
@@ -1221,7 +1220,7 @@ export const ActivitiesView: React.FC<ActivitiesViewProps> = ({
                   </select>
                 </div>
 
-                <div className="bg-white rounded-[20px] p-6 border border-gray-100 shadow-sm space-y-6">
+                <div className="bg-white rounded-md p-6 border border-gray-100 shadow-sm space-y-6">
                   <h3 className="text-xs uppercase font-bold text-[#1A3326] tracking-wider border-b border-gray-100 pb-2 flex items-center gap-2">
                     <Calendar size={14} className="text-[#D4AF37]" /> Core Outing Timeline
                   </h3>
@@ -1301,7 +1300,7 @@ export const ActivitiesView: React.FC<ActivitiesViewProps> = ({
                   </div>
                 </div>
 
-                <div className="bg-white rounded-[20px] p-6 border border-gray-100 shadow-sm space-y-6">
+                <div className="bg-white rounded-md p-6 border border-gray-100 shadow-sm space-y-6">
                   <h3 className="text-xs uppercase font-bold text-[#1A3326] tracking-wider border-b border-gray-100 pb-2 flex items-center gap-2">
                     <Clock size={14} className="text-[#D4AF37]" /> Logistics Timing, Venue & Responsible Operations
                   </h3>
@@ -1391,7 +1390,7 @@ export const ActivitiesView: React.FC<ActivitiesViewProps> = ({
             {/* TAB 2: OPERATIONAL KNOWLEDGE OBJECT */}
             {activeTab === 'operational' && (
               <div className="space-y-6 animate-in fade-in duration-150">
-                <div className="bg-white rounded-[20px] p-6 border border-gray-100 shadow-sm space-y-6">
+                <div className="bg-white rounded-md p-6 border border-gray-100 shadow-sm space-y-6">
                   <h3 className="text-xs uppercase font-bold text-[#1A3326] tracking-wider border-b border-gray-100 pb-2 flex items-center gap-2">
                     <Compass size={14} className="text-[#D4AF37]" /> Curated Excursion Knowledge Specs
                   </h3>
@@ -1460,7 +1459,7 @@ export const ActivitiesView: React.FC<ActivitiesViewProps> = ({
                 </div>
 
                 {/* Excursion Logistics Specifics */}
-                <div className="bg-white rounded-[20px] p-6 border border-gray-100 shadow-sm space-y-6">
+                <div className="bg-white rounded-md p-6 border border-gray-100 shadow-sm space-y-6">
                   <h3 className="text-xs uppercase font-bold text-[#1A3326] tracking-wider border-b border-gray-100 pb-2 flex items-center gap-2">
                     <ShieldCheck size={14} className="text-[#D4AF37]" /> Packing Advice, Safety & Dress Codes
                   </h3>
@@ -1513,7 +1512,7 @@ export const ActivitiesView: React.FC<ActivitiesViewProps> = ({
                 </div>
 
                 {/* Guide Assignment */}
-                <div className="bg-white rounded-[20px] p-6 border border-gray-100 shadow-sm space-y-5">
+                <div className="bg-white rounded-md p-6 border border-gray-100 shadow-sm space-y-5">
                   <h3 className="text-xs uppercase font-bold text-[#1A3326] tracking-wider border-b border-gray-100 pb-2 flex items-center gap-2">
                     <Users size={14} className="text-[#D4AF37]" /> Guide Assignment
                   </h3>
@@ -1561,7 +1560,7 @@ export const ActivitiesView: React.FC<ActivitiesViewProps> = ({
                 </div>
 
                 {/* Driver and vehicle are real resource assignments, not text-only ground-sheet placeholders. */}
-                <div className="bg-white rounded-[20px] p-6 border border-gray-100 shadow-sm space-y-5">
+                <div className="bg-white rounded-md p-6 border border-gray-100 shadow-sm space-y-5">
                   <h3 className="text-xs uppercase font-bold text-[#1A3326] tracking-wider border-b border-gray-100 pb-2 flex items-center gap-2">
                     <Truck size={14} className="text-[#D4AF37]" /> Day-of-Operation Resources
                   </h3>
@@ -1671,7 +1670,7 @@ export const ActivitiesView: React.FC<ActivitiesViewProps> = ({
                 </div>
 
                 {/* Role Specific Guide Notes */}
-                <div className="bg-white rounded-[20px] p-6 border border-gray-100 shadow-sm space-y-4">
+                <div className="bg-white rounded-md p-6 border border-gray-100 shadow-sm space-y-4">
                   <h3 className="text-xs uppercase font-bold text-[#1A3326] tracking-wider border-b border-gray-100 pb-2 flex items-center gap-2">
                     <FileText size={14} className="text-[#D4AF37]" /> Role-Specific Guide Coordination Notes (Internal)
                   </h3>
@@ -1692,7 +1691,7 @@ export const ActivitiesView: React.FC<ActivitiesViewProps> = ({
             {/* TAB 3: SUPPLIER & PRICING */}
             {activeTab === 'pricing' && (
               <div className="space-y-6 animate-in fade-in duration-150">
-                <div className="bg-white rounded-[20px] p-6 border border-gray-100 shadow-sm space-y-6">
+                <div className="bg-white rounded-md p-6 border border-gray-100 shadow-sm space-y-6">
                   <h3 className="text-xs uppercase font-bold text-[#1A3326] tracking-wider border-b border-gray-100 pb-2 flex items-center gap-2">
                     <Users size={14} className="text-[#D4AF37]" /> Supplier Contact Dossier
                   </h3>
@@ -1727,7 +1726,7 @@ export const ActivitiesView: React.FC<ActivitiesViewProps> = ({
                   </div>
                 </div>
 
-                <div className="bg-white rounded-[20px] p-6 border border-gray-100 shadow-sm space-y-6">
+                <div className="bg-white rounded-md p-6 border border-gray-100 shadow-sm space-y-6">
                   <div className="flex justify-between items-center border-b border-gray-100 pb-2">
                     <h3 className="text-xs uppercase font-bold text-[#1A3326] tracking-wider flex items-center gap-2">
                       <Tag size={14} className="text-[#D4AF37]" /> Financial Rates & Ticket Surcharges
@@ -1807,7 +1806,7 @@ export const ActivitiesView: React.FC<ActivitiesViewProps> = ({
                 </div>
 
                 {/* Exclusions and Inclusions */}
-                <div className="bg-white rounded-[20px] p-6 border border-gray-100 shadow-sm space-y-6">
+                <div className="bg-white rounded-md p-6 border border-gray-100 shadow-sm space-y-6">
                   <h3 className="text-xs uppercase font-bold text-[#1A3326] tracking-wider border-b border-gray-100 pb-2 flex items-center gap-2">
                     <Layers size={14} className="text-[#D4AF37]" /> Contract Inclusions & Exclusions
                   </h3>
@@ -1847,7 +1846,7 @@ export const ActivitiesView: React.FC<ActivitiesViewProps> = ({
                 </div>
 
                 {/* Backup / Plan B contingency */}
-                <div className="bg-white rounded-[20px] p-6 border border-gray-100 shadow-sm space-y-1.5">
+                <div className="bg-white rounded-md p-6 border border-gray-100 shadow-sm space-y-1.5">
                   <label className="text-[11px] text-gray-500 font-bold uppercase tracking-wider block text-amber-700">Contingency Plan B / Weather Backup Rules</label>
                   <textarea 
                     value={aForm.backup || ''} 
@@ -1863,7 +1862,7 @@ export const ActivitiesView: React.FC<ActivitiesViewProps> = ({
             {/* TAB 4: PASSENGER ALIGNMENT */}
             {activeTab === 'pax' && (
               <div className="space-y-6 animate-in fade-in duration-150">
-                <div className="bg-white rounded-[20px] p-6 border border-gray-100 shadow-sm space-y-4">
+                <div className="bg-white rounded-md p-6 border border-gray-100 shadow-sm space-y-4">
                   <h3 className="text-xs uppercase font-bold text-[#1A3326] tracking-wider border-b border-gray-100 pb-2 flex items-center gap-2">
                     <Users size={14} className="text-[#D4AF37]" /> Map Registered Travelers to Excursion
                   </h3>
@@ -1901,7 +1900,7 @@ export const ActivitiesView: React.FC<ActivitiesViewProps> = ({
             {/* TAB 5: SUPPORTING DOCUMENTS & ATTACHMENTS */}
             {activeTab === 'attachments' && (
               <div className="space-y-6 animate-in fade-in duration-150">
-                <div className="bg-white rounded-[20px] p-6 border border-gray-100 shadow-sm space-y-4">
+                <div className="bg-white rounded-md p-6 border border-gray-100 shadow-sm space-y-4">
                   <AttachmentManager
                     attachments={aForm.attachments || []}
                     onAddAttachment={(item) => setAForm(prev => ({
@@ -1948,7 +1947,7 @@ export const ActivitiesView: React.FC<ActivitiesViewProps> = ({
 
           {/* EMPTY STATE */}
           {visibleActivities.length === 0 ? (
-            <div className="text-center py-16 bg-white border border-gray-100 rounded-[28px] shadow-sm max-w-xl mx-auto w-full p-8 space-y-5 animate-in zoom-in-95">
+            <div className="text-center py-16 bg-white border border-gray-100 rounded-md shadow-sm max-w-xl mx-auto w-full p-8 space-y-5 animate-in zoom-in-95">
               <div className="w-18 h-18 bg-emerald-50 text-[#1A3326] rounded-2xl flex items-center justify-center mx-auto shadow-inner border border-emerald-100">
                 <Compass size={32} className="text-[#D4AF37]" />
               </div>
@@ -1964,7 +1963,7 @@ export const ActivitiesView: React.FC<ActivitiesViewProps> = ({
                   onClick={handleOpenCatalogueForCurrentDay}
                   className="px-5 py-2.5 bg-[#D4AF37] text-[#1A3326] rounded-xl text-xs font-black shadow-md hover:bg-[#c29d2b] transition flex items-center gap-2 cursor-pointer active:scale-95"
                 >
-                  <Sparkles size={14} />
+                  <BookOpen size={14} />
                   <span>Select from Curated Catalogue</span>
                 </button>
                 <button 
@@ -2001,7 +2000,7 @@ export const ActivitiesView: React.FC<ActivitiesViewProps> = ({
                         className="bg-white rounded-[26px] border border-gray-200/90 shadow-sm overflow-hidden transition-all duration-200 hover:border-gray-300"
                       >
                         {/* Day Header Strip */}
-                        <div className="bg-gradient-to-r from-slate-900 via-[#1A3326] to-[#12241b] text-white p-5 md:p-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                        <div className="bg-[#1A3326] text-white p-5 md:p-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
                           <div className="flex items-start gap-4">
                             <div className="w-13 h-13 rounded-2xl bg-[#D4AF37] text-[#1A3326] font-black flex flex-col items-center justify-center shrink-0 shadow-md">
                               <span className="text-[10px] uppercase tracking-wider leading-none">DAY</span>
@@ -2070,7 +2069,7 @@ export const ActivitiesView: React.FC<ActivitiesViewProps> = ({
                               className="px-3 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-bold transition flex items-center gap-1.5 border border-white/15 cursor-pointer active:scale-95"
                               title={`Select experience for Day ${dayNum} from catalogue`}
                             >
-                              <Sparkles size={13} className="text-[#D4AF37]" />
+                              <BookOpen size={13} className="text-[#D4AF37]" />
                               <span>+ Browse Catalogue</span>
                             </button>
                             <button
@@ -2116,7 +2115,7 @@ export const ActivitiesView: React.FC<ActivitiesViewProps> = ({
                                   }}
                                   className="text-xs font-bold text-[#1A3326] bg-white border border-gray-200 hover:border-[#D4AF37] px-3 py-1.5 rounded-xl transition flex items-center gap-1 shadow-2xs"
                                 >
-                                  <Sparkles size={12} className="text-[#D4AF37]" />
+                                  <BookOpen size={12} className="text-[#D4AF37]" />
                                   <span>Select from Curated Catalogue</span>
                                 </button>
                               </div>
@@ -2422,9 +2421,9 @@ export const ActivitiesView: React.FC<ActivitiesViewProps> = ({
               {/* 2. PARTICIPANT DAY PROGRAMME VIEW (Clean, editorial client sequence) */}
               {viewMode === 'participant' && (
                 <div className="space-y-6">
-                  <div className="bg-[#1A3326] text-white p-6 rounded-3xl space-y-2">
+                  <div className="bg-[#1A3326] text-white p-6 rounded-md space-y-2">
                     <span className="text-[10px] uppercase font-bold text-[#D4AF37] tracking-widest block">Client Presentation View</span>
-                    <h2 className="text-2xl font-bold font-serif">{state.client?.name || 'Valued Guests'} — Daily Journey Itinerary</h2>
+                    <h2 className="text-2xl font-bold font-sans">{state.client?.name || 'Valued Guests'} — Daily Journey Itinerary</h2>
                     <p className="text-xs text-gray-300 max-w-2xl leading-relaxed">
                       This sequence shows the verified day-by-day experience as presented to participants in their digital dossier and client editorial pages.
                     </p>
@@ -2438,7 +2437,7 @@ export const ActivitiesView: React.FC<ActivitiesViewProps> = ({
                         .sort((a, b) => (a.start || '00:00').localeCompare(b.start || '00:00'));
 
                       return (
-                        <div key={dayNum} className="bg-white rounded-3xl border border-gray-200 p-6 md:p-8 space-y-6 shadow-sm">
+                        <div key={dayNum} className="bg-white rounded-md border border-gray-200 p-6 md:p-8 space-y-6 shadow-sm">
                           <div className="flex items-center gap-3 border-b border-gray-100 pb-4">
                             <span className="w-10 h-10 rounded-xl bg-[#D4AF37] text-[#1A3326] font-black flex items-center justify-center text-sm">
                               D{dayNum}
@@ -2490,7 +2489,7 @@ export const ActivitiesView: React.FC<ActivitiesViewProps> = ({
 
               {/* 3. MASTER REGISTER TABLE VIEW */}
               {viewMode === 'table' && (
-                <div className="bg-white rounded-3xl border border-gray-200 shadow-sm overflow-hidden">
+                <div className="bg-white rounded-md border border-gray-200 shadow-sm overflow-hidden">
                   <div className="p-6 border-b border-gray-100 flex items-center justify-between">
                     <div>
                       <h3 className="text-base font-bold text-gray-900">Master Outing Ledger</h3>
@@ -2580,15 +2579,15 @@ export const ActivitiesView: React.FC<ActivitiesViewProps> = ({
       {/* CURATED EXPERIENCE CATALOGUE SLIDE-OVER DRAWER */}
       {isCatalogOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-xs animate-in fade-in">
-          <div className="bg-white rounded-3xl max-w-4xl w-full max-h-[90vh] flex flex-col overflow-hidden shadow-2xl border border-gray-100 animate-in zoom-in-95">
+          <div className="bg-white rounded-md max-w-4xl w-full max-h-[90vh] flex flex-col overflow-hidden shadow-sm border border-gray-100 animate-in zoom-in-95">
             {/* Drawer Header */}
-            <div className="bg-gradient-to-r from-slate-900 to-[#1A3326] text-white p-6 flex items-center justify-between shrink-0">
+            <div className="bg-[#1A3326] text-white p-5 flex items-center justify-between shrink-0">
               <div className="space-y-1">
                 <span className="text-[10px] uppercase font-bold text-[#D4AF37] tracking-widest block">
                   Curated DMC Catalogue
                 </span>
-                <h3 className="text-xl font-bold font-serif flex items-center gap-2">
-                  <Sparkles size={20} className="text-[#D4AF37]" />
+                <h3 className="text-xl font-bold font-sans flex items-center gap-2">
+                  <BookOpen size={20} className="text-[#D4AF37]" />
                   Select & Schedule Experiences
                 </h3>
                 <p className="text-xs text-gray-300">
@@ -2761,7 +2760,7 @@ export const ActivitiesView: React.FC<ActivitiesViewProps> = ({
 
         return (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in">
-            <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-gray-100 space-y-5 animate-in zoom-in-95">
+            <div className="bg-white rounded-md max-w-md w-full p-6 shadow-sm border border-gray-100 space-y-5 animate-in zoom-in-95">
               <div className="flex items-start justify-between gap-3 border-b border-gray-100 pb-3">
                 <div className="space-y-0.5">
                   <span className="text-[10px] uppercase font-bold text-[#D4AF37] tracking-wider block">
@@ -2907,7 +2906,7 @@ export const ActivitiesView: React.FC<ActivitiesViewProps> = ({
 
       {/* FLOATING TOAST NOTIFICATION */}
       {toastMessage && (
-        <div className="fixed bottom-6 right-6 z-50 bg-[#1A3326] text-white px-5 py-3 rounded-2xl shadow-2xl border border-[#D4AF37]/30 flex items-center gap-3 animate-in fade-in slide-in-from-bottom-4">
+        <div className="fixed bottom-6 right-6 z-50 bg-[#1A3326] text-white px-5 py-3 rounded-2xl shadow-sm border border-[#D4AF37]/30 flex items-center gap-3 animate-in fade-in slide-in-from-bottom-4">
           <div className="w-8 h-8 rounded-xl bg-[#D4AF37]/20 text-[#D4AF37] flex items-center justify-center shrink-0">
             <Route size={16} />
           </div>
