@@ -147,44 +147,42 @@ export const ClientView: React.FC<Props> = ({ state: rawState, onBackToWorkspace
 
   // Destination resolver for current day
   const activeDestinationInfo = useMemo(() => {
-    const locationStr = (dayActivities[0]?.pickupLoc || dayActivities[0]?.name || '').toLowerCase();
-    
-    // Check destination library first
-    const libMatch = destinationLibrary.find(d => 
-      locationStr.includes(d.name.toLowerCase()) || d.name.toLowerCase().includes('cape')
-    );
+    const primaryActivity = dayActivities.find(activity => Boolean((activity.destination || activity.venue || '').trim())) || dayActivities[0];
+    const locationStr = (primaryActivity?.destination || primaryActivity?.venue || '').trim();
+    const experienceMatch = primaryActivity
+      ? experienceLibrary.find(item => item.name.toLowerCase() === primaryActivity.name.toLowerCase())
+      : undefined;
+    const normalizedLocation = locationStr.toLowerCase();
+    const libMatch = normalizedLocation
+      ? destinationLibrary.find(destination => {
+          const name = destination.name.toLowerCase();
+          const region = (destination.region || '').toLowerCase();
+          return normalizedLocation === name ||
+            normalizedLocation.includes(name) ||
+            name.includes(normalizedLocation) ||
+            (region.length > 2 && normalizedLocation.includes(region));
+        })
+      : undefined;
+
     if (libMatch) {
       return {
         name: libMatch.name,
-        desc: libMatch.overview || 'Scenic exploration with private naturalist guides.',
-        img: libMatch.featuredImage || libMatch.images?.[0] || SOUTH_AFRICA_DESTINATION_HEROES[1],
-        gallery: libMatch.images || []
+        desc: primaryActivity?.clientDescription || primaryActivity?.desc || libMatch.overview || 'Destination details will be confirmed by Viemma Tours.',
+        img: primaryActivity?.heroImage || experienceMatch?.featuredImage || libMatch.featuredImage || libMatch.images?.[0] || '',
+        gallery: primaryActivity?.gallery?.length ? primaryActivity.gallery : experienceMatch?.images?.length ? experienceMatch.images : libMatch.images || []
       };
     }
 
-    if (locationStr.includes('kruger') || locationStr.includes('safari') || locationStr.includes('sabi')) {
-      return {
-        name: DESTINATION_DEFAULTS.kruger.title,
-        desc: DESTINATION_DEFAULTS.kruger.desc,
-        img: DESTINATION_DEFAULTS.kruger.img,
-        gallery: DESTINATION_DEFAULTS.kruger.gallery
-      };
-    } else if (locationStr.includes('wine') || locationStr.includes('franschhoek') || locationStr.includes('stellenbosch')) {
-      return {
-        name: DESTINATION_DEFAULTS.winelands.title,
-        desc: DESTINATION_DEFAULTS.winelands.desc,
-        img: DESTINATION_DEFAULTS.winelands.img,
-        gallery: DESTINATION_DEFAULTS.winelands.gallery
-      };
-    }
-
+    const fallbackName = locationStr || primaryActivity?.name || 'Day at a glance';
+    const fallbackDescription = primaryActivity?.clientDescription || primaryActivity?.desc ||
+      'Confirmed activity and destination details will appear here when they are added to the itinerary.';
     return {
-      name: DESTINATION_DEFAULTS['cape town'].title,
-      desc: DESTINATION_DEFAULTS['cape town'].desc,
-      img: DESTINATION_DEFAULTS['cape town'].img,
-      gallery: DESTINATION_DEFAULTS['cape town'].gallery
+      name: fallbackName,
+      desc: fallbackDescription,
+      img: primaryActivity?.heroImage || experienceMatch?.featuredImage || experienceMatch?.images?.[0] || '',
+      gallery: primaryActivity?.gallery?.length ? primaryActivity.gallery : experienceMatch?.images || []
     };
-  }, [dayActivities, destinationLibrary]);
+  }, [dayActivities, destinationLibrary, experienceLibrary]);
 
   // Build the route overview only from destinations and stays saved on this trip.
   // Never infer a route from trip length alone.
