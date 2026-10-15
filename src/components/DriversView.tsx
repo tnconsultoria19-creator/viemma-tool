@@ -184,7 +184,7 @@ export const DriversView: React.FC<DriversViewProps> = ({ state, onUpdateState }
             <div className="p-2 rounded-xl bg-emerald-50 text-emerald-800">
               <Users size={20} />
             </div>
-            <h1 className="text-xl font-bold font-serif text-[#1A3326]">Professional Chauffeur & Driver Directory</h1>
+            <h1 className="text-xl font-bold font-sans text-[#1A3326]">Drivers</h1>
           </div>
           <p className="text-xs text-gray-500 mt-1">
             Manage professional drivers, PrDP compliance certifications, contact details, assigned vehicles, and operational duty statuses.
@@ -200,7 +200,7 @@ export const DriversView: React.FC<DriversViewProps> = ({ state, onUpdateState }
 
       {/* Drivers Grid */}
       {drivers.length === 0 ? (
-        <div className="bg-white rounded-3xl p-12 border border-gray-100 shadow-xs text-center space-y-4">
+        <div className="bg-white rounded-md p-12 border border-gray-100 shadow-xs text-center space-y-4">
           <div className="w-16 h-16 rounded-2xl bg-emerald-50 text-emerald-800 flex items-center justify-center mx-auto">
             <Users size={28} />
           </div>
@@ -335,15 +335,15 @@ export const DriversView: React.FC<DriversViewProps> = ({ state, onUpdateState }
       {/* Add / Edit Modal */}
       {isAddModalOpen && (
         <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in overflow-y-auto">
-          <div className="bg-white rounded-3xl max-w-xl w-full shadow-2xl border border-gray-100 overflow-hidden animate-in zoom-in-95 my-8">
+          <div className="bg-white rounded-md max-w-xl w-full shadow-sm border border-gray-100 overflow-hidden animate-in zoom-in-95 my-8">
             <div className="flex items-center justify-between p-6 border-b border-gray-100 bg-[#FAF9F6]">
               <div className="flex items-center gap-2">
                 <div className="p-2 rounded-xl bg-emerald-100 text-emerald-900">
                   <Users size={18} />
                 </div>
                 <div>
-                  <h3 className="text-lg font-bold font-serif text-[#1A3326]">
-                    {editingDriver ? 'Edit Driver & Chauffeur Profile' : 'Register New Professional Driver'}
+                  <h3 className="text-lg font-bold font-sans text-[#1A3326]">
+                    {editingDriver ? 'Edit driver details' : 'Add driver'}
                   </h3>
                   <p className="text-xs text-gray-500">Professional Driving Permit (PrDP) & Operator Roster</p>
                 </div>
