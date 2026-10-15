@@ -225,6 +225,7 @@ export function buildClientEditorialPages(params: {
   supportingImageUrl?: string;
 }): ClientEditorialPageData[] {
   const { group, flights, hotels, transfers, activities, heroImageUrl, supportingImageUrl } = params;
+  const destinationLabel = group.defaults.destination?.trim() || 'the selected destination';
   const rawPages: Array<Omit<ClientEditorialPageData, 'pageNumber' | 'totalPages'>> = [];
 
   const leadPerson = group.travellers.find((t) => t.id === group.leadTravellerId) || group.travellers[0];
@@ -235,7 +236,7 @@ export function buildClientEditorialPages(params: {
     leadPerson?.fullName || 'Valued Guest'
   } and party (${group.travellers.length} traveller${
     group.travellers.length === 1 ? '' : 's'
-  }: ${confirmedPaxNames}) travelling to ${group.defaults.destination || 'Cape Town & Surrounds'} from ${
+  }: ${confirmedPaxNames}) travelling to ${destinationLabel} from ${
     group.defaults.startDate || 'TBC'
   } to ${group.defaults.endDate || 'TBC'}.`;
 
@@ -261,12 +262,12 @@ export function buildClientEditorialPages(params: {
     tripReference: group.tripId,
     pageCategory: 'Trip Overview',
     dateLabel: `${group.defaults.startDate || 'TBC'} — ${group.defaults.endDate || 'TBC'}`,
-    title: `${group.defaults.destination || 'Cape Town'} Signature Itinerary`,
+    title: group.defaults.destination ? `${group.defaults.destination} Itinerary` : 'Travel Itinerary',
     subtitle: `Prepared for ${leadPerson?.fullName || group.groupName} • ${group.travellers.length} Guests`,
     heroImage: {
       url: heroImageUrl || '/hero-bg.jpg',
-      alt: `${group.defaults.destination || 'Cape Town'} Panorama`,
-      caption: `Primary Destination — ${group.defaults.destination || 'Western Cape, South Africa'}`,
+      alt: group.defaults.destination || 'Trip overview image',
+      caption: group.defaults.destination ? `Primary Destination — ${group.defaults.destination}` : 'Destination to be confirmed',
     },
     supportingImage: {
       url:
@@ -330,8 +331,8 @@ export function buildClientEditorialPages(params: {
       tripReference: group.tripId,
       pageCategory: 'Daily Experience',
       dateLabel: date,
-      title: primaryAct ? primaryAct.title : `Operational Schedule — ${date}`,
-      subtitle: activeHotel ? `Residence: ${activeHotel.propertyName}` : group.defaults.destination,
+      title: primaryAct?.dayTitle || (primaryAct ? primaryAct.title : `Operational Schedule — ${date}`),
+      subtitle: activeHotel ? `Residence: ${activeHotel.propertyName}` : (group.defaults.destination || 'Destination details to be confirmed'),
       heroImage: {
         url: heroImageUrl || '/hero-bg.jpg',
         alt: primaryAct?.title || `Day Schedule ${date}`,
