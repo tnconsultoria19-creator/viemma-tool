@@ -293,10 +293,10 @@ export const FlightsView: React.FC<FlightsViewProps> = ({
 
       {/* FLIGHT EDIT/ADD SIDE-OVER WORKSPACE OR CARD */}
       {editingFlightId !== null && (
-        <div className="bg-white rounded-[24px] border border-gray-100 shadow-xl overflow-hidden animate-in slide-in-from-bottom duration-300">
+        <div className="bg-white rounded-md border border-gray-100 shadow-sm overflow-hidden ">
           
           {/* Header */}
-          <div className="bg-gradient-to-r from-[#1A3326] to-[#224433] text-white p-6 md:p-8 flex items-center justify-between">
+          <div className="bg-[#1A3326] text-white p-5 md:p-6 flex items-center justify-between">
             <div>
               <span className="text-[10px] uppercase tracking-[0.2em] font-bold text-[#D4AF37] block mb-1">Interactive Aviation Configurator</span>
               <h2 className="text-xl md:text-2xl font-bold font-sans flex items-center gap-2">
@@ -333,7 +333,7 @@ export const FlightsView: React.FC<FlightsViewProps> = ({
           <div className="p-6 md:p-8 space-y-8 bg-gray-50/50">
             
             {/* GROUP 1: Basic Flight Information & Airline Catalogue */}
-            <div className="bg-white rounded-[20px] p-6 border border-gray-100 shadow-sm space-y-6">
+            <div className="bg-white rounded-md p-6 border border-gray-100 shadow-sm space-y-6">
               <div className="flex items-center justify-between border-b border-gray-100 pb-2">
                 <h3 className="text-xs uppercase font-bold text-[#1A3326] tracking-wider flex items-center gap-2">
                   <Compass size={14} className="text-[#D4AF37]" /> Basic Flight & Airline Information
@@ -388,7 +388,7 @@ export const FlightsView: React.FC<FlightsViewProps> = ({
 
                   {/* Autocomplete Dropdown */}
                   {showAirlineDropdown && filteredAirlines.length > 0 && (
-                    <div className="absolute left-0 top-full mt-1 w-full bg-white border border-gray-200 rounded-xl shadow-xl max-h-56 overflow-y-auto z-50 py-1 text-xs">
+                    <div className="absolute left-0 top-full mt-1 w-full bg-white border border-gray-200 rounded-xl shadow-sm max-h-56 overflow-y-auto z-50 py-1 text-xs">
                       <div className="px-3 py-1 text-[10px] uppercase font-bold text-gray-400 bg-gray-50 border-b border-gray-100 flex justify-between items-center">
                         <span>Select Carrier from Shared List</span>
                         <button type="button" onClick={() => setShowAirlineDropdown(false)} className="text-gray-400 hover:text-gray-600">Close</button>
@@ -437,7 +437,7 @@ export const FlightsView: React.FC<FlightsViewProps> = ({
             </div>
 
             {/* GROUP 2: Travel Schedule / Airport Information */}
-            <div className="bg-white rounded-[20px] p-6 border border-gray-100 shadow-sm space-y-6">
+            <div className="bg-white rounded-md p-6 border border-gray-100 shadow-sm space-y-6">
               <h3 className="text-xs uppercase font-bold text-[#1A3326] tracking-wider border-b border-gray-100 pb-2 flex items-center gap-2">
                 <Calendar size={14} className="text-[#D4AF37]" /> Travel Schedule & Airports
               </h3>
@@ -500,7 +500,7 @@ export const FlightsView: React.FC<FlightsViewProps> = ({
             </div>
 
             {/* GROUP 3: BOOKING REFERENCE & ONLINE LINKS (Resolves Section 9 Save Flight Links) */}
-            <div className="bg-white rounded-[20px] p-6 border border-gray-100 shadow-sm space-y-6">
+            <div className="bg-white rounded-md p-6 border border-gray-100 shadow-sm space-y-6">
               <div className="flex items-center justify-between border-b border-gray-100 pb-2">
                 <h3 className="text-xs uppercase font-bold text-[#1A3326] tracking-wider flex items-center gap-2">
                   <LinkIcon size={14} className="text-[#D4AF37]" /> Flight Reference & Booking Links
@@ -599,7 +599,7 @@ export const FlightsView: React.FC<FlightsViewProps> = ({
             </div>
 
             {/* GROUP 4: Layover Waypoint Stops */}
-            <div className="bg-white rounded-[20px] p-6 border border-gray-100 shadow-sm space-y-6">
+            <div className="bg-white rounded-md p-6 border border-gray-100 shadow-sm space-y-6">
               <h3 className="text-xs uppercase font-bold text-[#1A3326] tracking-wider border-b border-gray-100 pb-2 flex items-center gap-2">
                 <MapPin size={14} className="text-[#D4AF37]" /> Layover Routing Waypoints (Optional)
               </h3>
@@ -664,7 +664,7 @@ export const FlightsView: React.FC<FlightsViewProps> = ({
             </div>
 
             {/* GROUP 5: Class & Pricing */}
-            <div className="bg-white rounded-[20px] p-6 border border-gray-100 shadow-sm space-y-6">
+            <div className="bg-white rounded-md p-6 border border-gray-100 shadow-sm space-y-6">
               <h3 className="text-xs uppercase font-bold text-[#1A3326] tracking-wider border-b border-gray-100 pb-2 flex items-center gap-2">
                 <Clock size={14} className="text-[#D4AF37]" /> Class Cabin & Pricing Metrics
               </h3>
@@ -733,7 +733,7 @@ export const FlightsView: React.FC<FlightsViewProps> = ({
             </div>
 
             {/* GROUP 6: Luggage Protocols */}
-            <div className="bg-white rounded-[20px] p-6 border border-gray-100 shadow-sm space-y-6">
+            <div className="bg-white rounded-md p-6 border border-gray-100 shadow-sm space-y-6">
               <h3 className="text-xs uppercase font-bold text-[#1A3326] tracking-wider border-b border-gray-100 pb-2 flex items-center gap-2">
                 <Briefcase size={14} className="text-[#D4AF37]" /> Baggage Protocols
               </h3>
@@ -770,7 +770,7 @@ export const FlightsView: React.FC<FlightsViewProps> = ({
             </div>
 
             {/* GROUP 7: Passenger assignment (Stable ID mapping) */}
-            <div className="bg-white rounded-[20px] p-6 border border-gray-100 shadow-sm space-y-6">
+            <div className="bg-white rounded-md p-6 border border-gray-100 shadow-sm space-y-6">
               <h3 className="text-xs uppercase font-bold text-[#1A3326] tracking-wider border-b border-gray-100 pb-2 flex items-center gap-2">
                 <Users size={14} className="text-[#D4AF37]" /> Assign Passengers (Roster Link)
               </h3>
@@ -803,7 +803,7 @@ export const FlightsView: React.FC<FlightsViewProps> = ({
             </div>
 
             {/* GROUP 8: Flight Coordination Notes */}
-            <div className="bg-white rounded-[20px] p-6 border border-gray-100 shadow-sm space-y-3">
+            <div className="bg-white rounded-md p-6 border border-gray-100 shadow-sm space-y-3">
               <h3 className="text-xs uppercase font-bold text-[#1A3326] tracking-wider border-b border-gray-100 pb-2 flex items-center gap-2">
                 <Tag size={14} className="text-[#D4AF37]" /> Coordination & Internal Notes
               </h3>
@@ -817,7 +817,7 @@ export const FlightsView: React.FC<FlightsViewProps> = ({
             </div>
 
             {/* GROUP 9: Supporting Documents & Flight Attachments */}
-            <div className="bg-white rounded-[20px] p-6 border border-gray-100 shadow-sm space-y-4">
+            <div className="bg-white rounded-md p-6 border border-gray-100 shadow-sm space-y-4">
               <AttachmentManager
                 attachments={fForm.attachments || []}
                 onAddAttachment={(item) => setFForm(prev => ({
@@ -867,7 +867,7 @@ export const FlightsView: React.FC<FlightsViewProps> = ({
       {/* REGISTERED FLIGHTS LIST */}
       <div className="space-y-6">
         {state.flights.length === 0 ? (
-          <div className="text-center py-16 bg-white border border-gray-100 rounded-[24px] shadow-sm max-w-lg mx-auto space-y-4 animate-in zoom-in-95">
+          <div className="text-center py-16 bg-white border border-gray-100 rounded-md shadow-sm max-w-lg mx-auto space-y-4 animate-in zoom-in-95">
             <div className="w-16 h-16 bg-emerald-50 text-[#065f46] rounded-full flex items-center justify-center mx-auto shadow-inner">
               <Plane size={24} />
             </div>
@@ -894,7 +894,7 @@ export const FlightsView: React.FC<FlightsViewProps> = ({
             return (
               <div 
                 key={f.id} 
-                className="bg-white rounded-[24px] border border-gray-100 p-6 md:p-8 shadow-sm hover:shadow-md transition-all duration-300 group relative overflow-hidden"
+                className="bg-white rounded-md border border-gray-100 p-6 md:p-8 shadow-sm hover:shadow-md transition-all duration-300 group relative overflow-hidden"
               >
                 {/* Visual badge for sector direction on left side */}
                 <div className={`absolute top-0 left-0 w-1.5 h-full ${
@@ -1075,7 +1075,7 @@ export const FlightsView: React.FC<FlightsViewProps> = ({
       </div>
 
       {/* SECTION 7: CAPE TOWN AIRPORT (CPT) — LIVE FLIGHTS (FlightRadar24 Integration) */}
-      <section className="bg-white rounded-[24px] border border-gray-200 p-6 md:p-8 shadow-sm space-y-6">
+      <section className="bg-white rounded-md border border-gray-200 p-6 md:p-8 shadow-sm space-y-6">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-gray-100 pb-5">
           <div className="space-y-1">
             <div className="flex items-center gap-2 text-xs font-bold text-[#D4AF37] uppercase tracking-wider">
@@ -1181,7 +1181,7 @@ export const FlightsView: React.FC<FlightsViewProps> = ({
       {/* Add Custom Airline to Shared Catalogue Modal */}
       {showAddAirlineModal && (
         <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl max-w-md w-full p-6 space-y-4 shadow-2xl animate-in zoom-in-95">
+          <div className="bg-white rounded-2xl max-w-md w-full p-6 space-y-4 shadow-sm animate-in zoom-in-95">
             <h3 className="text-base font-bold text-gray-900 flex items-center gap-2">
               <Plane size={18} className="text-[#D4AF37]" /> Add Airline to Shared Catalogue
             </h3>
@@ -1219,7 +1219,7 @@ export const FlightsView: React.FC<FlightsViewProps> = ({
       {/* Missing Flight Information Confirmation Modal */}
       {missingModalOpen && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in">
-          <div className="bg-white rounded-3xl max-w-md w-full p-6 space-y-5 shadow-2xl border border-amber-200 animate-in zoom-in-95">
+          <div className="bg-white rounded-md max-w-md w-full p-6 space-y-5 shadow-sm border border-amber-200 animate-in zoom-in-95">
             <div className="flex items-start gap-3">
               <div className="w-10 h-10 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center shrink-0 border border-amber-200">
                 <AlertTriangle size={20} />
