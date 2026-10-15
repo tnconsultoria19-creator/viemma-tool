@@ -265,7 +265,7 @@ export function buildClientEditorialPages(params: {
     title: group.defaults.destination ? `${group.defaults.destination} Itinerary` : 'Travel Itinerary',
     subtitle: `Prepared for ${leadPerson?.fullName || group.groupName} • ${group.travellers.length} Guests`,
     heroImage: {
-      url: heroImageUrl || '/hero-bg.jpg',
+      url: heroImageUrl || createArchitecturalFallbackDataUri(destinationLabel, 'hero'),
       alt: group.defaults.destination || 'Trip overview image',
       caption: group.defaults.destination ? `Primary Destination — ${group.defaults.destination}` : 'Destination to be confirmed',
     },
@@ -334,9 +334,9 @@ export function buildClientEditorialPages(params: {
       title: primaryAct?.dayTitle || (primaryAct ? primaryAct.title : `Operational Schedule — ${date}`),
       subtitle: activeHotel ? `Residence: ${activeHotel.propertyName}` : (group.defaults.destination || 'Destination details to be confirmed'),
       heroImage: {
-        url: heroImageUrl || '/hero-bg.jpg',
+        url: primaryAct?.heroImageUrl || primaryAct?.gallery?.[0] || heroImageUrl || createArchitecturalFallbackDataUri(primaryAct?.title || date, 'hero'),
         alt: primaryAct?.title || `Day Schedule ${date}`,
-        caption: primaryAct ? `${primaryAct.title} — ${primaryAct.location}` : `Scheduled Movements (${date})`,
+        caption: primaryAct ? `${primaryAct.title} — ${primaryAct.location || 'Location to be confirmed'}` : `Scheduled Movements (${date})`,
       },
       supportingImage: {
         url: createArchitecturalFallbackDataUri(activeHotel?.propertyName || date, 'supporting'),
