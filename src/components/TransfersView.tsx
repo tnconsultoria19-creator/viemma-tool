@@ -239,10 +239,10 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
 
       {/* FORM CONFIGURATION PANEL */}
       {editingTransferId !== null && (
-        <div className="bg-white rounded-[24px] border border-gray-100 shadow-xl overflow-hidden animate-in slide-in-from-bottom duration-300">
+        <div className="bg-white rounded-md border border-gray-100 shadow-sm overflow-hidden ">
           
           {/* Header */}
-          <div className="bg-gradient-to-r from-[#1A3326] to-[#224433] text-white p-6 md:p-8 flex items-center justify-between">
+          <div className="bg-[#1A3326] text-white p-5 md:p-6 flex items-center justify-between">
             <div>
               <span className="text-[10px] uppercase tracking-[0.2em] font-bold text-[#D4AF37] block mb-1">Interactive Logistical Desk</span>
               <h2 className="text-xl md:text-2xl font-bold font-sans flex items-center gap-2">
@@ -269,7 +269,7 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
           <div className="p-6 md:p-8 space-y-8 bg-gray-50/50">
             
             {/* GROUP 1: Basic Information */}
-            <div className="bg-white rounded-[20px] p-6 border border-gray-100 shadow-sm space-y-6">
+            <div className="bg-white rounded-md p-6 border border-gray-100 shadow-sm space-y-6">
               <h3 className="text-xs uppercase font-bold text-[#1A3326] tracking-wider border-b border-gray-100 pb-2 flex items-center gap-2">
                 <Compass size={14} className="text-[#D4AF37]" /> Basic Information
               </h3>
@@ -329,7 +329,7 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
             </div>
 
             {/* GROUP 2: Travel Schedule / Routing & Airport meet rules */}
-            <div className="bg-white rounded-[20px] p-6 border border-gray-100 shadow-sm space-y-6">
+            <div className="bg-white rounded-md p-6 border border-gray-100 shadow-sm space-y-6">
               <h3 className="text-xs uppercase font-bold text-[#1A3326] tracking-wider border-b border-gray-100 pb-2 flex items-center gap-2">
                 <MapPin size={14} className="text-[#D4AF37]" /> Transfer Routing & Pickups
               </h3>
@@ -399,7 +399,7 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
             </div>
 
             {/* GROUP 3: Intermediate Waypoint Builder */}
-            <div className="bg-white rounded-[20px] p-6 border border-gray-100 shadow-sm space-y-6">
+            <div className="bg-white rounded-md p-6 border border-gray-100 shadow-sm space-y-6">
               <h3 className="text-xs uppercase font-bold text-[#1A3326] tracking-wider border-b border-gray-100 pb-2 flex items-center gap-2">
                 <MapPin size={14} className="text-[#D4AF37]" /> Intermediate Routing Checkpoints (Stopovers)
               </h3>
@@ -468,7 +468,7 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
             </div>
 
             {/* GROUP 4: Dispatch details */}
-            <div className="bg-white rounded-[20px] p-6 border border-gray-100 shadow-sm space-y-6">
+            <div className="bg-white rounded-md p-6 border border-gray-100 shadow-sm space-y-6">
               <div className="flex items-center justify-between border-b border-gray-100 pb-2">
                 <h3 className="text-xs uppercase font-bold text-[#1A3326] tracking-wider flex items-center gap-2">
                   <Users size={14} className="text-[#D4AF37]" /> Chauffeur, Driver & Fleet Vehicles
@@ -562,7 +562,7 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
             </div>
 
             {/* GROUP 5: Luggage & Passenger quantities */}
-            <div className="bg-white rounded-[20px] p-6 border border-gray-100 shadow-sm space-y-6">
+            <div className="bg-white rounded-md p-6 border border-gray-100 shadow-sm space-y-6">
               <h3 className="text-xs uppercase font-bold text-[#1A3326] tracking-wider border-b border-gray-100 pb-2 flex items-center gap-2">
                 <Users size={14} className="text-[#D4AF37]" /> Travelers & Baggage Counts
               </h3>
@@ -627,7 +627,7 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
             </div>
 
             {/* GROUP 6: Financial costings */}
-            <div className="bg-white rounded-[20px] p-6 border border-gray-100 shadow-sm space-y-6">
+            <div className="bg-white rounded-md p-6 border border-gray-100 shadow-sm space-y-6">
               <h3 className="text-xs uppercase font-bold text-[#1A3326] tracking-wider border-b border-gray-100 pb-2 flex items-center gap-2">
                 <Clock size={14} className="text-[#D4AF37]" /> Ground Logistics Costs (ZAR)
               </h3>
@@ -664,7 +664,7 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
             </div>
 
             {/* GROUP 7: Vehicle config tags & Amenities */}
-            <div className="bg-white rounded-[20px] p-6 border border-gray-100 shadow-sm space-y-6">
+            <div className="bg-white rounded-md p-6 border border-gray-100 shadow-sm space-y-6">
               <h3 className="text-xs uppercase font-bold text-[#1A3326] tracking-wider border-b border-gray-100 pb-2 flex items-center gap-2">
                 <Tag size={14} className="text-[#D4AF37]" /> Fleet Configurations & Amenities
               </h3>
@@ -717,7 +717,7 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
             </div>
 
             {/* GROUP 8: Logistics Notes */}
-            <div className="bg-white rounded-[20px] p-6 border border-gray-100 shadow-sm space-y-3">
+            <div className="bg-white rounded-md p-6 border border-gray-100 shadow-sm space-y-3">
               <h3 className="text-xs uppercase font-bold text-[#1A3326] tracking-wider border-b border-gray-100 pb-2 flex items-center gap-2">
                 <Tag size={14} className="text-[#D4AF37]" /> Internal Logistics Coordination Notes
               </h3>
@@ -731,7 +731,7 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
             </div>
 
             {/* GROUP 9: Supporting Documents & Waybills */}
-            <div className="bg-white rounded-[20px] p-6 border border-gray-100 shadow-sm space-y-4">
+            <div className="bg-white rounded-md p-6 border border-gray-100 shadow-sm space-y-4">
               <AttachmentManager
                 attachments={tForm.attachments || []}
                 onAddAttachment={(item) => setTForm(prev => ({
@@ -781,7 +781,7 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
       {/* REGISTERED TRANSFERS LIST */}
       <div className="space-y-6">
         {state.transfers.length === 0 ? (
-          <div className="text-center py-16 bg-white border border-gray-100 rounded-[24px] shadow-sm max-w-lg mx-auto space-y-4 animate-in zoom-in-95">
+          <div className="text-center py-16 bg-white border border-gray-100 rounded-md shadow-sm max-w-lg mx-auto space-y-4 animate-in zoom-in-95">
             <div className="w-16 h-16 bg-emerald-50 text-[#065f46] rounded-full flex items-center justify-center mx-auto shadow-inner">
               <Car size={24} />
             </div>
@@ -806,7 +806,7 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
             return (
               <div 
                 key={t.id} 
-                className="bg-white rounded-[24px] border border-gray-100 p-6 md:p-8 shadow-sm hover:shadow-md transition-all duration-300 group relative overflow-hidden"
+                className="bg-white rounded-md border border-gray-100 p-6 md:p-8 shadow-sm hover:shadow-md transition-all duration-300 group relative overflow-hidden"
               >
                 {/* Visual side badge */}
                 <div className="absolute top-0 left-0 w-1.5 h-full bg-[#D4AF37]" />
