@@ -56,7 +56,8 @@ export interface Client {
   whatsapp?: string;
   country: string;
   contactMethod: 'whatsapp' | 'email' | 'call';
-  tripType: 'multi' | 'day' | 'transfer'; // Backwards-compatible grouping for existing rules\n  tourTypology?: TourTypology;
+  tripType: 'multi' | 'day' | 'transfer'; // Backwards-compatible grouping for existing rules
+  tourTypology?: TourTypology;
   startDate: string;
   endDate: string;
   durationText: string;
