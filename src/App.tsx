@@ -567,15 +567,16 @@ export default function App() {
 
   const tabsList = useMemo(() => [
     { id: 'home', label: 'Home', icon: <Home size={15} /> },
-    { id: 'trips', label: 'Trips Portfolio', icon: <Briefcase size={15} /> },
     { id: 'guests', label: 'Clients', icon: <Users size={15} /> },
     { id: 'flights', label: 'Flights', icon: <Plane size={15} /> },
     { id: 'transfers', label: 'Transfers', icon: <Car size={15} /> },
     { id: 'rooming', label: 'Hotels', icon: <Hotel size={15} /> },
-    { id: 'activities', label: 'Suppliers', icon: <Route size={15} /> },
+    { id: 'activities', label: 'Programme', icon: <Route size={15} /> },
+    { id: 'timelines', label: 'Timeline', icon: <Calendar size={15} /> },
+    { id: 'trips', label: 'Trips Portfolio', icon: <Briefcase size={15} /> },
     { id: 'finance', label: 'Finance', icon: <Coins size={15} /> },
     { id: 'database', label: 'Database', icon: <Database size={15} /> },
-    { id: 'library', label: 'Library Desk', icon: <BookOpen size={15} /> },
+    { id: 'library', label: 'Experience Library', icon: <BookOpen size={15} /> },
     { id: 'analytics', label: 'Analytics', icon: <TrendingUp size={15} /> },
     { id: 'exporthub', label: 'Print Hub', icon: <Printer size={15} /> },
   ], []);
