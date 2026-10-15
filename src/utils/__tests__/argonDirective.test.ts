@@ -340,18 +340,16 @@ export async function runArgonRegressionSuite(): Promise<{
     internalNotes: '', namedGroups: [], dayTitles: {},
   } as unknown as AppState;
 
-  const fullTripJson = parseTripJson(`\`\`json
-  {
-    "tripTitle": "Dube Family Holiday",
-    "client": { "name": "Mandla Dube", "email": "mandla@example.com", "tourType": "Full-day tour", "startDate": "2026-11-10", "endDate": "2026-11-12" },
-    "travellers": [{ "name": "Mandla Dube", "isLead": true, "nationality": "South African", "passportNo": "A123456" }],
-    "flights": [{ "airline": "South African Airways", "flightNo": "SA123", "from": "JNB", "to": "CPT", "date": "2026-11-10", "arrTime": "10:30", "paxNames": ["Mandla Dube"] }],
-    "transfers": [{ "type": "Airport Arrival", "date": "2026-11-10", "time": "11:15", "from": "Cape Town International Airport", "to": "Table Bay Hotel", "paxNames": ["Mandla Dube"] }],
-    "accommodations": [{ "hotel": "Table Bay Hotel", "cin": "2026-11-10", "cout": "2026-11-12", "roomType": "Standard Room", "assignedPaxNames": ["Mandla Dube"] }],
-    "itinerary": { "days": [{ "day": 1, "title": "Arrival in Cape Town", "activities": [{ "name": "Airport arrival and hotel transfer", "start": "11:15", "desc": "Meet at arrivals" }] }] },
-    "finance": { "currency": "ZAR", "margin": 20 }
-  }
-  \`\``);
+  const fullTripJson = parseTripJson(JSON.stringify({
+    tripTitle: 'Dube Family Holiday',
+    client: { name: 'Mandla Dube', email: 'mandla@example.com', tourType: 'Full-day tour', startDate: '2026-11-10', endDate: '2026-11-12' },
+    travellers: [{ name: 'Mandla Dube', isLead: true, nationality: 'South African', passportNo: 'A123456' }],
+    flights: [{ airline: 'South African Airways', flightNo: 'SA123', from: 'JNB', to: 'CPT', date: '2026-11-10', arrTime: '10:30', paxNames: ['Mandla Dube'] }],
+    transfers: [{ type: 'Airport Arrival', date: '2026-11-10', time: '11:15', from: 'Cape Town International Airport', to: 'Table Bay Hotel', paxNames: ['Mandla Dube'] }],
+    accommodations: [{ hotel: 'Table Bay Hotel', cin: '2026-11-10', cout: '2026-11-12', roomType: 'Standard Room', assignedPaxNames: ['Mandla Dube'] }],
+    itinerary: { days: [{ day: 1, title: 'Arrival in Cape Town', activities: [{ name: 'Airport arrival and hotel transfer', start: '11:15', desc: 'Meet at arrivals' }] }] },
+    finance: { currency: 'ZAR', margin: 20 },
+  }));
   const fullTripResult = applyTripJson(jsonImportBase, fullTripJson, 'all', 'merge');
   assert(
     fullTripResult.state.client.name === 'Mandla Dube' &&
