@@ -64,7 +64,7 @@ export const IntakeView: React.FC<IntakeViewProps> = ({
   const [modalOpen, setModalOpen] = useState(false);
   const [modalGuest, setModalGuest] = useState<Partial<Guest>>({});
   const [showAdvancedGuestDetails, setShowAdvancedGuestDetails] = useState(false);
-  const [modalTab, setModalTab] = useState<'details' | 'assignments' | 'audit' | 'dietary' | 'accessibility' | 'preferences' | 'documents'>('details');
+  const [modalTab, setModalTab] = useState<'details' | 'audit' | 'dietary' | 'accessibility' | 'preferences' | 'documents'>('details');
   const [modalCountrySearch, setModalCountrySearch] = useState('');
   const [showModalCountryDD, setShowModalCountryDD] = useState(false);
 
@@ -293,7 +293,7 @@ export const IntakeView: React.FC<IntakeViewProps> = ({
     setModalOpen(true);
   };
 
-  const handleOpenEditGuest = (g: Guest, tab: 'details' | 'assignments' | 'audit' = 'details') => {
+  const handleOpenEditGuest = (g: Guest, tab: 'details' | 'audit' = 'details') => {
     setModalGuest({ ...g });
     setModalCountrySearch(g.nationality || g.country || '');
     setShowAdvancedGuestDetails(tab !== 'details' || Boolean(g.isProvisional));
@@ -848,9 +848,9 @@ export const IntakeView: React.FC<IntakeViewProps> = ({
               {/* Organized Hierarchical Traveller List */}
               {(viewMode === 'both' || viewMode === 'hierarchy') && (
                 <div className="space-y-2">
-                  <div className="text-[11px] font-bold uppercase tracking-wider text-gray-500 flex items-center justify-between px-1">
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 pb-1 text-sm text-slate-700">
                     <span>Group Roster ({state.guests.length} Total • {state.guests.filter(g => g.isLead).length} Lead • {state.guests.filter(g => !g.isLead && !g.isProvisional).length} Confirmed • {state.guests.filter(g => g.isProvisional).length} Provisional)</span>
-                    <span className="text-[10px] text-gray-400">Click traveller actions to view assignments or audit status</span>
+                    <span className="text-[10px] text-gray-400">Edit details or check documents.</span>
                   </div>
 
                   <div className="bg-white border border-slate-200 rounded-xl divide-y divide-slate-100 overflow-hidden shadow-2xs">
@@ -946,14 +946,7 @@ export const IntakeView: React.FC<IntakeViewProps> = ({
                               {g.isProvisional ? 'Name Person / Edit' : 'Edit Profile'}
                             </button>
 
-                            <button
-                              type="button"
-                              onClick={() => handleOpenEditGuest(g, 'assignments')}
-                              className="px-2.5 py-1.5 text-xs font-semibold rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 transition cursor-pointer"
-                              title="View flights, rooms, transfers & activities for this traveller"
-                            >
-                              Assignments
-                            </button>
+
 
                             <button
                               type="button"
@@ -1448,18 +1441,36 @@ export const IntakeView: React.FC<IntakeViewProps> = ({
             )}
 
             <div>
-              <label htmlFor="trip-type-select" className="text-[11px] text-gray-700 font-bold uppercase tracking-wider block mb-1">
-                Trip Typology
+              <label htmlFor="trip-type-select" className="text-[11px] text-slate-700 font-medium block mb-1">
+                Tour type
               </label>
               <select
                 id="trip-type-select"
-                value={state.client.tripType || 'multi'}
-                onChange={e => onUpdateClient({ tripType: e.target.value as any })}
-                className="w-full h-10 px-3 rounded-xl border border-gray-200 text-xs font-semibold text-gray-700 bg-white focus:outline-none focus:ring-1 focus:ring-[#D4AF37]"
+                value={state.client.tourTypology || (state.client.tripType === 'transfer' ? 'airport_transfer' : state.client.tripType === 'day' ? 'full_day_tour' : 'multi_day_tour')}
+                onChange={e => {
+                  const tourTypology = e.target.value as NonNullable<AppState['client']['tourTypology']>;
+                  const tripType = tourTypology.includes('transfer')
+                    ? 'transfer'
+                    : ['multi_day_tour', 'multi_day_safari', 'self_drive_itinerary'].includes(tourTypology)
+                      ? 'multi'
+                      : tourTypology === 'tailor_made_tour'
+                        ? state.client.tripType
+                        : 'day';
+                  onUpdateClient({ tourTypology, tripType });
+                }}
+                className="w-full h-10 px-3 rounded-md border border-slate-300 text-sm font-normal text-slate-800 bg-white focus:outline-none focus:ring-2 focus:ring-emerald-700/20"
               >
-                <option value="multi">Multi-Day Safari Tour</option>
-                <option value="day">Day Excursion / Tour</option>
-                <option value="transfer">Ground Transfer Only</option>
+                <option value="half_day_tour">Half-day tour (about 4–5 hours)</option>
+                <option value="full_day_tour">Full-day tour (about 8–10 hours)</option>
+                <option value="multi_day_tour">Multi-day tour</option>
+                <option value="multi_day_safari">Multi-day safari</option>
+                <option value="private_guided_tour">Private guided tour</option>
+                <option value="scheduled_shared_tour">Scheduled / shared tour</option>
+                <option value="airport_transfer">Airport transfer</option>
+                <option value="point_to_point_transfer">Point-to-point transfer</option>
+                <option value="private_transfer">Private transfer</option>
+                <option value="self_drive_itinerary">Self-drive itinerary</option>
+                <option value="tailor_made_tour">Tailor-made tour</option>
               </select>
             </div>
           </div>
@@ -1845,37 +1856,22 @@ export const IntakeView: React.FC<IntakeViewProps> = ({
               {/* EXPANDABLE ADVANCED PROFILE DETAILS */}
               {showAdvancedGuestDetails && (
                 <div className="space-y-4 pt-2 border-t border-gray-100 animate-in fade-in duration-150">
-                  <div className="flex flex-wrap border-b border-gray-200 text-xs font-bold text-gray-500">
+                  <div className="flex flex-nowrap items-center gap-5 overflow-x-auto whitespace-nowrap border-b border-slate-200 text-xs font-medium text-slate-600">
                     <button
                       type="button"
                       onClick={() => setModalTab('details')}
-                      className={`pb-2 px-3 border-b-2 transition cursor-pointer ${modalTab === 'details' ? 'border-[#D4AF37] text-[#1A3326]' : 'border-transparent text-gray-500 hover:text-gray-900'}`}
+                      className={`shrink-0 pb-3 px-1 border-b-2 transition cursor-pointer ${modalTab === 'details' ? 'border-[#D4AF37] text-[#1A3326]' : 'border-transparent text-gray-500 hover:text-gray-900'}`}
                     >
-                      General & Contact
+                      General
                     </button>
-                    <button
-                      type="button"
-                      onClick={() => setModalTab('assignments')}
-                      className={`pb-2 px-3 border-b-2 transition cursor-pointer flex items-center gap-1.5 ${modalTab === 'assignments' ? 'border-[#D4AF37] text-[#1A3326]' : 'border-transparent text-gray-500 hover:text-gray-900'}`}
-                    >
-                      <Briefcase size={12} />
-                      <span>Assignments</span>
-                      {modalGuest.id && (
-                        <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-blue-100 text-blue-800 font-mono">
-                          {(state.flights.filter(f => f.paxIds?.includes(modalGuest.id!)).length) + 
-                           (state.rooms.filter(r => r.guestIds?.includes(modalGuest.id!) || r.allocatedRooms?.some(ar => ar.guestIds?.includes(modalGuest.id!))).length) +
-                           (state.transfers.filter(t => t.paxIds?.includes(modalGuest.id!)).length) +
-                           (state.activities.filter(a => a.paxIds?.includes(modalGuest.id!)).length)}
-                        </span>
-                      )}
-                    </button>
+
                     <button
                       type="button"
                       onClick={() => setModalTab('audit')}
-                      className={`pb-2 px-3 border-b-2 transition cursor-pointer flex items-center gap-1.5 ${modalTab === 'audit' ? 'border-[#D4AF37] text-[#1A3326]' : 'border-transparent text-gray-500 hover:text-gray-900'}`}
+                      className={`shrink-0 pb-3 px-1 border-b-2 transition cursor-pointer flex items-center gap-1.5 ${modalTab === 'audit' ? 'border-[#D4AF37] text-[#1A3326]' : 'border-transparent text-gray-500 hover:text-gray-900'}`}
                     >
                       <ShieldCheck size={12} />
-                      <span>Readiness Audit</span>
+                      <span>Documents check</span>
                       {(!modalGuest.passportNo || modalGuest.isProvisional) && (
                         <span className="w-1.5 h-1.5 rounded-full bg-rose-500" />
                       )}
@@ -1883,28 +1879,28 @@ export const IntakeView: React.FC<IntakeViewProps> = ({
                     <button
                       type="button"
                       onClick={() => setModalTab('dietary')}
-                      className={`pb-2 px-3 border-b-2 transition cursor-pointer ${modalTab === 'dietary' ? 'border-[#D4AF37] text-[#1A3326]' : 'border-transparent text-gray-500 hover:text-gray-900'}`}
+                      className={`shrink-0 pb-3 px-1 border-b-2 transition cursor-pointer ${modalTab === 'dietary' ? 'border-[#D4AF37] text-[#1A3326]' : 'border-transparent text-gray-500 hover:text-gray-900'}`}
                     >
                       Dietary
                     </button>
                     <button
                       type="button"
                       onClick={() => setModalTab('accessibility')}
-                      className={`pb-2 px-3 border-b-2 transition cursor-pointer ${modalTab === 'accessibility' ? 'border-[#D4AF37] text-[#1A3326]' : 'border-transparent text-gray-500 hover:text-gray-900'}`}
+                      className={`shrink-0 pb-3 px-1 border-b-2 transition cursor-pointer ${modalTab === 'accessibility' ? 'border-[#D4AF37] text-[#1A3326]' : 'border-transparent text-gray-500 hover:text-gray-900'}`}
                     >
                       Accessibility
                     </button>
                     <button
                       type="button"
                       onClick={() => setModalTab('preferences')}
-                      className={`pb-2 px-3 border-b-2 transition cursor-pointer ${modalTab === 'preferences' ? 'border-[#D4AF37] text-[#1A3326]' : 'border-transparent text-gray-500 hover:text-gray-900'}`}
+                      className={`shrink-0 pb-3 px-1 border-b-2 transition cursor-pointer ${modalTab === 'preferences' ? 'border-[#D4AF37] text-[#1A3326]' : 'border-transparent text-gray-500 hover:text-gray-900'}`}
                     >
                       Preferences
                     </button>
                     <button
                       type="button"
                       onClick={() => setModalTab('documents')}
-                      className={`pb-2 px-3 border-b-2 transition cursor-pointer ${modalTab === 'documents' ? 'border-[#D4AF37] text-[#1A3326]' : 'border-transparent text-gray-500 hover:text-gray-900'}`}
+                      className={`shrink-0 pb-3 px-1 border-b-2 transition cursor-pointer ${modalTab === 'documents' ? 'border-[#D4AF37] text-[#1A3326]' : 'border-transparent text-gray-500 hover:text-gray-900'}`}
                     >
                       Documents
                     </button>
@@ -2056,171 +2052,6 @@ export const IntakeView: React.FC<IntakeViewProps> = ({
                             className="w-full h-9 px-3 rounded-lg border border-gray-200 text-xs"
                           />
                         </div>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* TAB 2: OPERATIONAL ASSIGNMENTS (Flights, Rooms, Transfers, Activities) */}
-                  {modalTab === 'assignments' && (
-                    <div className="space-y-4 animate-in fade-in duration-150">
-                      <div className="p-3 bg-blue-50/70 border border-blue-200/80 rounded-xl flex items-center justify-between text-xs text-blue-950">
-                        <div className="flex items-center gap-2">
-                          <Briefcase size={16} className="text-blue-700 shrink-0" />
-                          <div>
-                            <strong className="block">Connected Operational Services</strong>
-                            <span className="text-[11px] text-blue-800">
-                              Current itinerary services booked and assigned to {modalGuest.first} {modalGuest.last}.
-                            </span>
-                          </div>
-                        </div>
-                        <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 bg-blue-100 text-blue-800 rounded font-mono">
-                          {state.ref || 'VT-2026-001'}
-                        </span>
-                      </div>
-
-                      {/* FLIGHTS */}
-                      <div className="space-y-2">
-                        <div className="flex items-center gap-2 text-xs font-bold text-gray-700">
-                          <Plane size={14} className="text-blue-600" />
-                          <span>Flight Bookings</span>
-                        </div>
-                        {(() => {
-                          const flights = state.flights.filter(f => f.paxIds?.includes(modalGuest.id!));
-                          if (flights.length === 0) {
-                            return (
-                              <p className="text-xs text-gray-400 italic bg-gray-50 p-2.5 rounded-lg border border-gray-100">
-                                No flights currently assigned to this traveller.
-                              </p>
-                            );
-                          }
-                          return (
-                            <div className="space-y-1.5">
-                              {flights.map(f => (
-                                <div key={f.id} className="p-2.5 bg-gray-50 border border-gray-200 rounded-lg text-xs flex items-center justify-between">
-                                  <div>
-                                    <span className="font-bold text-[#10233F]">{f.airline} {f.flightNo}</span>
-                                    <span className="text-gray-500 ml-2">({f.from} → {f.to})</span>
-                                    <span className="text-gray-400 ml-2">• {f.date || 'Date TBD'} {f.depTime || ''}</span>
-                                  </div>
-                                  <span className="text-[10px] px-2 py-0.5 rounded bg-blue-50 text-blue-700 font-bold border border-blue-200">
-                                    {f.direction} ({f.cabin || 'Economy'})
-                                  </span>
-                                </div>
-                              ))}
-                            </div>
-                          );
-                        })()}
-                      </div>
-
-                      {/* ROOMS */}
-                      <div className="space-y-2">
-                        <div className="flex items-center gap-2 text-xs font-bold text-gray-700">
-                          <Hotel size={14} className="text-emerald-600" />
-                          <span>Accommodation & Room Allocations</span>
-                        </div>
-                        {(() => {
-                          const rooms = state.rooms.filter(r => r.guestIds?.includes(modalGuest.id!) || r.allocatedRooms?.some(ar => ar.guestIds?.includes(modalGuest.id!)));
-                          if (rooms.length === 0) {
-                            return (
-                              <p className="text-xs text-gray-400 italic bg-gray-50 p-2.5 rounded-lg border border-gray-100">
-                                No accommodation rooms currently allocated to this traveller.
-                              </p>
-                            );
-                          }
-                          return (
-                            <div className="space-y-1.5">
-                              {rooms.map(r => {
-                                const specificAlloc = r.allocatedRooms?.filter(ar => ar.guestIds?.includes(modalGuest.id!)) || [];
-                                return (
-                                  <div key={r.id} className="p-2.5 bg-gray-50 border border-gray-200 rounded-lg text-xs flex items-center justify-between">
-                                    <div>
-                                      <span className="font-bold text-[#10233F]">{r.hotel}</span>
-                                      <span className="text-gray-500 ml-2">{r.roomType}</span>
-                                      <span className="text-gray-400 ml-2">• {r.cin} to {r.cout} ({r.nights} nights)</span>
-                                      {specificAlloc.length > 0 && (
-                                        <span className="text-emerald-700 font-semibold block text-[11px] mt-0.5">
-                                          Allocated: {specificAlloc.map(a => a.roomName).join(', ')}
-                                        </span>
-                                      )}
-                                    </div>
-                                    <span className="text-[10px] px-2 py-0.5 rounded bg-emerald-50 text-emerald-800 font-bold border border-emerald-200">
-                                      {r.pay}
-                                    </span>
-                                  </div>
-                                );
-                              })}
-                            </div>
-                          );
-                        })()}
-                      </div>
-
-                      {/* TRANSFERS */}
-                      <div className="space-y-2">
-                        <div className="flex items-center gap-2 text-xs font-bold text-gray-700">
-                          <Car size={14} className="text-amber-600" />
-                          <span>Ground Transfers & Fleet</span>
-                        </div>
-                        {(() => {
-                          const transfers = state.transfers.filter(t => t.paxIds?.includes(modalGuest.id!));
-                          if (transfers.length === 0) {
-                            return (
-                              <p className="text-xs text-gray-400 italic bg-gray-50 p-2.5 rounded-lg border border-gray-100">
-                                No ground transfers currently assigned to this traveller.
-                              </p>
-                            );
-                          }
-                          return (
-                            <div className="space-y-1.5">
-                              {transfers.map(t => (
-                                <div key={t.id} className="p-2.5 bg-gray-50 border border-gray-200 rounded-lg text-xs flex items-center justify-between">
-                                  <div>
-                                    <span className="font-bold text-[#10233F]">{t.type}</span>
-                                    <span className="text-gray-500 ml-2">({t.from} → {t.to})</span>
-                                    <span className="text-gray-400 ml-2">• {t.date} {t.time}</span>
-                                    {t.driver && <span className="text-amber-800 text-[11px] block mt-0.5">Chauffeur: {t.driver} ({t.vehicle || 'Fleet vehicle'})</span>}
-                                  </div>
-                                  <span className="text-[10px] px-2 py-0.5 rounded bg-amber-50 text-amber-800 font-bold border border-amber-200">
-                                    {t.status}
-                                  </span>
-                                </div>
-                              ))}
-                            </div>
-                          );
-                        })()}
-                      </div>
-
-                      {/* ACTIVITIES */}
-                      <div className="space-y-2">
-                        <div className="flex items-center gap-2 text-xs font-bold text-gray-700">
-                          <Compass size={14} className="text-purple-600" />
-                          <span>Activities & Excursions</span>
-                        </div>
-                        {(() => {
-                          const activities = state.activities.filter(a => a.paxIds?.includes(modalGuest.id!));
-                          if (activities.length === 0) {
-                            return (
-                              <p className="text-xs text-gray-400 italic bg-gray-50 p-2.5 rounded-lg border border-gray-100">
-                                No activities currently assigned to this traveller.
-                              </p>
-                            );
-                          }
-                          return (
-                            <div className="space-y-1.5">
-                              {activities.map(a => (
-                                <div key={a.id} className="p-2.5 bg-gray-50 border border-gray-200 rounded-lg text-xs flex items-center justify-between">
-                                  <div>
-                                    <span className="font-bold text-[#10233F]">Day {a.day}: {a.name}</span>
-                                    <span className="text-gray-500 ml-2">({a.slot} • {a.start})</span>
-                                    {a.pickupLoc && <span className="text-gray-400 text-[11px] block mt-0.5">Pickup: {a.pickupLoc}</span>}
-                                  </div>
-                                  <span className="text-[10px] px-2 py-0.5 rounded bg-purple-50 text-purple-700 font-bold border border-purple-200">
-                                    {a.status}
-                                  </span>
-                                </div>
-                              ))}
-                            </div>
-                          );
-                        })()}
                       </div>
                     </div>
                   )}
