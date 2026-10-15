@@ -335,10 +335,43 @@ export function applyTripJson(
   const transferSources = sourceArray(root, 'transfers', 'groundTransfers', 'transport');
   const roomSources = sourceArray(root, 'rooms', 'hotels', 'accommodations', 'stays', 'hotelBookings');
   let activitySources = sourceArray(root, 'activities', 'programme', 'program', 'dayTours', 'experiences');
-  const itineraryValue = pick(root, 'itinerary', 'dailyItinerary', 'dailyPlan');
-  if (!activitySources && Array.isArray(itineraryValue)) activitySources = list(itineraryValue);
+  const itineraryValue = pick(root, 'itinerary', 'dailyItinerary', 'dailyPlan', 'dailyProgramme', 'dailyProgram');
   const itineraryObject = record(itineraryValue);
-  if (!activitySources && itineraryObject) activitySources = sourceArray(itineraryObject, 'activities', 'programme', 'program', 'days');
+  let dayTitleEntries: Array<[number, string]> = [];
+
+  if (!activitySources && Array.isArray(itineraryValue)) {
+    const arrayItems = list(itineraryValue) || [];
+    const hasNestedDays = arrayItems.some(day => Array.isArray(pick(day, 'activities', 'experiences', 'tours', 'items')));
+    if (hasNestedDays) {
+      activitySources = [];
+      arrayItems.forEach((day, index) => {
+        const dayNumber = Math.max(1, number(pick(day, 'day', 'dayNumber', 'number'), index + 1));
+        const title = text(pick(day, 'title', 'dayTitle', 'name'));
+        if (title) dayTitleEntries.push([dayNumber, title]);
+        const items = sourceArray(day, 'activities', 'experiences', 'tours', 'items') || [];
+        activitySources!.push(...items.map(item => ({ ...item, day: pick(item, 'day', 'dayNumber') ?? dayNumber })));
+      });
+    } else {
+      activitySources = arrayItems;
+    }
+  }
+
+  if (!activitySources && itineraryObject) {
+    activitySources = sourceArray(itineraryObject, 'activities', 'programme', 'program', 'dayTours', 'experiences');
+    if (!activitySources) {
+      const days = sourceArray(itineraryObject, 'days', 'dailySchedule', 'schedule');
+      if (days) {
+        activitySources = [];
+        days.forEach((day, index) => {
+          const dayNumber = Math.max(1, number(pick(day, 'day', 'dayNumber', 'number'), index + 1));
+          const title = text(pick(day, 'title', 'dayTitle', 'name'));
+          if (title) dayTitleEntries.push([dayNumber, title]);
+          const items = sourceArray(day, 'activities', 'experiences', 'tours', 'items') || [];
+          activitySources!.push(...items.map(item => ({ ...item, day: pick(item, 'day', 'dayNumber') ?? dayNumber })));
+        });
+      }
+    }
+  }
 
   if (modeAllowed(scope, 'clients') && clientSource) {
     const typologyValue = pick(clientSource, 'tourTypology', 'tourType', 'bookingType', 'tripTypology', 'tripType', 'type') ?? pick(root, 'tourTypology', 'tourType');
@@ -367,7 +400,13 @@ export function applyTripJson(
       const contact = text(pick(clientSource, 'contactMethod')).toLowerCase();
       client.contactMethod = contact.includes('email') ? 'email' : contact.includes('call') || contact.includes('phone') ? 'call' : 'whatsapp';
     }
+    const duration = pick(clientSource, 'durationText', 'duration', 'tripDuration', 'lengthOfStay');
+    if (duration !== undefined) client.durationText = text(duration, client.durationText);
     next.client = client;
+    const tripTitle = pick(root, 'tripTitle', 'title', 'bookingTitle');
+    if (tripTitle !== undefined && text(tripTitle)) next.title = text(tripTitle);
+    const tripNotes = pick(root, 'internalNotes', 'operatorNotes');
+    if (tripNotes !== undefined) next.internalNotes = text(tripNotes);
     if (pick(clientSource, 'notes', 'specialRequirements') !== undefined) {
       next.groupConditions = { ...next.groupConditions, notes: text(pick(clientSource, 'notes', 'specialRequirements')) };
     }
@@ -476,16 +515,42 @@ export function applyTripJson(
     changed.push(`${incoming.length} programme item(s)`);
   }
 
-  if ((modeAllowed(scope, 'timeline') || modeAllowed(scope, 'programme') || scope === 'all') &&
-      (record(pick(root, 'dayTitles', 'dailyTitles', 'dayNames')) || (itineraryObject && record(pick(itineraryObject, 'dayTitles', 'dailyTitles', 'dayNames'))))) {
+  if (modeAllowed(scope, 'timeline') || modeAllowed(scope, 'programme') || scope === 'all') {
     const titles = record(pick(root, 'dayTitles', 'dailyTitles', 'dayNames')) || record(pick(itineraryObject, 'dayTitles', 'dailyTitles', 'dayNames')) || {};
     const normalized: Record<number, string> = { ...(next.dayTitles || {}) };
     for (const [day, titleValue] of Object.entries(titles)) {
       const dayNumber = number(day, 0);
       if (dayNumber > 0 && text(titleValue)) normalized[dayNumber] = text(titleValue);
     }
-    next.dayTitles = normalized;
-    changed.push('day titles');
+    for (const [dayNumber, titleValue] of dayTitleEntries) normalized[dayNumber] = titleValue;
+    if (Object.keys(normalized).length > 0) {
+      next.dayTitles = normalized;
+      changed.push('day titles');
+    }
+  }
+
+  const sourceValue = pick(root, 'source', 'bookingSource', 'channel');
+  if (scope === 'all' && sourceValue !== undefined) {
+    const channel = text(sourceValue).toLowerCase();
+    const normalizedSource = channel.includes('agent') || channel.includes('agency') ? 'agent'
+      : channel.includes('referral') || channel.includes('recommend') ? 'referral'
+      : channel.includes('web') || channel.includes('online') ? 'website'
+      : channel.includes('social') ? 'social'
+      : 'direct';
+    next.source = normalizedSource;
+    changed.push('booking source');
+  }
+  const agentSource = record(pick(root, 'agent', 'travelAgent', 'partnerAgency', 'referringAgency'));
+  if (scope === 'all' && agentSource) {
+    next.agent = {
+      ...next.agent,
+      ...(pick(agentSource, 'id', 'agentId') !== undefined ? { id: text(pick(agentSource, 'id', 'agentId')) } : {}),
+      ...(pick(agentSource, 'agencyName', 'agency', 'name', 'company') !== undefined ? { agencyName: text(pick(agentSource, 'agencyName', 'agency', 'name', 'company')) } : {}),
+      ...(pick(agentSource, 'contact', 'contactName', 'representative') !== undefined ? { contact: text(pick(agentSource, 'contact', 'contactName', 'representative')) } : {}),
+      ...(pick(agentSource, 'email', 'agencyEmail') !== undefined ? { email: text(pick(agentSource, 'email', 'agencyEmail')) } : {}),
+      ...(pick(agentSource, 'commission', 'commissionRate') !== undefined ? { comm: text(pick(agentSource, 'commission', 'commissionRate')) } : {}),
+    };
+    changed.push('travel agency details');
   }
 
   const financeSource = record(pick(root, 'finance', 'pricing', 'quote', 'costing'));
