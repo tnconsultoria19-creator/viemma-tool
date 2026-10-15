@@ -69,7 +69,7 @@ export const IntakeView: React.FC<IntakeViewProps> = ({
   const [showModalCountryDD, setShowModalCountryDD] = useState(false);
 
   // Group Hierarchy & Roster View Mode
-  const [viewMode, setViewMode] = useState<'both' | 'hierarchy' | 'cards'>('both');
+  const [viewMode, setViewMode] = useState<'hierarchy' | 'cards'>('hierarchy');
 
   // Change Lead Person Dialog
   const [showChangeLeadModal, setShowChangeLeadModal] = useState(false);
@@ -679,13 +679,13 @@ export const IntakeView: React.FC<IntakeViewProps> = ({
         {/* Top Header Row with Clear Question & Primary + Add Traveller Action */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-gray-100 pb-5">
           <div className="space-y-1">
-            <div className="flex items-center gap-2 text-[11px] uppercase tracking-wider font-bold text-[#D4AF37]">
+            <div className="flex items-center gap-2 text-sm font-semibold text-slate-700">
               <Users size={14} className="text-[#D4AF37]" />
-              <span>WHO IS TRAVELLING?</span>
+              <span>Who is travelling?</span>
             </div>
 
             <div className="flex flex-wrap items-baseline gap-3">
-              <h1 className="text-2xl md:text-3xl font-extrabold tracking-tight text-[#10233F] font-sans">
+              <h1 className="text-2xl md:text-3xl font-semibold tracking-tight text-slate-900 font-sans">
                 {totalTravellers} {totalTravellers === 1 ? 'Traveller' : 'Travellers'}
               </h1>
 
@@ -705,7 +705,7 @@ export const IntakeView: React.FC<IntakeViewProps> = ({
           </div>
 
           {/* Primary Prominent Action: ADD TRAVELLER & QUICK ADD */}
-          <div className="flex flex-wrap items-center gap-2 shrink-0">
+          <div className="flex flex-wrap items-center gap-4 sm:gap-5 shrink-0">
             <button
               type="button"
               onClick={handleOpenAddGuest}
@@ -799,20 +799,13 @@ export const IntakeView: React.FC<IntakeViewProps> = ({
                   )}
 
                   {/* View Mode Switcher */}
-                  <div className="flex items-center gap-3 text-sm text-slate-700">
-                    <button
-                      type="button"
-                      onClick={() => setViewMode('both')}
-                      className={`px-2 py-1 rounded-md transition ${viewMode === 'both' ? 'bg-[#1A3326] text-white' : 'hover:bg-gray-100'}`}
-                    >
-                      All
-                    </button>
+                  <div className="flex items-center gap-5 text-sm text-slate-700">
                     <button
                       type="button"
                       onClick={() => setViewMode('hierarchy')}
                       className={`px-2 py-1 rounded-md transition ${viewMode === 'hierarchy' ? 'bg-[#1A3326] text-white' : 'hover:bg-gray-100'}`}
                     >
-                      Hierarchy List
+                      List
                     </button>
                     <button
                       type="button"
@@ -826,7 +819,7 @@ export const IntakeView: React.FC<IntakeViewProps> = ({
               </div>
 
               {/* Organized Hierarchical Traveller List */}
-              {(viewMode === 'both' || viewMode === 'hierarchy') && (
+              {viewMode === 'hierarchy' && (
                 <div className="space-y-2">
                   <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 pb-1 text-sm text-slate-700">
                     <span>{state.guests.length} travellers · {state.guests.filter(g => g.isLead).length} lead · {state.guests.filter(g => !g.isLead && !g.isProvisional).length} confirmed · {state.guests.filter(g => g.isProvisional).length} provisional</span>
@@ -929,7 +922,7 @@ export const IntakeView: React.FC<IntakeViewProps> = ({
             </div>
 
             {/* EXPANDED CARDS GRID */}
-            {(viewMode === 'both' || viewMode === 'cards') && (
+            {viewMode === 'cards' && (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5">
                 {state.guests.map(g => (
                   <div 
@@ -953,7 +946,7 @@ export const IntakeView: React.FC<IntakeViewProps> = ({
                           </h3>
                         </div>
                         <span className="text-[11px] text-gray-500 block mt-0.5 truncate">
-                          {g.nationality || g.country || 'Global Citizen'}
+                          {g.nationality || g.country || 'Nationality not supplied'}
                         </span>
                       </div>
 
@@ -1398,15 +1391,15 @@ export const IntakeView: React.FC<IntakeViewProps> = ({
               >
                 <option value="half_day_tour">Half-day tour (typically 4–5 hours)</option>
                 <option value="full_day_tour">Full-day tour (typically 8–10 hours)</option>
-                <option value="multi_day_tour">Multi-day tour or holiday package</option>
-                <option value="multi_day_safari">Multi-day safari package</option>
+                <option value="multi_day_tour">Overnight / multi-day tour</option>
+                <option value="multi_day_safari">Multi-day safari tour</option>
                 <option value="private_guided_tour">Private guided tour</option>
                 <option value="scheduled_shared_tour">Scheduled group tour</option>
                 <option value="airport_transfer">Airport transfer (arrival or departure)</option>
                 <option value="point_to_point_transfer">Point-to-point transfer</option>
                 <option value="private_transfer">Private transfer</option>
                 <option value="self_drive_itinerary">Self-drive tour</option>
-                <option value="tailor_made_tour">Tailor-made tour or holiday</option>
+                <option value="tailor_made_tour">Tailor-made tour</option>
               </select>
             </div>
           </div>
@@ -1792,7 +1785,7 @@ export const IntakeView: React.FC<IntakeViewProps> = ({
               {/* EXPANDABLE ADVANCED PROFILE DETAILS */}
               {showAdvancedGuestDetails && (
                 <div className="space-y-4 pt-2 border-t border-gray-100 animate-in fade-in duration-150">
-                  <div className="flex flex-wrap items-center gap-x-8 md:gap-x-12 gap-y-2 border-b border-slate-200 pb-1 text-[13px] font-medium text-slate-600">
+                  <div className="flex flex-nowrap items-center gap-x-6 md:gap-x-9 overflow-x-auto whitespace-nowrap border-b border-slate-200 pb-1 text-sm font-medium text-slate-600">
                     <button
                       type="button"
                       onClick={() => setModalTab('details')}
@@ -1807,7 +1800,7 @@ export const IntakeView: React.FC<IntakeViewProps> = ({
                       className={`shrink-0 pb-3 px-1 border-b-2 transition cursor-pointer flex items-center gap-1.5 ${modalTab === 'audit' ? 'border-[#D4AF37] text-[#1A3326]' : 'border-transparent text-gray-500 hover:text-gray-900'}`}
                     >
                       <ShieldCheck size={12} />
-                      <span>Readiness</span>
+                      <span>Readiness Audit</span>
                       {(!modalGuest.passportNo || modalGuest.isProvisional) && (
                         <span className="w-1.5 h-1.5 rounded-full bg-rose-500" />
                       )}
@@ -2583,7 +2576,7 @@ export const IntakeView: React.FC<IntakeViewProps> = ({
                       </div>
                       <div>
                         <span className="font-bold text-[#10233F] block">{g.first} {g.last}</span>
-                        <span className="text-[11px] text-gray-500">{g.nationality || g.country || 'Global Citizen'} • {g.age}</span>
+                        <span className="text-[11px] text-gray-500">{g.nationality || g.country || 'Nationality not supplied'} • {g.age}</span>
                       </div>
                     </div>
                     {g.isLead ? (
