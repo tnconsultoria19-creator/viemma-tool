@@ -75,12 +75,12 @@ export const FinanceView: React.FC<FinanceViewProps> = ({
     <div className="space-y-12 max-w-[1500px] mx-auto animate-in fade-in duration-500">
       
       {/* Header section with generous breathing room */}
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 p-5 md:p-6 bg-white/95 backdrop-blur-md border border-white/80 rounded-2xl shadow-sm">
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 p-5 md:p-6 bg-white border border-slate-200 rounded-md">
         <div className="space-y-2">
           <span className="text-xs uppercase tracking-[0.2em] font-bold text-[#8A6A00] flex items-center gap-2">
-            <Sparkles size={14} /> Stripe-Powered Financial System
+            <Sparkles size={14} /> Pricing and finance
           </span>
-          <h1 className="text-3xl font-bold tracking-tight text-[#10233F] font-sans">Finance Workspace</h1>
+          <h1 className="text-3xl font-bold tracking-tight text-[#10233F] font-sans">Trip costing</h1>
           <p className="text-slate-600 max-w-2xl text-sm leading-relaxed">
             Manage margins, partner agency commission rules, exchange rate registrations, and multi-currency billing structures in Southern Africa.
           </p>
@@ -98,7 +98,7 @@ export const FinanceView: React.FC<FinanceViewProps> = ({
         </div>
       </div>
 
-      {/* Modern SaaS Grand Retail Proposal & Performance Card */}
+      {/* Modern SaaS Client selling price & Performance Card */}
       <div className="bg-[#1A3326] text-white rounded-3xl p-8 md:p-10 shadow-xl relative overflow-hidden flex flex-col lg:flex-row lg:items-center justify-between gap-8">
         {/* Ambient glow accent */}
         <div className="absolute right-0 top-0 w-96 h-96 bg-yellow-500/10 rounded-full blur-3xl pointer-events-none"></div>
@@ -116,7 +116,7 @@ export const FinanceView: React.FC<FinanceViewProps> = ({
             </span>
           </h2>
           <p className="text-sm text-gray-300 leading-relaxed">
-            This total factors in the primary operating cost, target margin markups, gate surcharges, active discounts, and incident buffers.
+            Calculated from supplier costs, markup, commission, discounts and contingency.
           </p>
         </div>
 
