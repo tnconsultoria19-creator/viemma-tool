@@ -160,9 +160,9 @@ export const DailyTimelinesView: React.FC<DailyTimelinesViewProps> = ({ state, o
             <div className="p-2 rounded-xl bg-emerald-50 text-emerald-800">
               <Calendar size={20} />
             </div>
-            <h1 className="text-xl font-bold font-serif text-[#1A3326]">Internal Daily Timelines & Operations</h1>
+            <h1 className="text-xl font-bold font-sans text-[#1A3326]">Daily timeline</h1>
           </div>
-          <p className="text-xs text-gray-500 mt-1">Real-time operational planning view tracking transfers, flights, drivers, and schedule changes.</p>
+          <p className="text-xs text-gray-500 mt-1">Review the day’s transfers, flights, drivers and activity times.</p>
         </div>
         
         <div className="flex items-center gap-3">
@@ -228,7 +228,7 @@ export const DailyTimelinesView: React.FC<DailyTimelinesViewProps> = ({ state, o
 
       {/* Timeline Stream */}
       {filteredItems.length === 0 ? (
-        <div className="bg-white rounded-3xl p-12 border border-gray-100 shadow-xs text-center space-y-3">
+        <div className="bg-white rounded-md p-12 border border-gray-100 shadow-xs text-center space-y-3">
           <div className="w-16 h-16 rounded-2xl bg-emerald-50 text-emerald-800 flex items-center justify-center mx-auto">
             <Calendar size={28} />
           </div>
