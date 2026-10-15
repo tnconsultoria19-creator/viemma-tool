@@ -137,15 +137,15 @@ export const TripsDashboardView: React.FC<TripsDashboardViewProps> = ({
     <div className="space-y-8 animate-in fade-in duration-300 pb-20">
       
       {/* Top Banner / Welcome */}
-      <div className="bg-gradient-to-br from-[#1A3326] to-[#0D1E16] text-white rounded-[28px] p-8 md:p-10 shadow-xl border border-white/10 relative overflow-hidden">
-        <div className="absolute top-0 right-0 w-96 h-96 bg-[#D4AF37]/10 rounded-full blur-3xl pointer-events-none -mr-20 -mt-20" />
+      <div className="bg-[#1A3326] text-white rounded-md p-6 md:p-8 border border-[#1A3326] relative overflow-hidden">
+        <div className="absolute top-0 right-0 w-96 h-96 bg-[#D4AF37]/10 rounded-full pointer-events-none -mr-20 -mt-20" />
         
         <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div className="space-y-2">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 text-[#D4AF37] text-xs font-bold tracking-widest uppercase border border-white/10">
-              <Sparkles size={12} /> Operations Command Center
+              <Briefcase size={12} /> Operations Command Center
             </div>
-            <h1 className="text-3xl md:text-4xl font-serif font-black tracking-tight">
+            <h1 className="text-3xl md:text-4xl font-sans font-black tracking-tight">
               Master Trip Dossiers
             </h1>
             <p className="text-gray-300 text-sm max-w-xl">
