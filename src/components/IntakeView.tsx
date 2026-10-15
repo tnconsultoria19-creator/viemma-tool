@@ -671,10 +671,10 @@ export const IntakeView: React.FC<IntakeViewProps> = ({
   const hasTransfers = state.transfers.length > 0;
 
   return (
-    <div className="space-y-6 max-w-[1500px] mx-auto animate-in fade-in duration-300 pb-12">
+    <div className="space-y-5 max-w-[1380px] mx-auto pb-12 text-slate-900">
       
       {/* 1. PRIMARY SECTION (TOP VISUAL HIERARCHY): WHO IS TRAVELLING? */}
-      <section className="bg-white rounded-2xl border border-gray-200 p-6 md:p-8 shadow-xs space-y-6">
+      <section className="bg-white rounded-md border border-slate-200 p-5 md:p-6 space-y-5">
         
         {/* Top Header Row with Clear Question & Primary + Add Traveller Action */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-gray-100 pb-5">
@@ -709,40 +709,30 @@ export const IntakeView: React.FC<IntakeViewProps> = ({
             <button
               type="button"
               onClick={handleOpenAddGuest}
-              className="px-5 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs md:text-sm font-extrabold shadow-sm hover:shadow-md transition flex items-center gap-2 cursor-pointer"
+              className="px-4 py-2.5 rounded-md bg-emerald-700 hover:bg-emerald-800 text-white text-sm font-semibold transition flex items-center gap-2 cursor-pointer"
             >
               <Plus size={18} strokeWidth={2.6} />
-              <span>Add Named Traveller</span>
+              <span>Add traveller</span>
             </button>
 
             <button
               type="button"
               onClick={() => setQuickAddOpen(true)}
-              className="px-4 py-3 rounded-xl bg-amber-50 hover:bg-amber-100 text-[#1A3326] border border-amber-300 text-xs md:text-sm font-bold transition flex items-center gap-2 cursor-pointer"
+              className="px-3.5 py-2.5 rounded-md bg-white hover:bg-slate-50 text-slate-800 border border-slate-300 text-sm font-medium transition flex items-center gap-2 cursor-pointer"
               title="Quick Add travellers by quantities (Adults, Elderly, Children, Infants)"
             >
               <Users size={16} className="text-amber-700" />
-              <span>Quick Add (Quantities)</span>
+              <span>Add by number</span>
             </button>
 
-            {onOpenAIImport && (
-              <button
-                type="button"
-                onClick={onOpenAIImport}
-                className="px-4 py-3 rounded-xl bg-[#1A3326] hover:bg-[#234433] text-white text-xs font-bold transition shadow-sm flex items-center gap-2 cursor-pointer"
-                title="Import full itinerary or client details from ChatGPT / Claude / Gemini JSON"
-              >
-                <Sparkles size={16} className="text-[#D4AF37]" />
-                <span className="hidden sm:inline">AI Import</span>
-              </button>
-            )}
+
 
             {/* Secondary Preset Templates (not competing) */}
             <div className="relative">
               <button
                 type="button"
                 onClick={() => setShowPresetsMenu(!showPresetsMenu)}
-                className="px-3.5 py-3 rounded-xl border border-gray-200 hover:border-gray-300 text-gray-600 hover:text-gray-900 bg-gray-50 text-xs font-semibold transition"
+                className="px-3.5 py-2.5 rounded-md border border-slate-300 hover:bg-slate-50 text-slate-700 text-sm font-medium transition"
                 title="Populate test party presets"
               >
                 Quick Presets
@@ -763,8 +753,8 @@ export const IntakeView: React.FC<IntakeViewProps> = ({
 
         {/* TRAVELLER ROSTER (Dominant visual content on first screen!) */}
         {totalTravellers === 0 ? (
-          <div className="text-center py-14 px-4 bg-slate-50/70 border-2 border-dashed border-gray-200 rounded-2xl space-y-3">
-            <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center mx-auto shadow-xs text-gray-400">
+          <div className="text-center py-10 px-4 bg-white border border-slate-200 rounded-md space-y-3">
+            <div className="text-slate-500 flex items-center justify-center mx-auto">
               <Users size={24} />
             </div>
             <div>
@@ -777,31 +767,21 @@ export const IntakeView: React.FC<IntakeViewProps> = ({
         ) : (
           <div className="space-y-6">
             {/* GROUP HIERARCHY & STRUCTURE PANEL (MASTER DIRECTIVE SECTION 2.B) */}
-            <div className="bg-slate-50 border border-slate-200 rounded-2xl p-5 md:p-6 space-y-4 shadow-2xs">
+            <div className="bg-white border border-slate-200 rounded-md p-4 md:p-5 space-y-4">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-200">
                 <div>
                   <div className="flex items-center gap-2">
-                    <span className="px-2.5 py-0.5 bg-[#1A3326] text-[#D4AF37] text-xs font-black tracking-widest rounded-md uppercase font-mono">
+                    <span className="text-xs font-mono font-semibold text-slate-600">
                       Trip {state.ref || 'VT-2026-001'}
                     </span>
-                    <span className="text-xs font-bold text-gray-500">
-                      • Group Structure & Operational Roster
+                    <span className="text-sm text-slate-600">
+                      Traveller list
                     </span>
                   </div>
-                  <h2 className="text-lg md:text-xl font-black text-[#10233F] mt-1 flex flex-wrap items-center gap-2">
-                    <span>Lead person:</span>
-                    <span className="text-[#1A3326] underline decoration-[#D4AF37] decoration-2">
-                      {leadGuest ? `${leadGuest.first} ${leadGuest.last}` : (state.client.name || 'Primary Representative')}
-                    </span>
-                    {leadGuest?.isProvisional ? (
-                      <span className="text-[10px] bg-amber-100 text-amber-800 font-bold px-2 py-0.5 rounded-full border border-amber-300">
-                        Provisional Contact
-                      </span>
-                    ) : (
-                      <span className="text-[10px] bg-emerald-100 text-emerald-800 font-bold px-2 py-0.5 rounded-full border border-emerald-300">
-                        Confirmed Contact
-                      </span>
-                    )}
+                  <h2 className="text-lg md:text-xl font-semibold text-slate-900 mt-1 flex flex-wrap items-center gap-2">
+                    <span>Lead traveller:</span>
+                    <span>{leadGuest ? `${leadGuest.first} ${leadGuest.last}` : (state.client.name || 'Not selected')}</span>
+                    {leadGuest?.isProvisional && <span className="text-xs font-normal text-amber-800">Name to be confirmed</span>}
                   </h2>
                 </div>
 
@@ -810,7 +790,7 @@ export const IntakeView: React.FC<IntakeViewProps> = ({
                     <button
                       type="button"
                       onClick={() => setShowChangeLeadModal(true)}
-                      className="px-3 py-1.5 rounded-lg border border-amber-300 bg-amber-50 hover:bg-amber-100 text-amber-900 text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-2xs"
+                      className="px-3 py-2 rounded-md border border-slate-300 bg-white hover:bg-slate-50 text-slate-800 text-sm font-medium transition flex items-center gap-1.5 cursor-pointer"
                       title="Change the group lead person safely while preserving all other travellers"
                     >
                       <Crown size={14} className="text-amber-600" />
@@ -819,7 +799,7 @@ export const IntakeView: React.FC<IntakeViewProps> = ({
                   )}
 
                   {/* View Mode Switcher */}
-                  <div className="flex items-center bg-white border border-gray-200 rounded-lg p-0.5 text-xs font-bold text-gray-600">
+                  <div className="flex items-center gap-3 text-sm text-slate-700">
                     <button
                       type="button"
                       onClick={() => setViewMode('both')}
@@ -853,7 +833,7 @@ export const IntakeView: React.FC<IntakeViewProps> = ({
                     <span className="text-[10px] text-gray-400">Edit details or check documents.</span>
                   </div>
 
-                  <div className="bg-white border border-slate-200 rounded-xl divide-y divide-slate-100 overflow-hidden shadow-2xs">
+                  <div className="bg-white border-t border-slate-200 divide-y divide-slate-100 overflow-hidden">
                     {state.guests.map((g, index) => {
                       // Check missing operational items
                       const missingItems: string[] = [];
@@ -871,46 +851,20 @@ export const IntakeView: React.FC<IntakeViewProps> = ({
                       return (
                         <div 
                           key={g.id}
-                          className={`p-3.5 flex flex-col md:flex-row md:items-center justify-between gap-3 transition-colors ${
-                            g.isLead 
-                              ? 'bg-amber-50/30 hover:bg-amber-50/50' 
-                              : 'hover:bg-slate-50/80'
-                          }`}
+                          className="px-3 py-4 flex flex-col md:flex-row md:items-center justify-between gap-x-6 gap-y-3 hover:bg-slate-50"
                         >
                           <div className="flex items-center gap-3 min-w-0">
                             <span className="text-xs font-mono font-bold text-gray-400 w-5 text-right shrink-0">
                               {index + 1}.
                             </span>
 
-                            <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 font-bold text-xs shadow-2xs border ${
-                              g.isLead 
-                                ? 'bg-[#1A3326] text-[#D4AF37] border-[#D4AF37]' 
-                                : g.isProvisional 
-                                  ? 'bg-amber-100 text-amber-800 border-amber-300' 
-                                  : 'bg-emerald-100 text-emerald-800 border-emerald-300'
-                            }`}>
-                              {g.isLead ? '★' : (g.first[0] || 'T')}
-                            </div>
-
                             <div className="min-w-0">
                               <div className="flex flex-wrap items-center gap-2">
                                 <span className="font-bold text-sm text-[#10233F]">
                                   {g.first} {g.last}
                                 </span>
-                                <span className="text-gray-400 text-xs">—</span>
-                                <span className={`text-xs font-semibold px-2 py-0.5 rounded-md border ${
-                                  g.isLead 
-                                    ? 'bg-yellow-100 text-yellow-900 border-yellow-300 font-bold' 
-                                    : g.isProvisional 
-                                      ? 'bg-amber-50 text-amber-800 border-amber-200' 
-                                      : 'bg-emerald-50 text-emerald-800 border-emerald-200'
-                                }`}>
-                                  {g.isLead ? 'Lead traveller' : g.isProvisional ? 'Provisional traveller' : 'Confirmed traveller'}
-                                </span>
-
-                                <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider bg-gray-100 px-1.5 py-0.5 rounded">
-                                  {g.age || 'Adult'}
-                                </span>
+                                <span className="text-xs text-slate-500">{g.isLead ? 'Lead traveller' : g.isProvisional ? 'Provisional traveller' : 'Traveller'}</span>
+                                <span className="text-xs text-slate-500">{g.age || 'Adult'}</span>
 
                                 {g.relationshipToLead && !g.isLead && (
                                   <span className="text-[11px] text-gray-500">
@@ -919,20 +873,9 @@ export const IntakeView: React.FC<IntakeViewProps> = ({
                                 )}
                               </div>
 
-                              {/* Missing Info / Confirmed Badges */}
-                              <div className="flex flex-wrap items-center gap-1.5 mt-1">
-                                {missingItems.length > 0 ? (
-                                  missingItems.map(item => (
-                                    <span key={item} className="text-[10px] font-semibold text-rose-700 bg-rose-50 border border-rose-200 px-1.5 py-0.2 rounded">
-                                      ⚠️ {item}
-                                    </span>
-                                  ))
-                                ) : (
-                                  <span className="text-[10px] font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 px-1.5 py-0.2 rounded">
-                                    ✓ Profile Complete
-                                  </span>
-                                )}
-                              </div>
+                              <p className={`mt-1 text-xs ${missingItems.length ? 'text-rose-700' : 'text-slate-500'}`}>
+                                {missingItems.length ? `Needs attention: ${missingItems.join(' · ')}` : 'Profile details entered'}
+                              </p>
                             </div>
                           </div>
 
@@ -941,7 +884,7 @@ export const IntakeView: React.FC<IntakeViewProps> = ({
                             <button
                               type="button"
                               onClick={() => handleOpenEditGuest(g, 'details')}
-                              className="px-3 py-1.5 text-xs font-bold rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-800 transition cursor-pointer"
+                              className="px-3 py-2 text-sm font-medium rounded-md bg-white hover:bg-slate-100 text-slate-800 border border-slate-300 transition cursor-pointer"
                             >
                               {g.isProvisional ? 'Name Person / Edit' : 'Edit Profile'}
                             </button>
@@ -951,7 +894,7 @@ export const IntakeView: React.FC<IntakeViewProps> = ({
                             <button
                               type="button"
                               onClick={() => handleOpenEditGuest(g, 'audit')}
-                              className="px-2.5 py-1.5 text-xs font-semibold rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 transition cursor-pointer"
+                              className="px-3 py-2 text-sm font-medium rounded-md bg-white hover:bg-slate-100 text-slate-800 border border-slate-300 transition cursor-pointer"
                               title="Check missing information and operational readiness"
                             >
                               Audit
@@ -961,7 +904,7 @@ export const IntakeView: React.FC<IntakeViewProps> = ({
                               <button
                                 type="button"
                                 onClick={() => onSetLeadGuest(g.id)}
-                                className="px-2.5 py-1.5 text-xs font-semibold rounded-lg text-amber-700 hover:bg-amber-50 border border-amber-200 transition cursor-pointer"
+                                className="px-3 py-2 text-sm font-medium rounded-md text-slate-700 hover:bg-slate-50 border border-slate-300 transition cursor-pointer"
                                 title="Make this person the group lead"
                               >
                                 Make Lead
@@ -1067,14 +1010,7 @@ export const IntakeView: React.FC<IntakeViewProps> = ({
                         >
                           {g.isProvisional ? 'Name Person' : 'Edit'}
                         </button>
-                        <span className="text-gray-200">|</span>
-                        <button
-                          type="button"
-                          onClick={() => handleOpenEditGuest(g, 'assignments')}
-                          className="text-blue-600 hover:text-blue-800 font-semibold text-[11px] cursor-pointer"
-                        >
-                          Services
-                        </button>
+
                         <span className="text-gray-200">|</span>
                         <button
                           type="button"
