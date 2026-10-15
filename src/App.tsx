@@ -126,7 +126,7 @@ export const INITIAL_STATE: AppState = {
   internalNotes: '',
   namedGroups: [],
   dayTitles: {},
-  welcomePlacard: { showAgencyName: true, agencyName: 'Viemma Tours', guestName: '' },
+  welcomePlacard: { showAgencyName: true, agencyName: 'Vema Tours', guestName: '' },
   publishing: {
     tripId: 'VT-2026-1048',
     publicUrl: 'https://portal.viemmatours.com/trip/VT-2026-1048',
@@ -569,8 +569,8 @@ export default function App() {
     { id: 'home', label: 'Home', icon: <Home size={15} /> },
     { id: 'guests', label: 'Clients', icon: <Users size={15} /> },
     { id: 'flights', label: 'Flights', icon: <Plane size={15} /> },
-    { id: 'transfers', label: 'Transfers', icon: <Car size={15} /> },
-    { id: 'rooming', label: 'Hotels', icon: <Hotel size={15} /> },
+    { id: 'transfers', label: 'Transfer', icon: <Car size={15} /> },
+    { id: 'rooming', label: 'Hotel', icon: <Hotel size={15} /> },
     { id: 'activities', label: 'Programme', icon: <Route size={15} /> },
     { id: 'timelines', label: 'Timeline', icon: <Calendar size={15} /> },
     { id: 'trips', label: 'Trips Portfolio', icon: <Briefcase size={15} /> },
@@ -1464,23 +1464,23 @@ export default function App() {
           </div>
 
           {/* CENTER: Navigation [HOME] [CLIENTS] [FLIGHTS] [HOTELS] [FINANCE] [ANALYTICS] */}
-          <div className="hidden xl:flex flex-1 items-center justify-start gap-1 lg:gap-1.5 xl:gap-2 h-full min-w-0">
+          <div className="hidden xl:flex flex-1 items-center justify-start gap-3 h-full min-w-0">
             {!isClientView && (
-              <nav className="flex items-center justify-start gap-1 lg:gap-1.5 xl:gap-2 h-full">
+              <nav className="flex items-center justify-start gap-3 h-full">
                 {/* Primary Navigation Tabs */}
                 {[
                   { id: 'home', label: 'Home', icon: <Home size={14} /> },
                   { id: 'guests', label: 'Clients', icon: <Users size={14} /> },
                   { id: 'flights', label: 'Flights', icon: <Plane size={14} /> },
-                  { id: 'transfers', label: 'Transfers', icon: <Car size={14} /> },
-                  { id: 'rooming', label: 'Hotels', icon: <Hotel size={14} /> },
+                  { id: 'transfers', label: 'Transfer', icon: <Car size={14} /> },
+                  { id: 'rooming', label: 'Hotel', icon: <Hotel size={14} /> },
                   { id: 'activities', label: 'Programme', icon: <Route size={14} /> },
                   { id: 'timelines', label: 'Timeline', icon: <Calendar size={14} /> },
                 ].map(tab => (
                   <button
                     key={tab.id}
                     onClick={() => setActiveTab(tab.id)}
-                    className={`h-9 px-2.5 xl:px-3 rounded-lg relative flex items-center gap-1.5 text-xs font-bold tracking-wide transition-all focus-visible:ring-2 focus-visible:ring-[#D4AF37] focus:outline-none hover:scale-105 active:scale-95 shrink-0 ${
+                    className={`h-9 px-3 rounded-md relative flex items-center gap-2 text-sm font-medium transition-colors focus-visible:ring-2 focus-visible:ring-[#D4AF37] focus:outline-none shrink-0 ${
                       activeTab === tab.id 
                         ? 'text-white font-black bg-white/10' 
                         : 'text-gray-300 hover:text-white hover:bg-white/5'
