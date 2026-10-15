@@ -126,7 +126,7 @@ export const INITIAL_STATE: AppState = {
   internalNotes: '',
   namedGroups: [],
   dayTitles: {},
-  welcomePlacard: { showAgencyName: true, agencyName: 'Viemma Tours', guestName: '' },
+  welcomePlacard: { showAgencyName: true, agencyName: 'Vema Tours', guestName: '' },
   publishing: {
     tripId: 'VT-2026-1048',
     publicUrl: 'https://portal.viemmatours.com/trip/VT-2026-1048',
