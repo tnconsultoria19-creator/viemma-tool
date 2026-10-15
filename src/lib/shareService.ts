@@ -420,7 +420,7 @@ export function buildClientProjection(trip: AppState, token: string): ClientShar
   const paymentRate = finance.paymentMethod === 'visa' || finance.paymentMethod === 'master' ? 0.025 : finance.paymentMethod === 'amex' ? 0.038 : 0;
   const retailTotalZAR = Math.max(0, totalCost + margin + finance.buffer + totalCost * paymentRate - finance.discount);
   const requestedCurrency = (clientSettings.currency || finance.currency || 'ZAR').toUpperCase();
-  const pricingCurrency = (['ZAR', 'USD', 'EUR', 'BRL'].includes(requestedCurrency) ? requestedCurrency : 'ZAR') as 'ZAR' | 'USD' | 'EUR' | 'BRL';
+  const pricingCurrency = (['ZAR', 'USD', 'EUR', 'BRL', 'AOA'].includes(requestedCurrency) ? requestedCurrency : 'ZAR') as 'ZAR' | 'USD' | 'EUR' | 'BRL' | 'AOA';
   const configuredRate = pricingCurrency === 'ZAR' ? 1 : Number(finance.rates?.[pricingCurrency]);
   if (clientSettings.showPricing !== false && pricingCurrency !== 'ZAR' &&
       (!Number.isFinite(configuredRate) || configuredRate <= 0)) {
