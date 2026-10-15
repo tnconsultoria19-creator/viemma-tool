@@ -674,7 +674,7 @@ export function applyTripJson(
 
   const placard = record(pick(root, 'welcomePlacard', 'pickupSign', 'welcomeSign'));
   if (placard && (scope === 'all' || scope === 'transfers')) {
-    const current = next.welcomePlacard || { showAgencyName: true, agencyName: 'Viemma Tours', guestName: '' };
+    const current = next.welcomePlacard || { showAgencyName: true, agencyName: 'Vema Tours', guestName: '' };
     next.welcomePlacard = {
       ...current,
       ...(pick(placard, 'showAgencyName', 'showBrand') !== undefined ? { showAgencyName: Boolean(pick(placard, 'showAgencyName', 'showBrand')) } : {}),
