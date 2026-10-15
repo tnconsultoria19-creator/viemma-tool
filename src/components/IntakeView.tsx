@@ -64,7 +64,7 @@ export const IntakeView: React.FC<IntakeViewProps> = ({
   const [modalOpen, setModalOpen] = useState(false);
   const [modalGuest, setModalGuest] = useState<Partial<Guest>>({});
   const [showAdvancedGuestDetails, setShowAdvancedGuestDetails] = useState(false);
-  const [modalTab, setModalTab] = useState<'details' | 'audit' | 'dietary' | 'accessibility' | 'preferences' | 'documents'> ('details');
+  const [modalTab, setModalTab] = useState<'details' | 'audit' | 'dietary' | 'accessibility' | 'preferences' | 'documents'>('details');
   const [modalCountrySearch, setModalCountrySearch] = useState('');
   const [showModalCountryDD, setShowModalCountryDD] = useState(false);
 
