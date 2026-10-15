@@ -100,6 +100,16 @@ function sourceArray(root: AnyRecord, ...names: string[]): AnyRecord[] | undefin
   return undefined;
 }
 
+function sourceRecords(root: AnyRecord, arrayNames: string[], singleNames: string[] = []): AnyRecord[] | undefined {
+  const arrays = sourceArray(root, ...arrayNames);
+  if (arrays) return arrays;
+  for (const name of singleNames) {
+    const single = record(pick(root, name));
+    if (single) return [single];
+  }
+  return undefined;
+}
+
 function buildGuest(source: AnyRecord, existing: Guest | undefined, index: number, seed: number): Guest {
   const [first, last] = firstLast(source);
   const ageRaw = text(pick(source, 'ageCategory', 'ageGroup', 'age'), existing?.age || 'Adult').toLowerCase();
@@ -390,13 +400,13 @@ export function applyTripJson(
   const seed = Date.now();
   const clientSource = record(pick(root, 'client', 'customer', 'lead', 'primaryContact', 'clientDetails')) ||
     (pick(root, 'clientName', 'guestName', 'contactName') !== undefined ? root : null);
-  const travellerSources = sourceArray(root, 'travellers', 'travelers', 'guests', 'passengers', 'tourParty');
-  const flightSources = sourceArray(root, 'flights', 'flightDetails', 'airTravel');
-  const driverSources = sourceArray(root, 'drivers', 'driverDetails', 'tourDrivers');
-  const vehicleSources = sourceArray(root, 'vehicles', 'fleet', 'vehicleRegister');
-  const transferSources = sourceArray(root, 'transfers', 'groundTransfers', 'transport');
-  const roomSources = sourceArray(root, 'rooms', 'hotels', 'accommodations', 'stays', 'hotelBookings');
-  let activitySources = sourceArray(root, 'activities', 'programme', 'program', 'dayTours', 'experiences');
+  const travellerSources = sourceRecords(root, ['travellers', 'travelers', 'guests', 'passengers', 'tourParty'], ['traveller', 'traveler', 'passenger']);
+  const flightSources = sourceRecords(root, ['flights', 'flightDetails', 'airTravel'], ['flight', 'flightDetail', 'airSegment']);
+  const driverSources = sourceRecords(root, ['drivers', 'driverDetails', 'tourDrivers'], ['driver', 'tourDriver']);
+  const vehicleSources = sourceRecords(root, ['vehicles', 'fleet', 'vehicleRegister'], ['vehicle', 'fleetVehicle']);
+  const transferSources = sourceRecords(root, ['transfers', 'groundTransfers', 'transport'], ['transfer', 'groundTransfer', 'airportTransfer']);
+  const roomSources = sourceRecords(root, ['rooms', 'hotels', 'accommodations', 'stays', 'hotelBookings'], ['room', 'hotel', 'accommodation', 'stay']);
+  let activitySources = sourceRecords(root, ['activities', 'programme', 'program', 'dayTours', 'experiences'], ['activity', 'dayTour', 'experience', 'tour']);
   const itineraryValue = pick(root, 'itinerary', 'dailyItinerary', 'dailyPlan', 'dailyProgramme', 'dailyProgram');
   const itineraryObject = record(itineraryValue);
   let dayTitleEntries: Array<[number, string]> = [];
