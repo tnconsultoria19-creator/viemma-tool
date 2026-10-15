@@ -53,6 +53,7 @@ export const ClientView: React.FC<Props> = ({ state: rawState, onBackToWorkspace
   const [isVideoModalOpen, setIsVideoModalOpen] = useState<boolean>(false);
   const [chatMessage, setChatMessage] = useState<string>('');
   const [chatSent, setChatSent] = useState<boolean>(false);
+  const [chatError, setChatError] = useState<string | null>(null);
 
   // Full-screen Image Lightbox State
   const [lightboxOpen, setLightboxOpen] = useState<boolean>(false);
@@ -228,20 +229,26 @@ export const ClientView: React.FC<Props> = ({ state: rawState, onBackToWorkspace
     return () => clearInterval(timer);
   }, [heroSlides.length]);
 
-  const consultantName = state.consultant || 'Elena Rostova';
-  const consultantRole = state.consultantRole || 'Senior Private Travel Designer';
-  const consultantPhone = state.consultantPhone || '+27 21 555 0199';
-  const consultantEmail = state.consultantEmail || 'concierge@viemmatours.com';
-  const consultantAvatar = state.consultantAvatar || 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?q=80&w=400&auto=format&fit=crop';
+  const consultantName = state.consultant?.trim() || 'Viemma Tours';
+  const consultantRole = state.consultantRole?.trim() || 'Travel Concierge';
+  const consultantPhone = state.consultantPhone?.trim() || '';
+  const consultantEmail = state.consultantEmail?.trim() || '';
+  const consultantAvatar = state.consultantAvatar?.trim() || '';
 
   const handleSendConciergeChat = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!chatMessage.trim()) return;
+    const message = chatMessage.trim();
+    if (!message) return;
+    setChatError(null);
+    if (!consultantEmail) {
+      setChatError('Direct email is not configured for this itinerary. Please use the contact details provided by Viemma Tours.');
+      return;
+    }
+    const subject = encodeURIComponent(`Itinerary request — ${state.title || state.ref}`);
+    const body = encodeURIComponent(`Trip: ${state.title || state.ref}\nClient: ${state.client?.name || 'Client'}\n\nRequest:\n${message}`);
+    window.location.href = `mailto:${consultantEmail}?subject=${subject}&body=${body}`;
     setChatSent(true);
-    setTimeout(() => {
-      setChatMessage('');
-      setChatSent(false);
-    }, 4000);
+    setChatMessage('');
   };
 
   const scrollToSection = (id: string) => {
@@ -972,7 +979,7 @@ export const ClientView: React.FC<Props> = ({ state: rawState, onBackToWorkspace
                     <Shield size={16} />
                   </div>
                   <div>
-                    <h5 className="font-serif font-bold text-gray-900 text-sm">24/7 VIP Concierge</h5>
+                    <h5 className="font-serif font-bold text-gray-900 text-sm">Contact Viemma Tours</h5>
                     <p className="text-[10px] text-gray-500">{consultantName}</p>
                   </div>
                 </div>
@@ -1131,7 +1138,7 @@ export const ClientView: React.FC<Props> = ({ state: rawState, onBackToWorkspace
               className="w-full p-4 text-left flex items-center justify-between font-serif font-bold text-gray-900 text-sm hover:bg-gray-50 transition"
             >
               <span className="flex items-center gap-2">
-                <Shield size={16} className="text-[#D4AF37]" /> 24/7 Emergency & VIP Hotline
+                <Shield size={16} className="text-[#D4AF37]" /> Concierge & Emergency Contact
               </span>
               <ChevronDown size={16} className={`transition-transform duration-200 ${expandedInfo.emergency ? 'rotate-180' : ''}`} />
             </button>
