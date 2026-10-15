@@ -123,7 +123,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
       <div className="space-y-3">
         <div className="flex items-center justify-between">
           <h2 className="text-xs uppercase tracking-[0.15em] font-bold text-[#1A3326] flex items-center gap-1.5">
-            <Sparkles size={13} className="text-[#D4AF37]" /> Workspace
+            Workspace
           </h2>
         </div>
 
