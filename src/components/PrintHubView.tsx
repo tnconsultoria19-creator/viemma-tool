@@ -1118,7 +1118,7 @@ export const PrintHubView: React.FC<PrintHubViewProps> = (props) => {
             {/* MODE 2: DRIVER PICKUP BOARD (Public-Safe, Zero Financials) */}
             {mode === 'driver-pickup-board' && (
               <article
-                className="viemma-pdf-page bg-white text-slate-900 border border-slate-300 mx-auto flex flex-col justify-between"
+                className="viemma-pdf-page viemma-welcome-placard bg-white text-slate-900 border border-slate-300 mx-auto flex flex-col justify-between"
                 style={{ width: '297mm', minHeight: '210mm', padding: '13mm 15mm' }}
               >
                 <header className="flex items-start justify-between border-b border-slate-300 pb-3">
