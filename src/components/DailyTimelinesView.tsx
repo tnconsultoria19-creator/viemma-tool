@@ -154,7 +154,7 @@ export const DailyTimelinesView: React.FC<DailyTimelinesViewProps> = ({ state, o
   return (
     <div className="w-full max-w-[1400px] mx-auto space-y-6 pb-20 animate-in fade-in">
       {/* Header bar */}
-      <div className="bg-white rounded-2xl p-6 border border-gray-100 shadow-xs flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+      <div className="bg-white rounded-md p-5 border border-slate-200 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-2">
             <div className="p-2 rounded-xl bg-emerald-50 text-emerald-800">
@@ -179,9 +179,9 @@ export const DailyTimelinesView: React.FC<DailyTimelinesViewProps> = ({ state, o
       </div>
 
       {/* Filter Tabs */}
-      <div className="bg-white rounded-2xl p-4 border border-gray-100 shadow-xs flex flex-wrap items-center justify-between gap-4">
+      <div className="bg-white rounded-md p-4 border border-slate-200 flex flex-wrap items-center justify-between gap-4">
         <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0">
-          {(['ALL', 'TRANSFERS', 'FLIGHTS', 'ACTIVITIES', 'HOTELS'] as const).map((tab) => (
+          {(['All', 'Transfers', 'Flights', 'Activities', 'Hotels'] as const).map((tab) => (
             <button
               key={tab}
               onClick={() => setFilterType(tab)}
