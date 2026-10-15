@@ -356,7 +356,8 @@ export const PrintHubView: React.FC<PrintHubViewProps> = (props) => {
     const processingFee = totalCost * processingRate;
     const commission = finance.commType === '%' ? (totalCost + markup) * finance.comm / 100 : finance.comm;
     const sellingPrice = Math.max(0, totalCost + markup + finance.buffer + processingFee - finance.discount);
-    const netProfit = Math.max(0, markup + finance.buffer + processingFee - finance.discount - commission);
+    // Preserve negative results. An audit should reveal a projected loss rather than mask it at zero.
+    const netProfit = markup + finance.buffer + processingFee - finance.discount - commission;
     const money = (value: number) => Number.isFinite(value) ? value : 0;
     const rows = [
       ...source.flights.map(item => ({
@@ -1277,7 +1278,7 @@ export const PrintHubView: React.FC<PrintHubViewProps> = (props) => {
                       {[
                         { label: 'Operating cost', value: financialAudit.totalCost },
                         { label: 'Estimated selling price', value: financialAudit.sellingPrice },
-                        { label: 'Target net profit', value: financialAudit.netProfit },
+                        { label: financialAudit.netProfit < 0 ? 'Projected loss' : 'Projected net profit', value: financialAudit.netProfit },
                         { label: 'Agent commission', value: financialAudit.commission },
                       ].map(item => (
                         <div key={item.label} className="border border-slate-200 rounded-xl p-3">
@@ -1313,7 +1314,7 @@ export const PrintHubView: React.FC<PrintHubViewProps> = (props) => {
                       <div className="p-3 flex justify-between gap-4"><span className="text-slate-600">Buffer</span><strong>R {(props.state?.finance.buffer || 0).toLocaleString('en-ZA', { maximumFractionDigits: 2 })}</strong></div>
                       <div className="p-3 flex justify-between gap-4"><span className="text-slate-600">Discount</span><strong>− R {(props.state?.finance.discount || 0).toLocaleString('en-ZA', { maximumFractionDigits: 2 })}</strong></div>
                       <div className="p-3 flex justify-between gap-4 bg-slate-50 font-bold"><span>Estimated selling price</span><strong>R {financialAudit.sellingPrice.toLocaleString('en-ZA', { maximumFractionDigits: 2 })}</strong></div>
-                      <div className="p-3 flex justify-between gap-4 text-emerald-800 font-bold"><span>Target net profit after commission</span><strong>R {financialAudit.netProfit.toLocaleString('en-ZA', { maximumFractionDigits: 2 })}</strong></div>
+                      <div className={`p-3 flex justify-between gap-4 font-bold ${financialAudit.netProfit < 0 ? 'text-rose-800' : 'text-emerald-800'}`}><span>{financialAudit.netProfit < 0 ? 'Projected loss after commission' : 'Projected net profit after commission'}</span><strong>R {financialAudit.netProfit.toLocaleString('en-ZA', { maximumFractionDigits: 2 })}</strong></div>
                     </div>
 
                     <p className="text-[9px] leading-relaxed text-slate-500 mt-auto pt-5">Audit basis: saved service costs and the finance settings in effect when this report was generated. Figures remain estimates unless reconciled against supplier invoices and actual payments. This report does not claim to be a completed statutory or external audit.</p>
@@ -1323,9 +1324,9 @@ export const PrintHubView: React.FC<PrintHubViewProps> = (props) => {
                     </footer>
                   </article>
 
-                  {Array.from({ length: Math.max(1, Math.ceil(financialAudit.rows.length / 22)) }).map((_, pageIndex) => {
-                    const pageRows = financialAudit.rows.slice(pageIndex * 22, (pageIndex + 1) * 22);
-                    const detailPages = Math.max(1, Math.ceil(financialAudit.rows.length / 22));
+                  {Array.from({ length: Math.max(1, Math.ceil(financialAudit.rows.length / 14)) }).map((_, pageIndex) => {
+                    const pageRows = financialAudit.rows.slice(pageIndex * 14, (pageIndex + 1) * 14);
+                    const detailPages = Math.max(1, Math.ceil(financialAudit.rows.length / 14));
                     return (
                       <article
                         key={`financial-audit-detail-${pageIndex + 1}`}
