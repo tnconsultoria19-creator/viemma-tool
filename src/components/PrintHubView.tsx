@@ -171,6 +171,22 @@ export const PrintHubView: React.FC<PrintHubViewProps> = (props) => {
   const insufficientPagesCount = editorialPages.filter((p) => p.insufficientContentFlag).length;
   const leadPerson = printGroup.travellers.find((t) => t.id === printGroup.leadTravellerId) || printGroup.travellers[0];
 
+  const welcomePlacard = props.state?.welcomePlacard || {
+    showAgencyName: true,
+    agencyName: 'Viemma Tours',
+    guestName: '',
+  };
+  const updateWelcomePlacard = (updates: Partial<NonNullable<AppState['welcomePlacard']>>) => {
+    props.onUpdateState?.({ welcomePlacard: { ...welcomePlacard, ...updates } });
+  };
+  const placardGuestName = welcomePlacard.guestName?.trim()
+    || scopedTransfers[0]?.pickupSignText
+    || leadPerson?.fullName
+    || group.groupName;
+  const placardHotelOrDestination = scopedHotels[0]?.propertyName
+    || scopedTransfers[0]?.dropoffLocation
+    || '';
+
   const handleEditPageParagraphs = (pageNumber: number, nextParagraphs: [string, string]) => {
     setCustomParagraphOverrides((prev) => ({
       ...prev,
@@ -531,6 +547,41 @@ export const PrintHubView: React.FC<PrintHubViewProps> = (props) => {
                 Final Financial Audit
               </button>
             </div>
+
+            {mode === 'driver-pickup-board' && (
+              <div className="w-full flex flex-col sm:flex-row sm:items-end gap-4 border-t border-slate-200 pt-3 mt-1">
+                <label className="flex items-center gap-2 text-sm text-slate-800">
+                  <input
+                    type="checkbox"
+                    checked={welcomePlacard.showAgencyName}
+                    onChange={e => updateWelcomePlacard({ showAgencyName: e.target.checked })}
+                    className="h-4 w-4 accent-emerald-800"
+                  />
+                  <span>Show agency name on sign</span>
+                </label>
+                <label className="flex-1 max-w-md space-y-1">
+                  <span className="block text-xs font-medium text-slate-700">Agency / partner name</span>
+                  <input
+                    type="text"
+                    value={welcomePlacard.agencyName}
+                    onChange={e => updateWelcomePlacard({ agencyName: e.target.value })}
+                    disabled={!welcomePlacard.showAgencyName}
+                    placeholder="Viemma Tours or partner agency"
+                    className="w-full h-9 px-3 rounded-md border border-slate-300 text-sm disabled:bg-slate-100 disabled:text-slate-400"
+                  />
+                </label>
+                <label className="flex-1 max-w-md space-y-1">
+                  <span className="block text-xs font-medium text-slate-700">Name to print (optional)</span>
+                  <input
+                    type="text"
+                    value={welcomePlacard.guestName || ''}
+                    onChange={e => updateWelcomePlacard({ guestName: e.target.value })}
+                    placeholder={leadPerson?.fullName || 'Use lead traveller name'}
+                    className="w-full h-9 px-3 rounded-md border border-slate-300 text-sm"
+                  />
+                </label>
+              </div>
+            )}
 
             {/* Editorial Page Filter */}
             {mode === 'client-editorial' && (
@@ -1067,48 +1118,49 @@ export const PrintHubView: React.FC<PrintHubViewProps> = (props) => {
             {/* MODE 2: DRIVER PICKUP BOARD (Public-Safe, Zero Financials) */}
             {mode === 'driver-pickup-board' && (
               <article
-                className="viemma-pdf-page bg-white text-slate-900 border border-slate-200 shadow-md mx-auto flex flex-col justify-between"
-                style={{ width: '210mm', minHeight: '297mm', padding: '20mm' }}
+                className="viemma-pdf-page bg-white text-slate-900 border border-slate-300 mx-auto flex flex-col justify-between"
+                style={{ width: '297mm', minHeight: '210mm', padding: '13mm 15mm' }}
               >
-                <header className="border-b-2 border-slate-900 pb-4 flex items-center justify-between">
+                <header className="flex items-start justify-between border-b border-slate-300 pb-3">
                   <div>
-                    <div className="text-xs font-mono uppercase tracking-[0.25em] text-slate-500">
-                      VIEMMA TOURS GROUND OPERATIONS
-                    </div>
-                    <h1 className="text-xl font-bold text-slate-900 mt-1">
-                      WELCOME / AIRPORT PICKUP SIGN
-                    </h1>
+                    <p className="text-xs text-slate-600 uppercase tracking-[0.16em]">Airport collection</p>
+                    <h1 className="text-sm font-semibold text-slate-900 mt-1">WELCOME</h1>
                   </div>
-                  <span className="font-mono text-sm font-bold px-3 py-1 bg-slate-900 text-white rounded">
-                    {group.tripId}
-                  </span>
+                  <span className="font-mono text-xs text-slate-600">Trip {group.tripId}</span>
                 </header>
 
-                <div className="my-auto py-16 text-center border-y border-slate-200">
-                  <div className="text-xs uppercase tracking-[0.3em] text-slate-400 mb-4">
-                    WELCOME TO {group.defaults.destination?.toUpperCase() || 'CAPE TOWN'}
-                  </div>
-                  <div
-                    className="text-4xl sm:text-5xl font-bold text-slate-900 tracking-tight break-words"
-                    style={{ fontFamily: 'Georgia, serif' }}
-                  >
-                    {scopedTransfers[0]?.pickupSignText || leadPerson?.fullName || group.groupName}
-                  </div>
-                  <p className="text-base text-slate-600 mt-4 font-medium">
-                    Party of {printGroup.travellers.length} Traveller{printGroup.travellers.length === 1 ? '' : 's'}
-                  </p>
-                </div>
+                <main className="flex-1 flex flex-col items-center justify-center text-center px-8 py-6">
+                  <p className="text-base sm:text-lg font-medium text-slate-700 tracking-[0.18em] mb-3">WELCOME</p>
+                  <h2 className="w-full text-5xl sm:text-6xl font-semibold text-slate-950 leading-tight break-words">
+                    {placardGuestName}
+                  </h2>
+                  {welcomePlacard.showAgencyName && welcomePlacard.agencyName.trim() && (
+                    <p className="mt-3 text-sm text-slate-600">{welcomePlacard.agencyName.trim()}</p>
+                  )}
+                </main>
 
-                <footer className="grid grid-cols-3 gap-4 pt-4 text-xs text-slate-600">
-                  <div>
-                    <span className="font-semibold text-slate-900 block">Arrival Flight</span>
-                    {flights[0] ? `${flights[0].flightNumber} (${flights[0].arrivalTime || 'TBC'})` : 'As Scheduled'}
+                <footer className="border-t border-slate-300 pt-3">
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-x-8 gap-y-3 text-sm">
+                    <div>
+                      <span className="block text-xs text-slate-500">Flight number</span>
+                      <span className="font-semibold text-slate-900">{scopedFlights[0]?.flightNumber || 'To be confirmed'}</span>
+                    </div>
+                    <div>
+                      <span className="block text-xs text-slate-500">Pick-up time</span>
+                      <span className="font-semibold text-slate-900">{scopedTransfers[0]?.pickupTime || 'To be confirmed'}</span>
+                    </div>
+                    <div>
+                      <span className="block text-xs text-slate-500">Arrival time</span>
+                      <span className="font-semibold text-slate-900">{scopedFlights[0]?.arrivalTime || 'To be confirmed'}</span>
+                    </div>
+                    <div>
+                      <span className="block text-xs text-slate-500">Hotel / destination</span>
+                      <span className="font-semibold text-slate-900">{placardHotelOrDestination || 'To be confirmed'}</span>
+                    </div>
                   </div>
-                  <div>
-                    <span className="font-semibold text-slate-900 block">Transfer Destination</span>
-                    {scopedTransfers[0]?.dropoffLocation || scopedHotels[0]?.propertyName || group.defaults.destination}
+                  <div className="mt-3 pt-2 border-t border-slate-200 text-center text-sm font-semibold text-slate-800">
+                    {printGroup.travellers.length} passenger{printGroup.travellers.length === 1 ? '' : 's'}
                   </div>
-                  <div className="text-right font-mono">Page 1 of 1</div>
                 </footer>
               </article>
             )}
