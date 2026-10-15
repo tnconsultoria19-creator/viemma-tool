@@ -559,7 +559,7 @@ export const RoomingView: React.FC<RoomingViewProps> = ({
             </div>
 
             <div className="text-[11px] text-gray-500">
-              {state.rooms.length} hotel stay{state.rooms.length === 1 ? 'y' : 'ies'} •{' '}
+              {state.rooms.length} hotel booking{state.rooms.length === 1 ? '' : 's'} •{' '}
               {state.rooms.reduce((acc, r) => acc + (r.allocatedRooms?.length || 0), 0)} Allocated Rooms
             </div>
           </div>
