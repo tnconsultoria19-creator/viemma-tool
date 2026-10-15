@@ -1807,7 +1807,7 @@ export const IntakeView: React.FC<IntakeViewProps> = ({
                       className={`shrink-0 pb-3 px-1 border-b-2 transition cursor-pointer flex items-center gap-1.5 ${modalTab === 'audit' ? 'border-[#D4AF37] text-[#1A3326]' : 'border-transparent text-gray-500 hover:text-gray-900'}`}
                     >
                       <ShieldCheck size={12} />
-                      <span>Documents check</span>
+                      <span>Readiness</span>
                       {(!modalGuest.passportNo || modalGuest.isProvisional) && (
                         <span className="w-1.5 h-1.5 rounded-full bg-rose-500" />
                       )}
