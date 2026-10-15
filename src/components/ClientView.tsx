@@ -407,11 +407,11 @@ export const ClientView: React.FC<Props> = ({ state: rawState, onBackToWorkspace
 
             {/* Large Editorial Headline */}
             <h1 className="text-3xl sm:text-5xl md:text-6xl font-serif font-black text-white leading-[1.08] tracking-tight drop-shadow-lg">
-              {state.title || `${state.client.name || 'Private VIP'}'s South African Journey`}
+              {state.title || `${state.client.name || 'Your'} Journey`}
             </h1>
 
             <p className="text-sm sm:text-base md:text-lg text-gray-200 font-medium leading-relaxed max-w-xl drop-shadow-md">
-              {state.editorial?.tagline || "Exclusive Cape Town, Scenic Coastline & Private Safari Sanctuary"}
+              {state.editorial?.tagline || "A thoughtfully planned itinerary built around your travel preferences and confirmed arrangements."}
             </p>
 
             {/* Quick Trip Metadata Row */}
@@ -894,7 +894,7 @@ export const ClientView: React.FC<Props> = ({ state: rawState, onBackToWorkspace
                     <Hotel size={16} className="text-[#D4AF37]" /> Your Accommodation
                   </div>
                   <span className="text-[10px] font-bold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded">
-                    Confirmed
+                    {state.rooms[0].status || 'Status to be confirmed'}
                   </span>
                 </div>
 
@@ -1062,8 +1062,8 @@ export const ClientView: React.FC<Props> = ({ state: rawState, onBackToWorkspace
             </button>
             {expandedInfo.destination && (
               <div className="p-4 pt-0 text-xs text-gray-600 leading-relaxed border-t border-gray-100 space-y-2">
-                <p>South Africa combines world-class urban sophistication with wild untamed wilderness. English is widely spoken throughout all luxury lodges, restaurants, and guided excursions.</p>
-                <p>Private game drives follow strict conservation etiquette: always remain seated in the open 4x4 vehicles and follow your tracker’s instructions for animal encounters.</p>
+                <p>Local customs, language and etiquette vary by destination. Review the activity and destination notes included in your itinerary, and ask your guide or concierge to clarify any arrangements before departure.</p>
+                <p>For guided excursions, follow the instructions provided by your guide and the venue or activity operator. Any activity-specific requirements recorded for this trip appear alongside the scheduled experience.</p>
               </div>
             )}
           </div>
@@ -1081,7 +1081,15 @@ export const ClientView: React.FC<Props> = ({ state: rawState, onBackToWorkspace
             </button>
             {expandedInfo.weather && (
               <div className="p-4 pt-0 text-xs text-gray-600 leading-relaxed border-t border-gray-100 space-y-2">
-                <p>Cape Town features a Mediterranean climate with warm sunny days and cool Atlantic breezes. Kruger Safari regions feature pleasant warm daytime temperatures (24–28°C) with brisk early morning game drive chills.</p>
+                {state.activities.filter(activity => activity.status !== 'Cancelled' && activity.status !== 'Draft' && activity.status !== 'Requested' && activity.weatherDependency?.trim()).length > 0 ? (
+                  <ul className="list-disc list-inside space-y-1">
+                    {state.activities.filter(activity => activity.status !== 'Cancelled' && activity.status !== 'Draft' && activity.status !== 'Requested' && activity.weatherDependency?.trim()).map(activity => (
+                      <li key={activity.id}><strong>{activity.name}:</strong> {activity.weatherDependency}</li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p>No activity-specific weather requirements have been recorded for this itinerary. Check the local forecast for each destination shortly before travel.</p>
+                )}
               </div>
             )}
           </div>
@@ -1099,8 +1107,8 @@ export const ClientView: React.FC<Props> = ({ state: rawState, onBackToWorkspace
             </button>
             {expandedInfo.currency && (
               <div className="p-4 pt-0 text-xs text-gray-600 leading-relaxed border-t border-gray-100 space-y-2">
-                <p>The local currency is the South African Rand (ZAR). Visa, Mastercard, and American Express are seamlessly accepted across all luxury properties, boutiques, and fine dining venues.</p>
-                <p>Tipping at restaurants is customary at 10%–15% for exceptional service. Safari ranger and tracker gratuity envelopes are provided directly at your lodge.</p>
+                <p>Use the currency and payment terms in your approved quotation. Local cash requirements, card acceptance and tipping practices vary by destination and supplier.</p>
+                <p>Before departure, confirm any cash needs and payment methods with Viemma, your accommodation or your guide. Do not rely on an assumed exchange rate or a payment method being accepted everywhere.</p>
               </div>
             )}
           </div>
@@ -1112,18 +1120,26 @@ export const ClientView: React.FC<Props> = ({ state: rawState, onBackToWorkspace
               className="w-full p-4 text-left flex items-center justify-between font-serif font-bold text-gray-900 text-sm hover:bg-gray-50 transition"
             >
               <span className="flex items-center gap-2">
-                <Luggage size={16} className="text-[#D4AF37]" /> Packing Advice & Safari Attire
+                <Luggage size={16} className="text-[#D4AF37]" /> Activity Packing & Dress Notes
               </span>
               <ChevronDown size={16} className={`transition-transform duration-200 ${expandedInfo.packing ? 'rotate-180' : ''}`} />
             </button>
             {expandedInfo.packing && (
               <div className="p-4 pt-0 text-xs text-gray-600 leading-relaxed border-t border-gray-100 space-y-2">
-                <ul className="list-disc list-inside space-y-1">
-                  <li>Neutral earthy tones (khaki, olive, beige) for bushveld game drives.</li>
-                  <li>Light windproof jacket or fleece for morning drives and coastal boat cruises.</li>
-                  <li>Polarized sunglasses, wide-brim sunhat, and high SPF protection.</li>
-                  <li>Smart casual attire for Cape Town fine dining and wine tastings.</li>
-                </ul>
+                {state.activities.filter(activity => activity.status !== 'Cancelled' && activity.status !== 'Draft' && activity.status !== 'Requested' && (activity.packingAdvice?.trim() || activity.dressCode?.trim() || activity.safetyNotes?.trim())).length > 0 ? (
+                  <ul className="list-disc list-inside space-y-2">
+                    {state.activities.filter(activity => activity.status !== 'Cancelled' && activity.status !== 'Draft' && activity.status !== 'Requested' && (activity.packingAdvice?.trim() || activity.dressCode?.trim() || activity.safetyNotes?.trim())).map(activity => (
+                      <li key={activity.id}>
+                        <strong>{activity.name}:</strong>
+                        {activity.packingAdvice?.trim() && <span> Packing: {activity.packingAdvice}</span>}
+                        {activity.dressCode?.trim() && <span> Dress: {activity.dressCode}</span>}
+                        {activity.safetyNotes?.trim() && <span> Safety: {activity.safetyNotes}</span>}
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p>No activity-specific packing, dress or safety notes have been added to this itinerary yet. Confirm any special requirements with Viemma before departure.</p>
+                )}
               </div>
             )}
           </div>
