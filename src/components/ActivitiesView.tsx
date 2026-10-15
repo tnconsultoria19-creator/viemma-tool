@@ -2367,7 +2367,7 @@ export const ActivitiesView: React.FC<ActivitiesViewProps> = ({
                                     </div>
                                     <div className="pt-2 border-t border-gray-200/60 flex items-center justify-between text-[11px] text-gray-500 font-medium">
                                       <span>📍 {a.venue || a.pickupLoc}</span>
-                                      <span>👥 {a.paxIds?.length || state.guests.length} Guests</span>
+                                      <span>👥 {a.paxIds?.length ?? state.guests.length} Guests</span>
                                     </div>
                                   </div>
                                 </div>
@@ -2419,7 +2419,7 @@ export const ActivitiesView: React.FC<ActivitiesViewProps> = ({
                             <td className="py-3 px-4 text-gray-600">{a.responsiblePerson || 'Guide'}</td>
                             <td className="py-3 px-4">
                               <span className="bg-slate-100 text-slate-800 font-bold px-2 py-0.5 rounded text-[10px]">
-                                {a.paxIds?.length || state.guests.length}
+                                {a.paxIds?.length ?? state.guests.length}
                               </span>
                             </td>
                             <td className="py-3 px-4">
