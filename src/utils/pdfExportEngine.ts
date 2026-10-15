@@ -454,6 +454,10 @@ export async function exportValidatedPrintPdfDocument(params: {
         size: A4 portrait;
         margin: 0mm;
       }
+      @page viemma-placard {
+        size: A4 landscape;
+        margin: 0mm;
+      }
       html, body {
         margin: 0 !important;
         padding: 0 !important;
@@ -481,6 +485,15 @@ export async function exportValidatedPrintPdfDocument(params: {
         flex-direction: column !important;
         justify-content: space-between !important;
         overflow: hidden !important;
+      }
+      .viemma-pdf-page.viemma-welcome-placard {
+        page: viemma-placard;
+        width: 297mm !important;
+        min-height: 210mm !important;
+        max-height: 210mm !important;
+        padding: 13mm 15mm !important;
+        page-break-after: always !important;
+        break-after: page !important;
       }
       .viemma-pdf-page:last-child {
         page-break-after: auto !important;
