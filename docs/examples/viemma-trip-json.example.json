@@ -1,0 +1,175 @@
+{
+  "schemaVersion": "viemma-trip-v1",
+  "tripTitle": "Example Cape Town family trip",
+  "source": "agent",
+  "agent": {
+    "agencyName": "Example Travel Agency",
+    "contact": "Example Consultant",
+    "email": null,
+    "commission": null
+  },
+  "client": {
+    "name": "Example Family",
+    "email": null,
+    "phone": null,
+    "whatsapp": null,
+    "country": "United Kingdom",
+    "contactMethod": "whatsapp",
+    "tourTypology": "multi_day_tour",
+    "startDate": "2027-03-14",
+    "endDate": "2027-03-19",
+    "durationText": "6 Days / 5 Nights",
+    "occasion": "Family holiday",
+    "notes": null
+  },
+  "travellers": [
+    {
+      "firstName": "Alex",
+      "lastName": "Example",
+      "ageCategory": "Adult",
+      "nationality": "British",
+      "relationshipToLead": "Primary Contact",
+      "isLead": true,
+      "isProvisional": false,
+      "passportNo": null,
+      "passportExpiry": null,
+      "email": null,
+      "phone": null,
+      "dietaryRequirements": [],
+      "accessibilityRequirements": [],
+      "preferences": []
+    },
+    {
+      "firstName": "Jamie",
+      "lastName": "Example",
+      "ageCategory": "Adult",
+      "nationality": "British",
+      "relationshipToLead": "Spouse or partner",
+      "isLead": false,
+      "isProvisional": false,
+      "passportNo": null,
+      "passportExpiry": null
+    }
+  ],
+  "dietaryRequirements": [],
+  "accessibilityRequirements": [],
+  "preferences": [],
+  "flights": [
+    {
+      "direction": "Inbound",
+      "airline": null,
+      "flightNumber": null,
+      "date": "2027-03-14",
+      "departureTime": null,
+      "arrivalTime": null,
+      "origin": null,
+      "destination": "CPT",
+      "status": "Pending",
+      "travellerNames": [
+        "Alex Example",
+        "Jamie Example"
+      ],
+      "bookingReference": null,
+      "notes": null
+    },
+    {
+      "direction": "Outbound",
+      "airline": null,
+      "flightNumber": null,
+      "date": "2027-03-19",
+      "departureTime": null,
+      "arrivalTime": null,
+      "origin": "CPT",
+      "destination": null,
+      "status": "Pending",
+      "travellerNames": [
+        "Alex Example",
+        "Jamie Example"
+      ],
+      "bookingReference": null
+    }
+  ],
+  "transfers": [
+    {
+      "type": "Airport Arrival",
+      "date": "2027-03-14",
+      "pickupTime": null,
+      "pickupLocation": "Cape Town International Airport",
+      "dropoffLocation": null,
+      "flightNumber": null,
+      "pickupSignText": "Alex Example",
+      "passengers": 2,
+      "status": "Pending",
+      "travellerNames": [
+        "Alex Example",
+        "Jamie Example"
+      ],
+      "vehicleType": null,
+      "driverName": null,
+      "notes": null
+    }
+  ],
+  "hotels": [
+    {
+      "hotelName": null,
+      "checkIn": "2027-03-14",
+      "checkOut": "2027-03-19",
+      "roomType": null,
+      "bedType": null,
+      "mealPlan": null,
+      "bookingStatus": "Requested",
+      "paymentStatus": "Negotiation / Pending Confirmation",
+      "travellerNames": [
+        "Alex Example",
+        "Jamie Example"
+      ],
+      "confirmationReference": null,
+      "specialRequests": null
+    }
+  ],
+  "itinerary": [
+    {
+      "day": 1,
+      "title": "Arrival in Cape Town",
+      "activities": [
+        {
+          "day": 1,
+          "slot": "Afternoon",
+          "name": "Rest at the hotel",
+          "description": "Free time after arrival. Replace this with the agreed plan if one was discussed.",
+          "date": "2027-03-14",
+          "pickupTime": null,
+          "startTime": null,
+          "endTime": null,
+          "duration": null,
+          "venue": null,
+          "destination": "Cape Town",
+          "status": "Planned",
+          "travellerNames": [
+            "Alex Example",
+            "Jamie Example"
+          ],
+          "notes": null
+        }
+      ]
+    }
+  ],
+  "dayTitles": {
+    "1": "Arrival in Cape Town"
+  },
+  "finance": {
+    "currency": "ZAR",
+    "margin": null,
+    "marginType": "%",
+    "commission": null,
+    "discount": null,
+    "buffer": null,
+    "bufferNotes": null
+  },
+  "welcomePlacard": {
+    "showAgencyName": true,
+    "agencyName": "Viemma Tours",
+    "guestName": "Alex Example"
+  },
+  "internalNotes": null
+}
