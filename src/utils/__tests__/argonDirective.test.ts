@@ -14,6 +14,8 @@
  * 11. PDF Blob %PDF- header verification
  */
 
+import type { AppState } from '../../types';
+import { applyTripJson, parseTripJson } from '../tripJsonImport';
 import {
   generateNextTripReference,
   createTravellerWithInheritance,
@@ -314,6 +316,90 @@ export async function runArgonRegressionSuite(): Promise<{
   const validBlob = new Blob([validPdfBytes], { type: 'application/pdf' });
   const blobCheck = await verifyPdfBlobIntegrity(validBlob);
   assert(blobCheck.isValid === true, 'PDF Blob verifier validates %PDF-1.7 signature and non-empty size');
+
+  // Test 14: Master trip JSON maps conversation output into the relevant sections.
+  const jsonImportBase = {
+    ref: 'VT-2026-900',
+    title: 'Existing Trip',
+    consultant: '',
+    priority: 'confirmed',
+    source: 'direct',
+    agent: { id: '', agencyName: '', contact: '', email: '', comm: '' },
+    client: {
+      name: '', preferredName: '', email: '', phone: '', whatsapp: '', country: '',
+      contactMethod: 'whatsapp', tripType: 'multi', startDate: '', endDate: '',
+      durationText: '', occasion: '', otherOccasion: '', tags: [],
+    },
+    groupConditions: { dietary: [], mobility: [], medical: [], prefs: [], notes: '' },
+    guests: [], flights: [], transfers: [], rooms: [], activities: [], vehicles: [], drivers: [],
+    experienceLibrary: [], destinationLibrary: [],
+    finance: {
+      currency: 'ZAR', rates: { USD: 1, EUR: 1, BRL: 1, AOA: 1 }, paymentMethod: 'none',
+      margin: 0, marginType: '%', comm: 0, commType: '%', discount: 0, buffer: 0, bufferNotes: '',
+    },
+    internalNotes: '', namedGroups: [], dayTitles: {},
+  } as unknown as AppState;
+
+  const fullTripJson = parseTripJson(`\`\`json
+  {
+    "tripTitle": "Dube Family Holiday",
+    "client": { "name": "Mandla Dube", "email": "mandla@example.com", "tourType": "Full-day tour", "startDate": "2026-11-10", "endDate": "2026-11-12" },
+    "travellers": [{ "name": "Mandla Dube", "isLead": true, "nationality": "South African", "passportNo": "A123456" }],
+    "flights": [{ "airline": "South African Airways", "flightNo": "SA123", "from": "JNB", "to": "CPT", "date": "2026-11-10", "arrTime": "10:30", "paxNames": ["Mandla Dube"] }],
+    "transfers": [{ "type": "Airport Arrival", "date": "2026-11-10", "time": "11:15", "from": "Cape Town International Airport", "to": "Table Bay Hotel", "paxNames": ["Mandla Dube"] }],
+    "accommodations": [{ "hotel": "Table Bay Hotel", "cin": "2026-11-10", "cout": "2026-11-12", "roomType": "Standard Room", "assignedPaxNames": ["Mandla Dube"] }],
+    "itinerary": { "days": [{ "day": 1, "title": "Arrival in Cape Town", "activities": [{ "name": "Airport arrival and hotel transfer", "start": "11:15", "desc": "Meet at arrivals" }] }] },
+    "finance": { "currency": "ZAR", "margin": 20 }
+  }
+  \`\``);
+  const fullTripResult = applyTripJson(jsonImportBase, fullTripJson, 'all', 'merge');
+  assert(
+    fullTripResult.state.client.name === 'Mandla Dube' &&
+      fullTripResult.state.client.tourTypology === 'full_day_tour' &&
+      fullTripResult.state.guests.length === 1 &&
+      fullTripResult.state.flights.length === 1 &&
+      fullTripResult.state.transfers.length === 1 &&
+      fullTripResult.state.rooms.length === 1 &&
+      fullTripResult.state.activities.length === 1 &&
+      fullTripResult.state.dayTitles?.[1] === 'Arrival in Cape Town',
+    'Whole-trip JSON populates client, traveller, flight, transfer, hotel, programme and timeline records'
+  );
+  assert(
+    fullTripResult.state.flights[0]?.paxIds?.includes(fullTripResult.state.guests[0].id) &&
+      fullTripResult.state.rooms[0]?.guestIds?.includes(fullTripResult.state.guests[0].id) &&
+      fullTripResult.state.activities[0]?.paxIds?.includes(fullTripResult.state.guests[0].id),
+    'Traveller names in JSON are resolved to the same saved traveller record across itinerary sections'
+  );
+
+  const focusedResult = applyTripJson(
+    fullTripResult.state,
+    { flights: [{ airline: 'Airlink', flightNo: '4Z456', from: 'CPT', to: 'JNB', date: '2026-11-12' }] },
+    'flights',
+    'merge'
+  );
+  assert(
+    focusedResult.state.flights.length === 2 &&
+      focusedResult.state.client.name === 'Mandla Dube' &&
+      focusedResult.state.rooms.length === 1 &&
+      focusedResult.state.activities.length === 1,
+    'A focused Flights import leaves Clients, Hotels and Programme records unchanged'
+  );
+
+  const replaceFlightsResult = applyTripJson(
+    focusedResult.state,
+    { flights: [{ airline: 'Airlink', flightNo: '4Z789', from: 'CPT', to: 'JNB', date: '2026-11-12' }] },
+    'flights',
+    'replace'
+  );
+  assert(
+    replaceFlightsResult.state.flights.length === 1 &&
+      replaceFlightsResult.state.flights[0]?.flightNo === '4Z789' &&
+      replaceFlightsResult.state.client.name === 'Mandla Dube',
+    'Replace mode replaces only the selected section'
+  );
+  let invalidJsonRejected = false;
+  try { parseTripJson('{invalid json'); } catch { invalidJsonRejected = true; }
+  assert(invalidJsonRejected, 'JSON importer rejects malformed content without applying changes');
 
   return { passed, failed, results };
 }
