@@ -75,7 +75,7 @@ export const TripJsonImportPanel: React.FC<TripJsonImportPanelProps> = ({ state,
             <h2 className="text-sm font-semibold text-slate-900">Import structured trip data</h2>
             <p className="mt-0.5 text-xs text-slate-600">
               {scope === 'all'
-                ? 'Paste the JSON from a full client or agent conversation to fill the itinerary across tabs. Keep unknown details blank rather than guessing.'
+                ? 'On Clients, paste the complete consultation JSON to populate the whole trip. On other tabs, paste a focused JSON update for that section. Details not stated in the conversation should stay blank rather than being guessed.'
                 : `Paste a focused output for ${scopeLabels[scope].toLowerCase()}. Other sections will stay unchanged.`}
             </p>
           </div>
