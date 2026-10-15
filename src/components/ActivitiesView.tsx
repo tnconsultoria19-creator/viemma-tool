@@ -39,7 +39,8 @@ import {
   Moon,
   SlidersHorizontal,
   Eye,
-  BookOpen
+  BookOpen,
+  Truck
 } from 'lucide-react';
 
 interface ActivitiesViewProps {
@@ -260,6 +261,12 @@ export const ActivitiesView: React.FC<ActivitiesViewProps> = ({
   };
 
   const guides = state.guides?.length ? state.guides : DB_DEFAULT.guides as Guide[];
+  const availableDrivers = (state.drivers || []).filter(driver =>
+    driver.status === 'Available' || driver.status === 'Assigned' || driver.id === aForm.driverId
+  );
+  const availableVehicles = (state.vehicles || []).filter(vehicle =>
+    vehicle.status === 'Available' || vehicle.status === 'Assigned' || vehicle.id === aForm.vehicleId
+  );
 
   // Calculate total days of trip
   const tripDaysCount = useMemo(() => {
@@ -1543,6 +1550,108 @@ export const ActivitiesView: React.FC<ActivitiesViewProps> = ({
                         </div>
                       </div>
                     </div>
+                  </div>
+                </div>
+
+                {/* Driver and vehicle are real resource assignments, not text-only ground-sheet placeholders. */}
+                <div className="bg-white rounded-[20px] p-6 border border-gray-100 shadow-sm space-y-5">
+                  <h3 className="text-xs uppercase font-bold text-[#1A3326] tracking-wider border-b border-gray-100 pb-2 flex items-center gap-2">
+                    <Truck size={14} className="text-[#D4AF37]" /> Day-of-Operation Resources
+                  </h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-1.5">
+                      <label className="text-[11px] text-gray-500 font-bold uppercase tracking-wider block">Assigned Driver</label>
+                      <select
+                        value={aForm.driverId || ''}
+                        onChange={e => {
+                          const driver = availableDrivers.find(item => item.id === e.target.value);
+                          const linkedVehicle = driver?.assignedVehicleId
+                            ? (state.vehicles || []).find(vehicle => vehicle.id === driver.assignedVehicleId)
+                            : undefined;
+                          const linkedVehicleAssignable = linkedVehicle && (linkedVehicle.status === 'Available' || linkedVehicle.status === 'Assigned');
+                          setAForm({
+                            ...aForm,
+                            driverId: driver?.id || '',
+                            driverName: driver?.name || '',
+                            vehicleId: linkedVehicleAssignable ? linkedVehicle.id : aForm.vehicleId || '',
+                            vehicleName: linkedVehicleAssignable ? linkedVehicle.name : aForm.vehicleName || ''
+                          });
+                        }}
+                        className="w-full h-11 px-4 rounded-xl border border-gray-200 text-xs font-semibold text-gray-700 bg-white focus:border-[#D4AF37]"
+                      >
+                        <option value="">Select driver...</option>
+                        {availableDrivers.map(driver => (
+                          <option key={driver.id} value={driver.id}>
+                            {driver.name}{driver.status === 'Assigned' ? ' · Currently assigned' : ''}
+                          </option>
+                        ))}
+                      </select>
+                      {aForm.driverId && (
+                        <p className="text-[11px] text-slate-500">
+                          {availableDrivers.find(driver => driver.id === aForm.driverId)?.phone || 'No phone recorded'}
+                        </p>
+                      )}
+                      {availableDrivers.length === 0 && <p className="text-[11px] text-amber-700">No available drivers are registered. Add one in Driver Management.</p>}
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <label className="text-[11px] text-gray-500 font-bold uppercase tracking-wider block">Assigned Vehicle</label>
+                      <select
+                        value={aForm.vehicleId || ''}
+                        onChange={e => {
+                          const vehicle = availableVehicles.find(item => item.id === e.target.value);
+                          setAForm({ ...aForm, vehicleId: vehicle?.id || '', vehicleName: vehicle?.name || '' });
+                        }}
+                        className="w-full h-11 px-4 rounded-xl border border-gray-200 text-xs font-semibold text-gray-700 bg-white focus:border-[#D4AF37]"
+                      >
+                        <option value="">Select vehicle...</option>
+                        {availableVehicles.map(vehicle => (
+                          <option key={vehicle.id} value={vehicle.id}>
+                            {vehicle.name} · {vehicle.registration}{vehicle.status === 'Assigned' ? ' · Currently assigned' : ''}
+                          </option>
+                        ))}
+                      </select>
+                      {aForm.vehicleId && (
+                        <p className="text-[11px] text-slate-500">
+                          {availableVehicles.find(vehicle => vehicle.id === aForm.vehicleId)?.capacity
+                            ? `Capacity: ${availableVehicles.find(vehicle => vehicle.id === aForm.vehicleId)?.capacity} passengers`
+                            : 'Vehicle capacity not recorded'}
+                        </p>
+                      )}
+                      {availableVehicles.length === 0 && <p className="text-[11px] text-amber-700">No serviceable vehicles are registered. Add one in Fleet Management.</p>}
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <label className="text-[11px] text-gray-500 font-bold uppercase tracking-wider block">Destination / Route</label>
+                      <input
+                        type="text"
+                        value={aForm.destination || ''}
+                        onChange={e => setAForm({ ...aForm, destination: e.target.value })}
+                        placeholder="Enter confirmed destination or route"
+                        className="w-full h-10 px-3 rounded-xl border border-gray-200 text-xs text-gray-800"
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <label className="text-[11px] text-gray-500 font-bold uppercase tracking-wider block">Voucher / Supplier Reference</label>
+                      <input
+                        type="text"
+                        value={aForm.voucherRef || ''}
+                        onChange={e => setAForm({ ...aForm, voucherRef: e.target.value })}
+                        placeholder="Reference, booking ID or voucher number"
+                        className="w-full h-10 px-3 rounded-xl border border-gray-200 text-xs text-gray-800"
+                      />
+                    </div>
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-[11px] text-gray-500 font-bold uppercase tracking-wider block">Client-Facing Activity Description</label>
+                    <textarea
+                      value={aForm.clientDescription || ''}
+                      onChange={e => setAForm({ ...aForm, clientDescription: e.target.value })}
+                      rows={3}
+                      placeholder="Describe the confirmed activity, what guests will do, and any relevant meeting instructions."
+                      className="w-full p-3 rounded-xl border border-gray-200 text-xs text-gray-800"
+                    />
+                    <p className="text-[10px] text-slate-500">This description can be shared with clients. Supplier rates, driver notes and internal operational notes remain private.</p>
                   </div>
                 </div>
 
