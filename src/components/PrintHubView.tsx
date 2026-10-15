@@ -173,7 +173,7 @@ export const PrintHubView: React.FC<PrintHubViewProps> = (props) => {
 
   const welcomePlacard = props.state?.welcomePlacard || {
     showAgencyName: true,
-    agencyName: 'Viemma Tours',
+    agencyName: 'Vema Tours',
     guestName: '',
   };
   const updateWelcomePlacard = (updates: Partial<NonNullable<AppState['welcomePlacard']>>) => {
@@ -558,7 +558,7 @@ export const PrintHubView: React.FC<PrintHubViewProps> = (props) => {
                     onChange={e => updateWelcomePlacard({ showAgencyName: e.target.checked })}
                     className="h-4 w-4 accent-emerald-800"
                   />
-                  <span>Show agency name on sign</span>
+                  <span>Show agency / partner name</span>
                 </label>
                 <label className="flex-1 max-w-md space-y-1">
                   <span className="block text-xs font-medium text-slate-700">Agency / partner name</span>
@@ -567,7 +567,7 @@ export const PrintHubView: React.FC<PrintHubViewProps> = (props) => {
                     value={welcomePlacard.agencyName}
                     onChange={e => updateWelcomePlacard({ agencyName: e.target.value })}
                     disabled={!welcomePlacard.showAgencyName}
-                    placeholder="Viemma Tours or partner agency"
+                    placeholder="Vema Tours or partner agency"
                     className="w-full h-9 px-3 rounded-md border border-slate-300 text-sm disabled:bg-slate-100 disabled:text-slate-400"
                   />
                 </label>
@@ -1120,7 +1120,7 @@ export const PrintHubView: React.FC<PrintHubViewProps> = (props) => {
             {mode === 'driver-pickup-board' && (
               <article
                 className="viemma-pdf-page viemma-welcome-placard bg-white text-slate-900 border border-slate-300 mx-auto flex flex-col justify-between"
-                style={{ width: '297mm', minHeight: '210mm', padding: '13mm 15mm' }}
+                style={{ width: '297mm', height: '210mm', minHeight: '210mm', padding: '12mm 15mm' }}
               >
                 <main className="flex-1 flex flex-col items-center justify-center text-center px-8 py-8">
                   <p className="text-base sm:text-lg font-medium text-slate-700 tracking-[0.12em] mb-3">WELCOME</p>
@@ -1139,7 +1139,7 @@ export const PrintHubView: React.FC<PrintHubViewProps> = (props) => {
                       <span className="font-semibold text-slate-900">{placardFlight?.flightNumber || 'To be confirmed'}</span>
                     </div>
                     <div>
-                      <span className="block text-xs text-slate-500">Pick-up time</span>
+                      <span className="block text-xs text-slate-500">Collection time</span>
                       <span className="font-semibold text-slate-900">{scopedTransfers[0]?.pickupTime || 'To be confirmed'}</span>
                     </div>
                     <div>
