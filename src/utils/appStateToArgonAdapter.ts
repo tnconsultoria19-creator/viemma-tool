@@ -162,6 +162,8 @@ export function adaptAppStateToArgon(state: AppState): {
       tripId: state.ref || 'VT-2026-001',
       groupId: group.id,
       dayTitle: state.dayTitles?.[a.day] || '',
+      heroImageUrl: a.heroImage || '',
+      gallery: a.gallery || [],
       title: a.name || 'Day Excursion',
       date: actDate || state.client?.startDate || new Date().toISOString().split('T')[0],
       startTime: a.start || a.pickup || '09:30',
