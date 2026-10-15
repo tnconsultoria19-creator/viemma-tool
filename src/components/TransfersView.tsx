@@ -199,7 +199,7 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
       {/* Title Header */}
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 p-5 md:p-6 bg-white border border-slate-200 rounded-md">
         <div className="space-y-2">
-          <span className="text-xs uppercase tracking-[0.2em] font-bold text-[#8A6A00] flex items-center gap-2">
+          <span className="text-sm font-semibold text-slate-600 flex items-center gap-2">
             <Car size={14} /> Transfers
           </span>
           <h1 className="text-3xl font-bold tracking-tight text-[#10233F] font-sans">Transfers</h1>
