@@ -171,6 +171,24 @@ export const PrintHubView: React.FC<PrintHubViewProps> = (props) => {
   const insufficientPagesCount = editorialPages.filter((p) => p.insufficientContentFlag).length;
   const leadPerson = printGroup.travellers.find((t) => t.id === printGroup.leadTravellerId) || printGroup.travellers[0];
 
+  const welcomePlacard = props.state?.welcomePlacard || {
+    showAgencyName: true,
+    agencyName: 'Viemma Tours',
+    guestName: '',
+  };
+  const updateWelcomePlacard = (updates: Partial<NonNullable<AppState['welcomePlacard']>>) => {
+    props.onUpdateState?.({
+      welcomePlacard: { ...welcomePlacard, ...updates },
+    });
+  };
+  const placardGuestName = welcomePlacard.guestName?.trim()
+    || scopedTransfers[0]?.pickupSignText
+    || leadPerson?.fullName
+    || group.groupName;
+  const placardHotelOrDestination = scopedHotels[0]?.propertyName
+    || scopedTransfers[0]?.dropoffLocation
+    || '';
+
   const handleEditPageParagraphs = (pageNumber: number, nextParagraphs: [string, string]) => {
     setCustomParagraphOverrides((prev) => ({
       ...prev,
@@ -532,583 +550,51 @@ export const PrintHubView: React.FC<PrintHubViewProps> = (props) => {
               </button>
             </div>
 
-            {/* Editorial Page Filter */}
-            {mode === 'client-editorial' && (
-              <div className="flex flex-wrap items-center gap-1.5">
-                <span className="font-semibold text-slate-500 mr-1">Page Inspector:</span>
-                <button
-                  type="button"
-                  onClick={() => setActivePageFilter('all')}
-                  className={`px-2.5 py-1 rounded-md text-xs font-semibold cursor-pointer ${
-                    activePageFilter === 'all'
-                      ? 'bg-slate-900 text-white'
-                      : 'bg-white text-slate-700 border border-slate-200 hover:bg-slate-50'
-                  }`}
-                >
-                  All ({editorialPages.length})
-                </button>
-                {editorialPages.map((p) => (
-                  <button
-                    key={p.pageNumber}
-                    type="button"
-                    onClick={() => setActivePageFilter(p.pageNumber)}
-                    className={`px-2.5 py-1 rounded-md text-xs font-semibold flex items-center gap-1 cursor-pointer ${
-                      activePageFilter === p.pageNumber
-                        ? 'bg-slate-900 text-white'
-                        : 'bg-white text-slate-700 border border-slate-200 hover:bg-slate-50'
-                    }`}
-                  >
-                    <span>p.{p.pageNumber}</span>
-                    {p.insufficientContentFlag && (
-                      <span className="w-1.5 h-1.5 rounded-full bg-amber-500" title="Short content warning" />
-                    )}
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
-      </div>
-
-      {/* FEEDBACK BANNER */}
-      {publishFeedback && (
-        <div className="max-w-7xl mx-auto px-4 mt-4">
-          <div className="p-3.5 bg-emerald-50 border border-emerald-200 rounded-xl text-xs font-bold text-emerald-900 flex items-center justify-between animate-in fade-in">
-            <div className="flex items-center gap-2">
-              <CheckCircle2 size={16} className="text-emerald-600" />
-              <span>{publishFeedback}</span>
-            </div>
-            <button onClick={() => setPublishFeedback(null)} className="text-emerald-700 hover:text-emerald-900">✕</button>
-          </div>
-        </div>
-      )}
-
-      {/* VIEW 1: DIGITAL PUBLISHING & ACCESS CONTROLS */}
-      {activeHubTab === 'digital-publishing' && (
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 pt-6 space-y-6">
-          {/* Section 1: Publishing Status & Live Sync */}
-          <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-xs space-y-4">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-100">
-              <div className="space-y-1">
-                <div className="flex items-center gap-2">
-                  <span className="p-2 rounded-xl bg-[#D4AF37]/15 text-[#10233F]">
-                    <Share2 size={18} />
-                  </span>
-                  <div>
-                    <h2 className="text-base font-bold text-slate-900">Live Client & Agent Publishing</h2>
-                    <p className="text-xs text-slate-500">
-                      Synchronize your verified trip dossier to client digital magazine, B2B partner agent portal, and driver sheets.
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-3">
-                <button
-                  type="button"
-                  disabled={isPublishing}
-                  onClick={handlePublishTripToLive}
-                  className="px-5 py-2.5 rounded-xl bg-[#10233F] text-white hover:bg-[#1a3a68] text-xs font-bold shadow-md transition flex items-center gap-2 cursor-pointer disabled:opacity-50"
-                >
-                  <RefreshCw size={14} className={isPublishing ? 'animate-spin' : ''} />
-                  <span>{isPublishing ? 'Publishing...' : 'Publish Latest Itinerary'}</span>
-                </button>
-              </div>
-            </div>
-
-            {/* Publishing Metadata summary */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-xs pt-1">
-              <div className="p-3 bg-slate-50 rounded-xl border border-slate-100">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-0.5">Publish Status</span>
-                <span className="font-bold text-slate-900">{currentPublishing.publishStatus}</span>
-              </div>
-              <div className="p-3 bg-slate-50 rounded-xl border border-slate-100">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-0.5">Current Version</span>
-                <span className="font-bold text-slate-900">v{currentPublishing.version || 1}</span>
-              </div>
-              <div className="p-3 bg-slate-50 rounded-xl border border-slate-100">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-0.5">Last Published</span>
-                <span className="font-medium text-slate-700">
-                  {currentPublishing.publishedAt ? new Date(currentPublishing.publishedAt).toLocaleString('en-ZA') : 'Not yet published'}
-                </span>
-              </div>
-              <div className="p-3 bg-slate-50 rounded-xl border border-slate-100">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-0.5">Password Protection</span>
-                <span className="font-bold text-slate-900">
-                  {currentPublishing.settings.requirePassword ? '🔒 Protected' : '🔓 Open with Token'}
-                </span>
-              </div>
-            </div>
-
-            {/* Optional change release note input */}
-            <div className="pt-2">
-              <label className="block text-xs font-semibold text-slate-700 mb-1">
-                Release Change Note (Logged in version audit history):
-              </label>
-              <input
-                type="text"
-                value={newVersionNote}
-                onChange={(e) => setNewVersionNote(e.target.value)}
-                placeholder="e.g., Updated Day 3 wine estate tasting times and confirmed private guide allocation."
-                className="w-full px-3.5 py-2 text-xs border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#D4AF37] bg-white text-slate-800"
-              />
-            </div>
-          </div>
-
-          {/* Section 2: Role-Based Access Tokens & Live Sharing URLs */}
-          <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-xs space-y-4">
-            <div className="flex items-center gap-2 pb-3 border-b border-slate-100">
-              <Key size={16} className="text-[#D4AF37]" />
-              <h3 className="text-sm font-bold text-slate-900">Role-Controlled Access Tokens & URLs</h3>
-            </div>
-
-            <div className="space-y-4">
-              {/* Channel 1: Client Magazine */}
-              <div className="p-4 rounded-xl border border-slate-200 bg-slate-50/50 space-y-2">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs font-bold text-slate-900">Client Digital Magazine</span>
-                    <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${
-                      currentPublishing.clientTokenActive !== false ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'
-                    }`}>
-                      {currentPublishing.clientTokenActive !== false ? 'Active' : 'Revoked'}
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <a
-                      href={clientShareUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-xs font-semibold text-emerald-700 hover:text-emerald-900 flex items-center gap-1"
-                    >
-                      Open Link <ExternalLink size={12} />
-                    </a>
-                    <button
-                      type="button"
-                      onClick={() => handleRegenerateToken('client')}
-                      className="text-xs font-semibold text-slate-600 hover:text-slate-900 px-2 py-1 bg-white border border-slate-200 rounded-md"
-                      title="Invalidates current link and creates a new secure token"
-                    >
-                      Regenerate Token
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => handleRevokeToken('client')}
-                      className="text-xs font-semibold text-rose-600 hover:text-rose-900 px-2 py-1 bg-white border border-rose-200 rounded-md"
-                    >
-                      Revoke
-                    </button>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2">
-                  <input
-                    type="text"
-                    readOnly
-                    value={clientShareUrl}
-                    className="w-full px-3 py-1.5 text-xs bg-white border border-slate-200 rounded-lg text-slate-700 font-mono select-all"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => {
-                      navigator.clipboard.writeText(clientShareUrl);
-                      setCopiedRole('client');
-                      setTimeout(() => setCopiedRole(null), 2000);
-                    }}
-                    className="px-3 py-1.5 bg-slate-900 text-white rounded-lg text-xs font-bold hover:bg-slate-800 shrink-0 flex items-center gap-1"
-                  >
-                    {copiedRole === 'client' ? <Check size={12} /> : <Copy size={12} />}
-                    <span>{copiedRole === 'client' ? 'Copied' : 'Copy'}</span>
-                  </button>
-                </div>
-              </div>
-
-              {/* Channel 2: B2B Travel Agent Proposal */}
-              <div className="p-4 rounded-xl border border-slate-200 bg-slate-50/50 space-y-2">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs font-bold text-slate-900">B2B Travel Agent Proposal (Agency Margin)</span>
-                    <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${
-                      currentPublishing.agentTokenActive !== false ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'
-                    }`}>
-                      {currentPublishing.agentTokenActive !== false ? 'Active' : 'Revoked'}
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <a
-                      href={agentShareUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-xs font-semibold text-amber-700 hover:text-amber-900 flex items-center gap-1"
-                    >
-                      Open Link <ExternalLink size={12} />
-                    </a>
-                    <button
-                      type="button"
-                      onClick={() => handleRegenerateToken('agent')}
-                      className="text-xs font-semibold text-slate-600 hover:text-slate-900 px-2 py-1 bg-white border border-slate-200 rounded-md"
-                    >
-                      Regenerate Token
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => handleRevokeToken('agent')}
-                      className="text-xs font-semibold text-rose-600 hover:text-rose-900 px-2 py-1 bg-white border border-rose-200 rounded-md"
-                    >
-                      Revoke
-                    </button>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2">
-                  <input
-                    type="text"
-                    readOnly
-                    value={agentShareUrl}
-                    className="w-full px-3 py-1.5 text-xs bg-white border border-slate-200 rounded-lg text-slate-700 font-mono select-all"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => {
-                      navigator.clipboard.writeText(agentShareUrl);
-                      setCopiedRole('agent');
-                      setTimeout(() => setCopiedRole(null), 2000);
-                    }}
-                    className="px-3 py-1.5 bg-slate-900 text-white rounded-lg text-xs font-bold hover:bg-slate-800 shrink-0 flex items-center gap-1"
-                  >
-                    {copiedRole === 'agent' ? <Check size={12} /> : <Copy size={12} />}
-                    <span>{copiedRole === 'agent' ? 'Copied' : 'Copy'}</span>
-                  </button>
-                </div>
-              </div>
-
-              {/* Channel 3: Ground Operations & Driver Sheet */}
-              <div className="p-4 rounded-xl border border-slate-200 bg-slate-50/50 space-y-2">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs font-bold text-slate-900">Ground Operations & Driver Sheet (Zero Financials)</span>
-                    <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${
-                      currentPublishing.opsTokenActive !== false ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'
-                    }`}>
-                      {currentPublishing.opsTokenActive !== false ? 'Active' : 'Revoked'}
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <a
-                      href={opsShareUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-xs font-semibold text-blue-700 hover:text-blue-900 flex items-center gap-1"
-                    >
-                      Open Link <ExternalLink size={12} />
-                    </a>
-                    <button
-                      type="button"
-                      onClick={() => handleRegenerateToken('ops')}
-                      className="text-xs font-semibold text-slate-600 hover:text-slate-900 px-2 py-1 bg-white border border-slate-200 rounded-md"
-                    >
-                      Regenerate Token
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => handleRevokeToken('ops')}
-                      className="text-xs font-semibold text-rose-600 hover:text-rose-900 px-2 py-1 bg-white border border-rose-200 rounded-md"
-                    >
-                      Revoke
-                    </button>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2">
-                  <input
-                    type="text"
-                    readOnly
-                    value={opsShareUrl}
-                    className="w-full px-3 py-1.5 text-xs bg-white border border-slate-200 rounded-lg text-slate-700 font-mono select-all"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => {
-                      navigator.clipboard.writeText(opsShareUrl);
-                      setCopiedRole('ops');
-                      setTimeout(() => setCopiedRole(null), 2000);
-                    }}
-                    className="px-3 py-1.5 bg-slate-900 text-white rounded-lg text-xs font-bold hover:bg-slate-800 shrink-0 flex items-center gap-1"
-                  >
-                    {copiedRole === 'ops' ? <Check size={12} /> : <Copy size={12} />}
-                    <span>{copiedRole === 'ops' ? 'Copied' : 'Copy'}</span>
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Section 3: Privacy, Security & Client Presentation Settings */}
-          <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-xs space-y-4">
-            <div className="flex items-center gap-2 pb-3 border-b border-slate-100">
-              <Shield size={16} className="text-[#10233F]" />
-              <h3 className="text-sm font-bold text-slate-900">Security, Privacy & Content Controls</h3>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
-              {/* Setting 1: Password Protection */}
-              <div className="p-3.5 bg-slate-50 rounded-xl border border-slate-200 space-y-2">
-                <div className="flex items-center justify-between">
-                  <span className="font-bold text-slate-900 flex items-center gap-1.5">
-                    <Lock size={13} className="text-[#D4AF37]" /> Require Password for Itinerary
-                  </span>
-                  <input
-                    type="checkbox"
-                    checked={Boolean(currentPublishing.settings.requirePassword)}
-                    onChange={(e) => handleToggleSetting('requirePassword', e.target.checked)}
-                    className="rounded text-[#10233F] focus:ring-[#D4AF37] w-4 h-4 cursor-pointer"
-                  />
-                </div>
-                {currentPublishing.settings.requirePassword && (
-                  <input
-                    type="password"
-                    autoComplete="new-password"
-                    value={currentPublishing.settings.password || ''}
-                    onChange={(e) => handleToggleSetting('password', e.target.value)}
-                    placeholder="Enter a unique access password..."
-                    className="w-full px-3 py-1.5 text-xs bg-white border border-slate-200 rounded-lg text-slate-800"
-                  />
-                )}
-              </div>
-
-              {/* Setting 2: Expiry Date */}
-              <div className="p-3.5 bg-slate-50 rounded-xl border border-slate-200 space-y-2">
-                <div className="flex items-center justify-between">
-                  <span className="font-bold text-slate-900 flex items-center gap-1.5">
-                    <Clock size={13} className="text-[#D4AF37]" /> Itinerary Expiration Date
-                  </span>
-                  <input
-                    type="checkbox"
-                    checked={Boolean(currentPublishing.settings.enableExpiryDate)}
-                    onChange={(e) => handleToggleSetting('enableExpiryDate', e.target.checked)}
-                    className="rounded text-[#10233F] focus:ring-[#D4AF37] w-4 h-4 cursor-pointer"
-                  />
-                </div>
-                {currentPublishing.settings.enableExpiryDate && (
-                  <input
-                    type="date"
-                    value={currentPublishing.settings.expiresAt || ''}
-                    onChange={(e) => handleToggleSetting('expiresAt', e.target.value)}
-                    className="w-full px-3 py-1.5 text-xs bg-white border border-slate-200 rounded-lg text-slate-800"
-                  />
-                )}
-              </div>
-
-              {/* Setting 3: Client Pricing Visibility */}
-              <div className="p-3.5 bg-slate-50 rounded-xl border border-slate-200 flex items-center justify-between">
-                <div>
-                  <span className="font-bold text-slate-900 block">Show Client-Facing Pricing</span>
-                  <span className="text-slate-500 text-[11px]">Display selling prices and payment schedules on client portal</span>
-                </div>
-                <input
-                  type="checkbox"
-                  checked={Boolean(currentPublishing.settings.showPricing !== false)}
-                  onChange={(e) => handleToggleSetting('showPricing', e.target.checked)}
-                  className="rounded text-[#10233F] focus:ring-[#D4AF37] w-4 h-4 cursor-pointer"
-                />
-              </div>
-
-              {/* Client-facing currency is presentation-only; accounting remains in the base ZAR ledger. */}
-              <div className="p-3.5 bg-slate-50 rounded-xl border border-slate-200 space-y-2">
-                <label htmlFor="viemma-share-currency" className="font-bold text-slate-900 block">Client Display Currency</label>
-                <p className="text-slate-500 text-[11px]">Choose the currency shown in the published itinerary price summary.</p>
-                <select
-                  id="viemma-share-currency"
-                  value={['ZAR', 'USD', 'EUR', 'BRL', 'AOA'].includes((currentPublishing.settings.currency || 'ZAR').toUpperCase()) ? currentPublishing.settings.currency : 'ZAR'}
-                  onChange={(e) => handleToggleSetting('currency', e.target.value)}
-                  className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-xs text-slate-800 font-semibold"
-                >
-                  <option value="ZAR">ZAR · South African rand</option>
-                  <option value="USD">USD · US dollar</option>
-                  <option value="EUR">EUR · Euro</option>
-                  <option value="BRL">BRL · Brazilian real</option>
-                  <option value="AOA">AOA · Angolan kwanza</option>
-                </select>
-              </div>
-
-              {/* Mandatory client confidentiality: internal notes and supplier cost data are never projected */}
-              <div className="p-3.5 bg-emerald-50 rounded-xl border border-emerald-200 flex items-center justify-between">
-                <div>
-                  <span className="font-bold text-emerald-900 block">Internal Notes Protection · Always On</span>
-                  <span className="text-emerald-800 text-[11px]">Supplier net costs, commercial margins and internal operational notes are excluded from client-facing data.</span>
-                </div>
-                <span className="px-2.5 py-1 rounded-lg bg-emerald-100 border border-emerald-200 text-emerald-800 text-[10px] font-extrabold uppercase">Protected</span>
-              </div>
-
-              {/* Setting 5: Allow Offline Access */}
-              <div className="p-3.5 bg-slate-50 rounded-xl border border-slate-200 flex items-center justify-between">
-                <div>
-                  <span className="font-bold text-slate-900 block">Offline Mode Access</span>
-                  <span className="text-slate-500 text-[11px]">Allow travellers to view cached schedules without mobile data in remote safari camps</span>
-                </div>
-                <input
-                  type="checkbox"
-                  checked={Boolean(currentPublishing.settings.enableOfflineAccess !== false)}
-                  onChange={(e) => handleToggleSetting('enableOfflineAccess', e.target.checked)}
-                  className="rounded text-[#10233F] focus:ring-[#D4AF37] w-4 h-4 cursor-pointer"
-                />
-              </div>
-
-              {/* Setting 6: Allow Downloads */}
-              <div className="p-3.5 bg-slate-50 rounded-xl border border-slate-200 flex items-center justify-between">
-                <div>
-                  <span className="font-bold text-slate-900 block">Allow Client PDF Downloads</span>
-                  <span className="text-slate-500 text-[11px]">Show the Save PDF control on the client itinerary.</span>
-                </div>
-                <input
-                  type="checkbox"
-                  checked={Boolean(currentPublishing.settings.allowDownloads !== false)}
-                  onChange={(e) => handleToggleSetting('allowDownloads', e.target.checked)}
-                  className="rounded text-[#10233F] focus:ring-[#D4AF37] w-4 h-4 cursor-pointer"
-                />
-              </div>
-
-              {/* Setting 7: Allow Printing */}
-              <div className="p-3.5 bg-slate-50 rounded-xl border border-slate-200 flex items-center justify-between">
-                <div>
-                  <span className="font-bold text-slate-900 block">Allow Client Printing</span>
-                  <span className="text-slate-500 text-[11px]">Show the Print control on the client itinerary. Browser-level printing cannot be fully prevented.</span>
-                </div>
-                <input
-                  type="checkbox"
-                  checked={Boolean(currentPublishing.settings.allowPrinting !== false)}
-                  onChange={(e) => handleToggleSetting('allowPrinting', e.target.checked)}
-                  className="rounded text-[#10233F] focus:ring-[#D4AF37] w-4 h-4 cursor-pointer"
-                />
-              </div>
-
-              {/* Setting 8: Supplier Details Visibility */}
-              <div className="p-3.5 bg-slate-50 rounded-xl border border-slate-200 flex items-center justify-between">
-                <div>
-                  <span className="font-bold text-slate-900 block">Show Supplier Details to Client</span>
-                  <span className="text-slate-500 text-[11px]">When enabled, only supplier name and contact are shared; internal rates and notes remain hidden.</span>
-                </div>
-                <input
-                  type="checkbox"
-                  checked={Boolean(currentPublishing.settings.showSupplierDetails)}
-                  onChange={(e) => handleToggleSetting('showSupplierDetails', e.target.checked)}
-                  className="rounded text-[#10233F] focus:ring-[#D4AF37] w-4 h-4 cursor-pointer"
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* Section 4: Publishing Version History */}
-          <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-xs space-y-3">
-            <div className="flex items-center gap-2 pb-2 border-b border-slate-100">
-              <Clock size={16} className="text-[#10233F]" />
-              <h3 className="text-sm font-bold text-slate-900">Publishing Version Audit History</h3>
-            </div>
-
-            <div className="divide-y divide-slate-100 text-xs">
-              {(currentPublishing.versions || []).map((ver, idx) => (
-                <div key={idx} className="py-2.5 flex items-start justify-between gap-4">
-                  <div className="space-y-0.5">
-                    <div className="flex items-center gap-2">
-                      <span className="font-bold text-slate-900">Version {ver.version}</span>
-                      <span className="px-1.5 py-0.2 rounded text-[10px] font-bold bg-slate-100 text-slate-700">
-                        {ver.status}
-                      </span>
-                      <span className="text-slate-400 text-[11px]">{ver.date}</span>
-                    </div>
-                    <p className="text-slate-600">{ver.note}</p>
-                  </div>
-                  <span className="text-[10px] font-mono text-slate-400 shrink-0">v{ver.version}.0</span>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* VIEW 2: PHYSICAL PRINT & PDF QUALITY CONTROL STUDIO */}
-      {activeHubTab === 'pdf-qc' && (
-        <div className="max-w-7xl mx-auto px-2 sm:px-6 pt-6 overflow-x-auto">
-          {/* Status & QC Bar */}
-          {mode === 'client-editorial' && (
-            <div className="mb-4 bg-white p-4 rounded-2xl border border-slate-200 flex flex-wrap items-center justify-between gap-3 text-xs">
-              <div className="flex items-center gap-2">
-                <span className="w-2.5 h-2.5 rounded-full bg-emerald-500" />
-                <span className="font-bold text-slate-800">
-                  Strict Architectural Layout: 1 Hero Image + 1 Supporting Image + 2 Verified Paragraphs per page
-                </span>
-              </div>
-              <div className="flex items-center gap-2">
-                {insufficientPagesCount > 0 ? (
-                  <span className="text-amber-800 bg-amber-50 border border-amber-200 px-3 py-1 rounded-lg font-bold">
-                    ⚠ {insufficientPagesCount} page(s) flagged for short copy (zero fabricated text)
-                  </span>
-                ) : (
-                  <span className="text-emerald-800 bg-emerald-50 border border-emerald-200 px-3 py-1 rounded-lg font-bold">
-                    ✓ 100% Content & Image QC Pass
-                  </span>
-                )}
-                {exportStatus && (
-                  <span className="font-mono text-slate-600 bg-slate-100 px-2 py-1 rounded">{exportStatus}</span>
-                )}
-              </div>
-            </div>
-          )}
-
-          <div ref={printContainerRef} className="space-y-8">
-            {/* MODE 1: CLIENT EDITORIAL ITINERARY (Strict 1 Hero + 1 Supporting + 2 Paragraphs) */}
-            {mode === 'client-editorial' &&
-              visibleEditorialPages.map((page) => (
-                <ClientEditorialPage
-                  key={page.pageNumber}
-                  page={page}
-                  showOperatorWarnings={true}
-                  onEditParagraphs={handleEditPageParagraphs}
-                />
-              ))}
-
-            {/* MODE 2: DRIVER PICKUP BOARD (Public-Safe, Zero Financials) */}
             {mode === 'driver-pickup-board' && (
               <article
-                className="viemma-pdf-page bg-white text-slate-900 border border-slate-200 shadow-md mx-auto flex flex-col justify-between"
-                style={{ width: '210mm', minHeight: '297mm', padding: '20mm' }}
+                className="viemma-pdf-page bg-white text-slate-900 border border-slate-300 mx-auto flex flex-col justify-between"
+                style={{ width: '297mm', minHeight: '210mm', padding: '13mm 15mm' }}
               >
-                <header className="border-b-2 border-slate-900 pb-4 flex items-center justify-between">
+                <header className="flex items-start justify-between border-b border-slate-300 pb-3">
                   <div>
-                    <div className="text-xs font-mono uppercase tracking-[0.25em] text-slate-500">
-                      VIEMMA TOURS GROUND OPERATIONS
-                    </div>
-                    <h1 className="text-xl font-bold text-slate-900 mt-1">
-                      WELCOME / AIRPORT PICKUP SIGN
-                    </h1>
+                    <p className="text-xs text-slate-600 uppercase tracking-[0.16em]">Airport collection</p>
+                    <h1 className="text-sm font-semibold text-slate-900 mt-1">WELCOME</h1>
                   </div>
-                  <span className="font-mono text-sm font-bold px-3 py-1 bg-slate-900 text-white rounded">
-                    {group.tripId}
-                  </span>
+                  <span className="font-mono text-xs text-slate-600">Trip {group.tripId}</span>
                 </header>
 
-                <div className="my-auto py-16 text-center border-y border-slate-200">
-                  <div className="text-xs uppercase tracking-[0.3em] text-slate-400 mb-4">
-                    WELCOME TO {group.defaults.destination?.toUpperCase() || 'CAPE TOWN'}
-                  </div>
-                  <div
-                    className="text-4xl sm:text-5xl font-bold text-slate-900 tracking-tight break-words"
-                    style={{ fontFamily: 'Georgia, serif' }}
-                  >
-                    {scopedTransfers[0]?.pickupSignText || leadPerson?.fullName || group.groupName}
-                  </div>
-                  <p className="text-base text-slate-600 mt-4 font-medium">
-                    Party of {printGroup.travellers.length} Traveller{printGroup.travellers.length === 1 ? '' : 's'}
-                  </p>
-                </div>
+                <main className="flex-1 flex flex-col items-center justify-center text-center px-8 py-6">
+                  <p className="text-base sm:text-lg font-medium text-slate-700 tracking-[0.18em] mb-3">WELCOME</p>
+                  <h2 className="w-full text-5xl sm:text-6xl font-semibold text-slate-950 leading-tight break-words">
+                    {placardGuestName}
+                  </h2>
+                  {welcomePlacard.showAgencyName && welcomePlacard.agencyName.trim() && (
+                    <p className="mt-3 text-sm text-slate-600">{welcomePlacard.agencyName.trim()}</p>
+                  )}
+                </main>
 
-                <footer className="grid grid-cols-3 gap-4 pt-4 text-xs text-slate-600">
-                  <div>
-                    <span className="font-semibold text-slate-900 block">Arrival Flight</span>
-                    {flights[0] ? `${flights[0].flightNumber} (${flights[0].arrivalTime || 'TBC'})` : 'As Scheduled'}
+                <footer className="border-t border-slate-300 pt-3">
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-x-8 gap-y-3 text-sm">
+                    <div>
+                      <span className="block text-xs text-slate-500">Flight number</span>
+                      <span className="font-semibold text-slate-900">{scopedFlights[0]?.flightNumber || 'To be confirmed'}</span>
+                    </div>
+                    <div>
+                      <span className="block text-xs text-slate-500">Pick-up time</span>
+                      <span className="font-semibold text-slate-900">{scopedTransfers[0]?.pickupTime || 'To be confirmed'}</span>
+                    </div>
+                    <div>
+                      <span className="block text-xs text-slate-500">Arrival time</span>
+                      <span className="font-semibold text-slate-900">{scopedFlights[0]?.arrivalTime || 'To be confirmed'}</span>
+                    </div>
+                    <div>
+                      <span className="block text-xs text-slate-500">Hotel / destination</span>
+                      <span className="font-semibold text-slate-900">{placardHotelOrDestination || 'To be confirmed'}</span>
+                    </div>
                   </div>
-                  <div>
-                    <span className="font-semibold text-slate-900 block">Transfer Destination</span>
-                    {scopedTransfers[0]?.dropoffLocation || scopedHotels[0]?.propertyName || group.defaults.destination}
+                  <div className="mt-3 pt-2 border-t border-slate-200 text-center text-sm font-semibold text-slate-800">
+                    {printGroup.travellers.length} passenger{printGroup.travellers.length === 1 ? '' : 's'}
                   </div>
-                  <div className="text-right font-mono">Page 1 of 1</div>
                 </footer>
               </article>
             )}
