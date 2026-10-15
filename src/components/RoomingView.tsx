@@ -20,7 +20,6 @@ import {
   AlertCircle,
   ArrowRight,
   MapPin,
-  Sparkles,
   Layers,
   Activity,
   Bed,
@@ -598,7 +597,7 @@ export const RoomingView: React.FC<RoomingViewProps> = ({
 
       {/* QUICK BOOK PANEL */}
       {showQuickBook && (
-        <div className="bg-gradient-to-br from-[#1A3326] to-[#12241b] text-white rounded-[24px] p-6 md:p-8 shadow-xl border border-[#D4AF37]/20 space-y-6 animate-in slide-in-from-top duration-300 relative overflow-hidden">
+        <div className="bg-gradient-to-br from-[#1A3326] to-[#12241b] text-white rounded-md p-6 md:p-8 shadow-sm border border-[#D4AF37]/20 space-y-6  relative overflow-hidden">
           <div className="absolute right-0 top-0 w-80 h-80 bg-[#D4AF37]/5 rounded-full blur-3xl pointer-events-none"></div>
           
           <div className="flex items-center justify-between border-b border-white/10 pb-4">
@@ -723,10 +722,10 @@ export const RoomingView: React.FC<RoomingViewProps> = ({
 
       {/* DETAILED WORKSPACE FORM */}
       {editingRoomId !== null && (
-        <div className="bg-white rounded-[24px] border border-gray-100 shadow-xl overflow-hidden animate-in slide-in-from-bottom duration-300">
+        <div className="bg-white rounded-md border border-gray-100 shadow-sm overflow-hidden ">
           
           {/* Header */}
-          <div className="bg-gradient-to-r from-[#1A3326] to-[#224433] text-white p-6 md:p-8 flex items-center justify-between">
+          <div className="bg-[#1A3326] text-white p-5 md:p-6 flex items-center justify-between">
             <div>
               <span className="text-[10px] uppercase tracking-[0.2em] font-bold text-[#D4AF37] block mb-1">Interactive Property Rooming</span>
               <h2 className="text-xl md:text-2xl font-bold font-sans flex items-center gap-2">
@@ -753,7 +752,7 @@ export const RoomingView: React.FC<RoomingViewProps> = ({
           <div className="p-6 md:p-8 space-y-8 bg-gray-50/50">
             
             {/* GROUP 1: Property Operational Information */}
-            <div className="bg-white rounded-[20px] p-6 border border-gray-100 shadow-sm space-y-6">
+            <div className="bg-white rounded-md p-6 border border-gray-100 shadow-sm space-y-6">
               <h3 className="text-xs uppercase font-bold text-[#1A3326] tracking-wider border-b border-gray-100 pb-2 flex items-center gap-2">
                 <Compass size={14} className="text-[#D4AF37]" /> Property Knowledge Object
               </h3>
@@ -784,7 +783,7 @@ export const RoomingView: React.FC<RoomingViewProps> = ({
                   </div>
 
                   {showHotelDropdown && (
-                    <div className="absolute left-0 top-full mt-1 w-full bg-white border border-gray-200 rounded-xl shadow-xl max-h-56 overflow-y-auto z-50 py-1 text-xs">
+                    <div className="absolute left-0 top-full mt-1 w-full bg-white border border-gray-200 rounded-xl shadow-sm max-h-56 overflow-y-auto z-50 py-1 text-xs">
                       <div className="px-3 py-1 text-[10px] uppercase font-bold text-gray-400 bg-gray-50 border-b border-gray-100 flex justify-between items-center">
                         <span>Select from Catalogue or enter custom property</span>
                         <button type="button" onClick={() => setShowHotelDropdown(false)} className="text-gray-400 hover:text-gray-600">Close</button>
@@ -907,7 +906,7 @@ export const RoomingView: React.FC<RoomingViewProps> = ({
             </div>
 
             {/* GROUP 2: Booking Schedule */}
-            <div className="bg-white rounded-[20px] p-6 border border-gray-100 shadow-sm space-y-6">
+            <div className="bg-white rounded-md p-6 border border-gray-100 shadow-sm space-y-6">
               <h3 className="text-xs uppercase font-bold text-[#1A3326] tracking-wider border-b border-gray-100 pb-2 flex items-center gap-2">
                 <Calendar size={14} className="text-[#D4AF37]" /> Stay Schedule & Duration
               </h3>
@@ -946,7 +945,7 @@ export const RoomingView: React.FC<RoomingViewProps> = ({
             </div>
 
             {/* INTELLIGENT ROOM ALLOCATION DESK */}
-            <div className="bg-white rounded-[20px] p-6 border border-gray-100 shadow-sm space-y-6">
+            <div className="bg-white rounded-md p-6 border border-gray-100 shadow-sm space-y-6">
               <div className="flex justify-between items-center border-b border-gray-100 pb-3">
                 <h3 className="text-xs uppercase font-bold text-[#1A3326] tracking-wider flex items-center gap-2">
                   <Layers size={14} className="text-[#D4AF37]" /> Intelligent Room Allocations
@@ -1033,7 +1032,7 @@ export const RoomingView: React.FC<RoomingViewProps> = ({
             </div>
 
             {/* GROUP 3: Settlement Status & Financial Accounting */}
-            <div className="bg-white rounded-[20px] p-6 border border-gray-100 shadow-sm space-y-6">
+            <div className="bg-white rounded-md p-6 border border-gray-100 shadow-sm space-y-6">
               <div className="flex items-center justify-between border-b border-gray-100 pb-2">
                 <h3 className="text-xs uppercase font-bold text-[#1A3326] tracking-wider flex items-center gap-2">
                   <Clock size={14} className="text-[#D4AF37]" /> Stay Settlement & Accounting Status
@@ -1126,7 +1125,7 @@ export const RoomingView: React.FC<RoomingViewProps> = ({
             </div>
 
             {/* GROUP 4: Emergency Contacts & Cancellation Rules */}
-            <div className="bg-white rounded-[20px] p-6 border border-gray-100 shadow-sm space-y-6">
+            <div className="bg-white rounded-md p-6 border border-gray-100 shadow-sm space-y-6">
               <h3 className="text-xs uppercase font-bold text-[#1A3326] tracking-wider border-b border-gray-100 pb-2 flex items-center gap-2">
                 <ShieldAlert size={14} className="text-[#D4AF37]" /> Emergency Coordination & Cancellation
               </h3>
@@ -1184,7 +1183,7 @@ export const RoomingView: React.FC<RoomingViewProps> = ({
             </div>
 
             {/* GROUP 5: Operational Notes (Role Specific) */}
-            <div className="bg-white rounded-[20px] p-6 border border-gray-100 shadow-sm space-y-4">
+            <div className="bg-white rounded-md p-6 border border-gray-100 shadow-sm space-y-4">
               <h3 className="text-xs uppercase font-bold text-[#1A3326] tracking-wider border-b border-gray-100 pb-2 flex items-center gap-2">
                 <FileText size={14} className="text-[#D4AF37]" /> Role-Specific Hotel Operational Notes (Internal)
               </h3>
@@ -1201,7 +1200,7 @@ export const RoomingView: React.FC<RoomingViewProps> = ({
             </div>
 
             {/* GROUP 6: Supporting Documents & Hotel Attachments */}
-            <div className="bg-white rounded-[20px] p-6 border border-gray-100 shadow-sm space-y-4">
+            <div className="bg-white rounded-md p-6 border border-gray-100 shadow-sm space-y-4">
               <AttachmentManager
                 attachments={rForm.attachments || []}
                 onAddAttachment={(item) => setRForm(prev => ({
@@ -1244,7 +1243,7 @@ export const RoomingView: React.FC<RoomingViewProps> = ({
       {/* REGISTERED STAYS & ALLOCATIONS GRID */}
       <div className="space-y-6">
         {state.rooms.length === 0 ? (
-          <div className="text-center py-16 bg-white border border-gray-100 rounded-[24px] shadow-sm max-w-lg mx-auto w-full space-y-4 animate-in zoom-in-95">
+          <div className="text-center py-16 bg-white border border-gray-100 rounded-md shadow-sm max-w-lg mx-auto w-full space-y-4 animate-in zoom-in-95">
             <div className="w-16 h-16 bg-emerald-50 text-[#065f46] rounded-full flex items-center justify-center mx-auto shadow-inner">
               <Hotel size={24} />
             </div>
@@ -1278,7 +1277,7 @@ export const RoomingView: React.FC<RoomingViewProps> = ({
             return (
               <div 
                 key={r.id} 
-                className="bg-white rounded-[24px] border border-gray-100 shadow-xs hover:shadow-sm transition-all duration-300 relative overflow-hidden p-6 md:p-8"
+                className="bg-white rounded-md border border-gray-100 shadow-xs hover:shadow-sm transition-all duration-300 relative overflow-hidden p-6 md:p-8"
               >
                 {/* Gold-lined indicator bar */}
                 <div className="absolute top-0 left-0 w-1.5 h-full bg-[#D4AF37]" />
@@ -1316,7 +1315,7 @@ export const RoomingView: React.FC<RoomingViewProps> = ({
                         )}
                         {r.sustainabilityRating && (
                           <span className="text-[10px] bg-emerald-50 text-emerald-700 px-2.5 py-0.5 rounded border border-emerald-100 font-semibold flex items-center gap-1">
-                            <Sparkles size={10} /> Eco Certified
+                            <Hotel size={10} /> Eco Certified
                           </span>
                         )}
                       </div>
@@ -1444,7 +1443,7 @@ export const RoomingView: React.FC<RoomingViewProps> = ({
       {/* ALLOCATED ROOM MODAL (Progressive disclosure popup inside Stay Form) */}
       {showRoomAllocModal && (
         <div className="fixed inset-0 bg-gray-900/40 backdrop-blur-md flex items-center justify-center z-[120] p-4">
-          <div className="bg-white rounded-[24px] max-w-lg w-full max-h-[90vh] overflow-hidden shadow-2xl flex flex-col animate-in zoom-in-95 duration-200">
+          <div className="bg-white rounded-md max-w-lg w-full max-h-[90vh] overflow-hidden shadow-sm flex flex-col animate-in zoom-in-95 duration-200">
             
             <div className="p-5 border-b border-gray-100 bg-slate-50 flex justify-between items-center shrink-0">
               <div>
