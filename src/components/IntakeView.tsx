@@ -880,7 +880,7 @@ export const IntakeView: React.FC<IntakeViewProps> = ({
                           </div>
 
                           {/* Row Action Buttons */}
-                          <div className="flex flex-wrap items-center gap-4 lg:gap-5 self-start md:self-center shrink-0">
+                          <div className="flex flex-wrap items-center gap-5 lg:gap-7 self-start md:self-center shrink-0">
                             <button
                               type="button"
                               onClick={() => handleOpenEditGuest(g, 'details')}
@@ -1396,17 +1396,17 @@ export const IntakeView: React.FC<IntakeViewProps> = ({
                 }}
                 className="w-full h-10 px-3 rounded-md border border-slate-300 text-sm font-normal text-slate-800 bg-white focus:outline-none focus:ring-2 focus:ring-emerald-700/20"
               >
-                <option value="half_day_tour">Half-day tour (up to 5 hours)</option>
-                <option value="full_day_tour">Full-day tour (up to 10 hours)</option>
-                <option value="multi_day_tour">Multi-day tour / package</option>
-                <option value="multi_day_safari">Multi-day safari</option>
-                <option value="private_guided_tour">Private guided day tour</option>
-                <option value="scheduled_shared_tour">Scheduled departure / shared tour</option>
+                <option value="half_day_tour">Half-day tour (typically 4–5 hours)</option>
+                <option value="full_day_tour">Full-day tour (typically 8–10 hours)</option>
+                <option value="multi_day_tour">Multi-day tour or holiday package</option>
+                <option value="multi_day_safari">Multi-day safari package</option>
+                <option value="private_guided_tour">Private guided tour</option>
+                <option value="scheduled_shared_tour">Scheduled group tour</option>
                 <option value="airport_transfer">Airport transfer (arrival or departure)</option>
                 <option value="point_to_point_transfer">Point-to-point transfer</option>
                 <option value="private_transfer">Private transfer</option>
-                <option value="self_drive_itinerary">Self-drive tour / itinerary</option>
-                <option value="tailor_made_tour">Tailor-made tour / package</option>
+                <option value="self_drive_itinerary">Self-drive tour</option>
+                <option value="tailor_made_tour">Tailor-made tour or holiday</option>
               </select>
             </div>
           </div>
@@ -1792,13 +1792,13 @@ export const IntakeView: React.FC<IntakeViewProps> = ({
               {/* EXPANDABLE ADVANCED PROFILE DETAILS */}
               {showAdvancedGuestDetails && (
                 <div className="space-y-4 pt-2 border-t border-gray-100 animate-in fade-in duration-150">
-                  <div className="flex flex-nowrap items-center gap-8 md:gap-10 overflow-x-auto whitespace-nowrap border-b border-slate-200 text-xs font-medium text-slate-600">
+                  <div className="flex flex-wrap items-center gap-x-8 md:gap-x-12 gap-y-2 border-b border-slate-200 pb-1 text-[13px] font-medium text-slate-600">
                     <button
                       type="button"
                       onClick={() => setModalTab('details')}
-                      className={`shrink-0 pb-3 px-2 border-b-2 transition cursor-pointer ${modalTab === 'details' ? 'border-[#D4AF37] text-[#1A3326]' : 'border-transparent text-gray-500 hover:text-gray-900'}`}
+                      className={`shrink-0 pb-3 px-3 border-b-2 cursor-pointer ${modalTab === 'details' ? 'border-[#1A3326] text-[#1A3326]' : 'border-transparent text-gray-500 hover:text-gray-900'}`}
                     >
-                      General
+                      General & Contact
                     </button>
 
                     <button
@@ -1994,15 +1994,12 @@ export const IntakeView: React.FC<IntakeViewProps> = ({
 
                   {/* TAB 3: READINESS AUDIT */}
                   {modalTab === 'audit' && (
-                    <div className="space-y-4 animate-in fade-in duration-150">
+                    <div className="space-y-4">
                       <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl flex items-center justify-between text-xs">
                         <div>
                           <strong className="block text-gray-900">Operational Readiness Audit</strong>
-                          <span className="text-[11px] text-gray-500">Checking documentation, personal records and assignment completeness.</span>
+                          <span className="text-[11px] text-gray-500">Checking traveller identity, passport details and essential contact information.</span>
                         </div>
-                        <span className="px-2 py-0.5 rounded bg-[#1A3326] text-[#D4AF37] font-bold text-[10px] uppercase font-mono">
-                          Viemma Ground OPS
-                        </span>
                       </div>
 
                       <div className="space-y-2.5 text-xs">
