@@ -64,7 +64,7 @@ export const IntakeView: React.FC<IntakeViewProps> = ({
   const [modalOpen, setModalOpen] = useState(false);
   const [modalGuest, setModalGuest] = useState<Partial<Guest>>({});
   const [showAdvancedGuestDetails, setShowAdvancedGuestDetails] = useState(false);
-  const [modalTab, setModalTab] = useState<'details' | 'audit' | 'dietary' | 'accessibility' | 'preferences' | 'documents'>('details');
+  const [modalTab, setModalTab] = useState<'details' | 'audit' | 'dietary' | 'accessibility' | 'preferences' | 'documents'> ('details');
   const [modalCountrySearch, setModalCountrySearch] = useState('');
   const [showModalCountryDD, setShowModalCountryDD] = useState(false);
 
@@ -775,7 +775,7 @@ export const IntakeView: React.FC<IntakeViewProps> = ({
                       Trip {state.ref || 'VT-2026-001'}
                     </span>
                     <span className="text-sm text-slate-600">
-                      Traveller list
+                      Traveller roster
                     </span>
                   </div>
                   <h2 className="text-lg md:text-xl font-semibold text-slate-900 mt-1 flex flex-wrap items-center gap-2">
@@ -829,7 +829,7 @@ export const IntakeView: React.FC<IntakeViewProps> = ({
               {(viewMode === 'both' || viewMode === 'hierarchy') && (
                 <div className="space-y-2">
                   <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 pb-1 text-sm text-slate-700">
-                    <span>{state.guests.length} travellers · {state.guests.filter(g => g.isLead).length} lead · {state.guests.filter(g => !g.isLead && !g.isProvisional).length} confirmed · {state.guests.filter(g => g.isProvisional).length} to name</span>
+                    <span>{state.guests.length} travellers · {state.guests.filter(g => g.isLead).length} lead · {state.guests.filter(g => !g.isLead && !g.isProvisional).length} confirmed · {state.guests.filter(g => g.isProvisional).length} provisional</span>
                     <span className="text-xs text-slate-500">Edit a profile or check documents.</span>
                   </div>
 
@@ -880,7 +880,7 @@ export const IntakeView: React.FC<IntakeViewProps> = ({
                           </div>
 
                           {/* Row Action Buttons */}
-                          <div className="flex flex-wrap items-center gap-3 self-start md:self-center shrink-0">
+                          <div className="flex flex-wrap items-center gap-4 lg:gap-5 self-start md:self-center shrink-0">
                             <button
                               type="button"
                               onClick={() => handleOpenEditGuest(g, 'details')}
@@ -1396,17 +1396,17 @@ export const IntakeView: React.FC<IntakeViewProps> = ({
                 }}
                 className="w-full h-10 px-3 rounded-md border border-slate-300 text-sm font-normal text-slate-800 bg-white focus:outline-none focus:ring-2 focus:ring-emerald-700/20"
               >
-                <option value="half_day_tour">Half-day tour (about 4–5 hours)</option>
-                <option value="full_day_tour">Full-day tour (about 8–10 hours)</option>
-                <option value="multi_day_tour">Multi-day tour</option>
+                <option value="half_day_tour">Half-day tour (up to 5 hours)</option>
+                <option value="full_day_tour">Full-day tour (up to 10 hours)</option>
+                <option value="multi_day_tour">Multi-day tour / package</option>
                 <option value="multi_day_safari">Multi-day safari</option>
-                <option value="private_guided_tour">Private guided tour</option>
-                <option value="scheduled_shared_tour">Scheduled / shared tour</option>
-                <option value="airport_transfer">Airport transfer</option>
+                <option value="private_guided_tour">Private guided day tour</option>
+                <option value="scheduled_shared_tour">Scheduled departure / shared tour</option>
+                <option value="airport_transfer">Airport transfer (arrival or departure)</option>
                 <option value="point_to_point_transfer">Point-to-point transfer</option>
                 <option value="private_transfer">Private transfer</option>
-                <option value="self_drive_itinerary">Self-drive itinerary</option>
-                <option value="tailor_made_tour">Tailor-made tour</option>
+                <option value="self_drive_itinerary">Self-drive tour / itinerary</option>
+                <option value="tailor_made_tour">Tailor-made tour / package</option>
               </select>
             </div>
           </div>
@@ -1784,7 +1784,7 @@ export const IntakeView: React.FC<IntakeViewProps> = ({
                   onClick={() => setShowAdvancedGuestDetails(!showAdvancedGuestDetails)}
                   className="w-full py-2 px-3 rounded-xl bg-slate-50 hover:bg-slate-100 border border-slate-200 text-xs font-bold text-gray-700 flex items-center justify-between transition cursor-pointer"
                 >
-                  <span>{showAdvancedGuestDetails ? '− Hide Additional Profile Details' : '+ View Service Assignments, Audit, Dietary & Preferences'}</span>
+                  <span>{showAdvancedGuestDetails ? '− Hide Additional Profile Details' : '+ View additional profile details'}</span>
                   <span className="text-[10px] text-gray-400 font-normal">Expanded Profile</span>
                 </button>
               </div>
@@ -1792,11 +1792,11 @@ export const IntakeView: React.FC<IntakeViewProps> = ({
               {/* EXPANDABLE ADVANCED PROFILE DETAILS */}
               {showAdvancedGuestDetails && (
                 <div className="space-y-4 pt-2 border-t border-gray-100 animate-in fade-in duration-150">
-                  <div className="flex flex-nowrap items-center gap-5 overflow-x-auto whitespace-nowrap border-b border-slate-200 text-xs font-medium text-slate-600">
+                  <div className="flex flex-nowrap items-center gap-8 md:gap-10 overflow-x-auto whitespace-nowrap border-b border-slate-200 text-xs font-medium text-slate-600">
                     <button
                       type="button"
                       onClick={() => setModalTab('details')}
-                      className={`shrink-0 pb-3 px-1 border-b-2 transition cursor-pointer ${modalTab === 'details' ? 'border-[#D4AF37] text-[#1A3326]' : 'border-transparent text-gray-500 hover:text-gray-900'}`}
+                      className={`shrink-0 pb-3 px-2 border-b-2 transition cursor-pointer ${modalTab === 'details' ? 'border-[#D4AF37] text-[#1A3326]' : 'border-transparent text-gray-500 hover:text-gray-900'}`}
                     >
                       General
                     </button>
