@@ -483,7 +483,11 @@ export const ClientView: React.FC<Props> = ({ state: rawState, onBackToWorkspace
               {/* Curated Consultant Mini Card */}
               <div className="flex items-center gap-3 bg-white/10 backdrop-blur-md px-3.5 py-2 rounded-2xl border border-white/15">
                 <div className="w-10 h-10 rounded-xl overflow-hidden border border-[#D4AF37] shrink-0">
-                  <img src={consultantAvatar} alt={consultantName} className="w-full h-full object-cover" />
+                  {consultantAvatar ? (
+                    <img src={consultantAvatar} alt={consultantName} className="w-full h-full object-cover" onError={(event) => { (event.target as HTMLImageElement).style.display = 'none'; }} />
+                  ) : (
+                    <div className="w-full h-full bg-[#1A3326] text-[#D4AF37] flex items-center justify-center"><Users size={18} /></div>
+                  )}
                 </div>
                 <div>
                   <span className="text-[9px] uppercase tracking-wider text-[#D4AF37] font-bold block leading-none">Curated By</span>
@@ -985,31 +989,31 @@ export const ClientView: React.FC<Props> = ({ state: rawState, onBackToWorkspace
                 </div>
 
                 <p className="text-xs text-gray-600">
-                  Request dining reservations, schedule adjustments, or special preferences.
+                  Prepare an email request for dining reservations, schedule adjustments, or other trip preferences.
                 </p>
 
-                {chatSent ? (
+                {chatSent && (
                   <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl text-emerald-900 text-xs font-bold flex items-center gap-2">
                     <CheckCircle size={15} className="text-emerald-600 shrink-0" />
-                    Request received. Elena is attending to your request.
+                    Your email application should open with a prepared draft. Send that email to submit the request.
                   </div>
-                ) : (
-                  <form onSubmit={handleSendConciergeChat} className="space-y-2">
-                    <textarea
-                      rows={2}
-                      placeholder="Type your message..."
-                      value={chatMessage}
-                      onChange={(e) => setChatMessage(e.target.value)}
-                      className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs focus:outline-none focus:border-[#1A3326] focus:bg-white resize-none"
-                    />
-                    <button
-                      type="submit"
-                      className="w-full py-2.5 rounded-xl bg-[#1A3326] hover:bg-[#234533] text-white text-xs font-bold transition flex items-center justify-center gap-1.5 active:scale-95 shadow-xs"
-                    >
-                      <Send size={13} /> Dispatch to Concierge
-                    </button>
-                  </form>
                 )}
+                {chatError && <p role="alert" className="text-xs text-rose-700">{chatError}</p>}
+                <form onSubmit={handleSendConciergeChat} className="space-y-2">
+                  <textarea
+                    rows={2}
+                    placeholder="Type your request..."
+                    value={chatMessage}
+                    onChange={(e) => setChatMessage(e.target.value)}
+                    className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs focus:outline-none focus:border-[#1A3326] focus:bg-white resize-none"
+                  />
+                  <button
+                    type="submit"
+                    className="w-full py-2.5 rounded-xl bg-[#1A3326] hover:bg-[#234533] text-white text-xs font-bold transition flex items-center justify-center gap-1.5 active:scale-95 shadow-xs"
+                  >
+                    <Send size={13} /> Prepare Email Request
+                  </button>
+                </form>
               </div>
 
             </div>
@@ -1144,20 +1148,25 @@ export const ClientView: React.FC<Props> = ({ state: rawState, onBackToWorkspace
             </button>
             {expandedInfo.emergency && (
               <div className="p-4 pt-0 text-xs text-gray-600 leading-relaxed border-t border-gray-100 space-y-3">
-                <p>For immediate assistance during your trip, your dedicated travel team is on standby 24 hours a day.</p>
+                <p>Use the contact details entered for this itinerary. If no direct phone or email is listed, contact Viemma Tours through your agreed communication channel.</p>
                 <div className="flex flex-wrap gap-2">
-                  <a
-                    href={`tel:${consultantPhone}`}
-                    className="px-3.5 py-2 rounded-xl bg-[#1A3326] text-white font-bold flex items-center gap-1.5 shadow-xs"
-                  >
-                    <Phone size={13} className="text-[#D4AF37]" /> Call Concierge ({consultantPhone})
-                  </a>
-                  <a
-                    href={`mailto:${consultantEmail}`}
-                    className="px-3.5 py-2 rounded-xl bg-gray-100 text-gray-800 font-bold flex items-center gap-1.5 hover:bg-gray-200"
-                  >
-                    <Mail size={13} /> Email ({consultantEmail})
-                  </a>
+                  {consultantPhone && (
+                    <a
+                      href={`tel:${consultantPhone}`}
+                      className="px-3.5 py-2 rounded-xl bg-[#1A3326] text-white font-bold flex items-center gap-1.5 shadow-xs"
+                    >
+                      <Phone size={13} className="text-[#D4AF37]" /> Call Concierge
+                    </a>
+                  )}
+                  {consultantEmail && (
+                    <a
+                      href={`mailto:${consultantEmail}`}
+                      className="px-3.5 py-2 rounded-xl bg-gray-100 text-gray-800 font-bold flex items-center gap-1.5 hover:bg-gray-200"
+                    >
+                      <Mail size={13} /> Email Concierge
+                    </a>
+                  )}
+                  {!consultantPhone && !consultantEmail && <span className="text-amber-800">No direct contact details have been supplied for this itinerary.</span>}
                 </div>
               </div>
             )}
