@@ -11,7 +11,9 @@ interface TripJsonImportPanelProps {
 
 const scopeForTab = (tab: string): TripJsonScope => {
   if (tab === 'flights') return 'flights';
-  if (tab === 'transfers' || tab === 'fleet' || tab === 'drivers') return 'transfers';
+  if (tab === 'transfers') return 'transfers';
+  if (tab === 'drivers') return 'drivers';
+  if (tab === 'fleet') return 'vehicles';
   if (tab === 'rooming') return 'hotels';
   if (tab === 'activities' || tab === 'library' || tab === 'driver-itinerary') return 'programme';
   if (tab === 'timelines') return 'timeline';
@@ -28,6 +30,8 @@ const scopeLabels: Record<TripJsonScope, string> = {
   programme: 'Programme',
   timeline: 'Timeline',
   finance: 'Pricing and finance',
+  drivers: 'Drivers',
+  vehicles: 'Vehicles and fleet',
 };
 
 export const TripJsonImportPanel: React.FC<TripJsonImportPanelProps> = ({ state, activeTab, onApply }) => {
