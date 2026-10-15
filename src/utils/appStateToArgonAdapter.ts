@@ -97,7 +97,7 @@ export function adaptAppStateToArgon(state: AppState): {
     id: String(f.id),
     tripId: state.ref || 'VT-2026-001',
     groupId: group.id,
-    direction: (f.from?.toLowerCase().includes('cpt') ? 'Departure' : 'Arrival') as any,
+    direction: (f.direction === 'Inbound' ? 'Arrival' : f.direction === 'Outbound' ? 'Departure' : 'Internal') as any,
     flightNumber: `${f.airline || ''} ${f.flightNo || ''}`.trim() || 'Flight',
     airline: f.airline || '',
     departureAirport: f.from || '',
