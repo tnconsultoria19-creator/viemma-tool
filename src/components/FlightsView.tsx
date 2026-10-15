@@ -270,14 +270,14 @@ export const FlightsView: React.FC<FlightsViewProps> = ({
     <div className="space-y-8 max-w-[1500px] mx-auto animate-in fade-in duration-500 pb-16">
       
       {/* Title Header with Spacious Breathing Room */}
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 p-5 md:p-6 bg-white/95 backdrop-blur-md border border-white/80 rounded-2xl shadow-sm">
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 p-5 md:p-6 bg-white border border-slate-200 rounded-md">
         <div className="space-y-2">
           <span className="text-xs uppercase tracking-[0.2em] font-bold text-[#8A6A00] flex items-center gap-2">
-            <Plane size={14} /> Global Transit System
+            <Plane size={14} /> Flights
           </span>
-          <h1 className="text-3xl font-bold tracking-tight text-[#10233F] font-sans">Aviation & Flight Corridors</h1>
+          <h1 className="text-3xl font-bold tracking-tight text-[#10233F] font-sans">Flights</h1>
           <p className="text-slate-600 max-w-2xl text-sm leading-relaxed">
-            Link international long-haul flights, regional air transfers, layover routing waypoints, verified airline carriers, booking references, and live airport flight trackers.
+            Record inbound, outbound and connecting flights, airline and booking details, times, and passenger links.
           </p>
         </div>
         {editingFlightId === null && (
@@ -286,7 +286,7 @@ export const FlightsView: React.FC<FlightsViewProps> = ({
             onClick={handleOpenAddForm} 
             className="flex items-center gap-2 px-5 py-3 rounded-xl bg-[#1A3326] text-white hover:bg-[#12241b] text-xs font-bold shadow-md hover:translate-y-[-1px] transition-all duration-150 shrink-0 cursor-pointer"
           >
-            <Plus size={14} /> Link New Flight Sector
+            <Plus size={14} /> Add flight
           </button>
         )}
       </div>
@@ -298,10 +298,10 @@ export const FlightsView: React.FC<FlightsViewProps> = ({
           {/* Header */}
           <div className="bg-[#1A3326] text-white p-5 md:p-6 flex items-center justify-between">
             <div>
-              <span className="text-[10px] uppercase tracking-[0.2em] font-bold text-[#D4AF37] block mb-1">Interactive Aviation Configurator</span>
+              <span className="text-[10px] uppercase tracking-[0.2em] font-bold text-[#D4AF37] block mb-1">Flight details</span>
               <h2 className="text-xl md:text-2xl font-bold font-sans flex items-center gap-2">
                 <Plane size={20} className="text-[#D4AF37]" />
-                {editingFlightId === -1 ? 'Configure Flight Sector' : 'Update Flight Sector'}
+                {editingFlightId === -1 ? 'Add flight' : 'Edit flight'}
               </h2>
             </div>
             <div className="flex gap-3">
@@ -317,7 +317,7 @@ export const FlightsView: React.FC<FlightsViewProps> = ({
                 onClick={handleSaveFlight} 
                 className="px-5 py-2 rounded-xl bg-[#D4AF37] text-[#1A3326] hover:bg-[#b89528] text-xs font-extrabold shadow-sm hover:translate-y-[-1px] transition-all cursor-pointer"
               >
-                Save Flight Sector
+                Save flight
               </button>
             </div>
           </div>
