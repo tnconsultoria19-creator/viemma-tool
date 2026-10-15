@@ -655,18 +655,17 @@ export const ClientView: React.FC<Props> = ({ state: rawState, onBackToWorkspace
           
           {/* Day Destination Cover Photo Banner (Arched top or full bleed) */}
           <div className="relative rounded-3xl overflow-hidden shadow-xl h-64 sm:h-80 md:h-96 bg-gray-900 group">
-            {activeDestinationInfo.img ? (
+            <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 text-white/70 bg-gradient-to-br from-slate-800 to-[#1A3326]">
+              <Compass size={30} className="text-[#D4AF37]" />
+              <span className="text-xs font-semibold">Destination image not provided</span>
+            </div>
+            {activeDestinationInfo.img && (
               <img
                 src={activeDestinationInfo.img}
                 alt={activeDestinationInfo.name}
-                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
+                className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
                 onError={(event) => { (event.target as HTMLImageElement).style.display = 'none'; }}
               />
-            ) : (
-              <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 text-white/70 bg-gradient-to-br from-slate-800 to-[#1A3326]">
-                <Compass size={30} className="text-[#D4AF37]" />
-                <span className="text-xs font-semibold">Destination image not provided</span>
-              </div>
             )}
             <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent" />
 
@@ -734,12 +733,17 @@ export const ClientView: React.FC<Props> = ({ state: rawState, onBackToWorkspace
                   <div className="space-y-6">
                     {dayActivities.map((act) => {
                       const libMatch = experienceLibrary.find(i => i.name === act.name);
-                      const actHero = act.heroImage || libMatch?.featuredImage || SOUTH_AFRICA_DESTINATION_HEROES[2];
-                      const actGallery = act.gallery && act.gallery.length > 0 
-                        ? act.gallery 
-                        : libMatch?.images && libMatch.images.length > 0 
-                          ? libMatch.images 
-                          : [actHero];
+                      const actHero = act.heroImage || libMatch?.featuredImage || libMatch?.images?.[0] || '';
+                      const actGallery = act.gallery && act.gallery.length > 0
+                        ? act.gallery
+                        : libMatch?.images && libMatch.images.length > 0
+                          ? libMatch.images
+                          : actHero ? [actHero] : [];
+                      const activityStatusLabel = act.status === 'Confirmed' ? 'Confirmed'
+                        : act.status === 'Postponed' ? 'Postponed'
+                        : act.status === 'Completed' ? 'Completed'
+                        : act.status === 'Draft' ? 'Draft'
+                        : 'Scheduled';
 
                       return (
                         <div key={act.id} className="bg-[#FAF9F6] rounded-2xl p-4 md:p-6 border border-gray-200/80 space-y-4 shadow-xs">
@@ -756,27 +760,33 @@ export const ClientView: React.FC<Props> = ({ state: rawState, onBackToWorkspace
                             </div>
 
                             <span className="text-[11px] font-bold text-emerald-800 bg-emerald-100/70 px-2.5 py-0.5 rounded-full">
-                              ✓ VIP Private Excursion
+                              {activityStatusLabel}
                             </span>
                           </div>
 
                           {/* Large / Medium Activity Photo (Tap to expand) */}
-                          <div 
-                            onClick={() => openLightbox([actHero, ...actGallery], 0)}
-                            className="w-full h-48 sm:h-64 rounded-xl overflow-hidden bg-gray-200 relative cursor-pointer group shadow-sm"
+                          <div
+                            onClick={() => { if (actHero || actGallery.length > 0) openLightbox([actHero, ...actGallery].filter(Boolean), 0); }}
+                            className={`w-full h-48 sm:h-64 rounded-xl overflow-hidden bg-gray-200 relative group shadow-sm ${actHero || actGallery.length > 0 ? 'cursor-pointer' : ''}`}
                           >
-                            <img 
-                              src={actHero} 
-                              alt={act.name} 
-                              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                              onError={(e) => {
-                                (e.target as HTMLImageElement).src = SOUTH_AFRICA_DESTINATION_HEROES[0];
-                              }}
-                            />
-                            <div className="absolute inset-0 bg-black/20 group-hover:bg-black/0 transition-colors" />
-                            <div className="absolute bottom-2.5 right-2.5 px-2.5 py-1 rounded-lg bg-black/70 text-white text-xs font-bold backdrop-blur-xs flex items-center gap-1">
-                              <Compass size={12} className="text-[#D4AF37]" /> Tap to view photos
+                            <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-gradient-to-br from-slate-100 to-slate-200 text-slate-500">
+                              <Compass size={26} className="text-[#1A3326]" />
+                              <span className="text-xs font-semibold">Activity photo not provided</span>
                             </div>
+                            {actHero && (
+                              <img
+                                src={actHero}
+                                alt={act.name}
+                                className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                                onError={(event) => { (event.target as HTMLImageElement).style.display = 'none'; }}
+                              />
+                            )}
+                            <div className="absolute inset-0 bg-black/20 group-hover:bg-black/0 transition-colors pointer-events-none" />
+                            {(actHero || actGallery.length > 0) && (
+                              <div className="absolute bottom-2.5 right-2.5 px-2.5 py-1 rounded-lg bg-black/70 text-white text-xs font-bold backdrop-blur-xs flex items-center gap-1">
+                                <Compass size={12} className="text-[#D4AF37]" /> Tap to view photos
+                              </div>
+                            )}
                           </div>
 
                           {/* Activity Details */}
