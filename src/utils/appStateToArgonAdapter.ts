@@ -32,7 +32,13 @@ export function adaptAppStateToArgon(state: AppState): {
     groupName: state.client?.name || state.title || 'Private Journey Party',
     leadTravellerId,
     defaults: {
-      destination: state.client?.country || 'Cape Town, South Africa',
+      destination: (() => {
+        const firstScheduledActivity = (state.activities || []).find(activity =>
+          activity.status !== 'Cancelled' && Boolean((activity.destination || activity.venue || '').trim())
+        );
+        return firstScheduledActivity?.destination || firstScheduledActivity?.venue ||
+          (state.rooms || []).find(room => room.status !== 'Cancelled' && room.hotel?.trim())?.hotel || '';
+      })(),
       startDate: state.client?.startDate || '',
       endDate: state.client?.endDate || '',
       contactEmail: state.client?.email || '',
@@ -155,6 +161,7 @@ export function adaptAppStateToArgon(state: AppState): {
       id: String(a.id),
       tripId: state.ref || 'VT-2026-001',
       groupId: group.id,
+      dayTitle: state.dayTitles?.[a.day] || '',
       title: a.name || 'Day Excursion',
       date: actDate || state.client?.startDate || new Date().toISOString().split('T')[0],
       startTime: a.start || a.pickup || '09:30',
