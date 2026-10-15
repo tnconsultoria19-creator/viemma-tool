@@ -655,20 +655,30 @@ export const ClientView: React.FC<Props> = ({ state: rawState, onBackToWorkspace
           
           {/* Day Destination Cover Photo Banner (Arched top or full bleed) */}
           <div className="relative rounded-3xl overflow-hidden shadow-xl h-64 sm:h-80 md:h-96 bg-gray-900 group">
-            <img 
-              src={activeDestinationInfo.img} 
-              alt={activeDestinationInfo.name} 
-              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
-            />
+            {activeDestinationInfo.img ? (
+              <img
+                src={activeDestinationInfo.img}
+                alt={activeDestinationInfo.name}
+                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
+                onError={(event) => { (event.target as HTMLImageElement).style.display = 'none'; }}
+              />
+            ) : (
+              <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 text-white/70 bg-gradient-to-br from-slate-800 to-[#1A3326]">
+                <Compass size={30} className="text-[#D4AF37]" />
+                <span className="text-xs font-semibold">Destination image not provided</span>
+              </div>
+            )}
             <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent" />
 
             {/* Click to expand lightbox button */}
-            <button
-              onClick={() => openLightbox([activeDestinationInfo.img, ...activeDestinationInfo.gallery], 0)}
-              className="absolute top-4 right-4 z-10 px-3 py-1.5 rounded-full bg-black/60 hover:bg-black/80 text-white text-xs font-bold backdrop-blur-md border border-white/20 flex items-center gap-1.5 transition"
-            >
-              <Compass size={13} /> Open Day Gallery
-            </button>
+            {(activeDestinationInfo.img || activeDestinationInfo.gallery.length > 0) && (
+              <button
+                onClick={() => openLightbox([activeDestinationInfo.img, ...activeDestinationInfo.gallery].filter(Boolean), 0)}
+                className="absolute top-4 right-4 z-10 px-3 py-1.5 rounded-full bg-black/60 hover:bg-black/80 text-white text-xs font-bold backdrop-blur-md border border-white/20 flex items-center gap-1.5 transition"
+              >
+                <Compass size={13} /> Open Day Gallery
+              </button>
+            )}
 
             {/* Overlay Day Title */}
             <div className="absolute bottom-6 left-6 right-6 text-white space-y-1.5">
