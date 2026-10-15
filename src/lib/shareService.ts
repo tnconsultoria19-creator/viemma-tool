@@ -897,6 +897,47 @@ export function subscribeToShareDoc(
       },
       (error) => {
         console.warn(`Error subscribing to ${collectionName}/${token}:`, error);
+        const errorCode = (error as { code?: string } | null)?.code || '';
+        const isTransientNetworkError = [
+          'unavailable',
+          'deadline-exceeded',
+          'cancelled',
+          'network-request-failed'
+        ].some(code => errorCode === code || errorCode.endsWith(`/${code}`));
+
+        // Firestore permission denials must never be replaced with cached data: they can
+        // indicate expiry, revocation or a malformed protected link. Only transient network
+        // failures may use a cache, and the owner's offline setting and expiry are rechecked.
+        if (isTransientNetworkError) {
+          try {
+            const cachePrefix = role === 'client' ? 'cli' : role === 'agent' ? 'agt' : 'ops';
+            const cached = localStorage.getItem(`viemma_share_${cachePrefix}_${token}`);
+            if (cached) {
+              const parsed = JSON.parse(cached);
+              const expiresAt = parsed?.accessPolicy?.expiresAt;
+              const expiryTime = expiresAt
+                ? new Date(/^\\d{4}-\\d{2}-\\d{2}$/.test(expiresAt) ? `${expiresAt}T23:59:59.999` : expiresAt).getTime()
+                : null;
+              const expired = expiryTime !== null && (!Number.isFinite(expiryTime) || Date.now() > expiryTime);
+              const protectedPayloadMissing = Boolean(parsed.accessPolicy?.passwordRequired && !parsed.encryptedPayload);
+              if (
+                parsed.active !== false &&
+                parsed.accessPolicy?.enableOfflineAccess !== false &&
+                !expired &&
+                !protectedPayloadMissing
+              ) {
+                onUpdate(parsed);
+              } else {
+                onUpdate(null);
+              }
+            } else {
+              onUpdate(null);
+            }
+          } catch {
+            onUpdate(null);
+          }
+        }
+
         if (onError) onError(error);
       }
     );
