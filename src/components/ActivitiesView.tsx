@@ -845,14 +845,14 @@ export const ActivitiesView: React.FC<ActivitiesViewProps> = ({
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
           <div className="space-y-1.5">
             <div className="flex items-center gap-2">
-              <span className="text-[10px] uppercase tracking-[0.2em] font-extrabold text-[#D4AF37] flex items-center gap-1.5 bg-[#1A3326] px-3 py-1 rounded-lg">
+              <span className="text-sm font-semibold text-slate-600 flex items-center gap-1.5">
                 <Compass size={13} /> Daily programme
               </span>
               <span className="text-xs font-semibold text-slate-600">
                 {state.ref || 'VT-2026-001'} • {tripDaysCount} Itinerary Days • {state.activities?.filter(a => a.status !== 'Cancelled').length || 0} Scheduled Activities
               </span>
             </div>
-            <h1 className="text-2xl md:text-3xl font-extrabold tracking-tight text-[#10233F] font-sans">
+            <h1 className="text-2xl md:text-3xl font-semibold tracking-tight text-slate-900 font-sans">
               Tour programme
             </h1>
             <p className="text-slate-600 max-w-3xl text-xs md:text-sm leading-relaxed">
