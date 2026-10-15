@@ -1,52 +1,41 @@
-@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap');
 @import "tailwindcss";
 
 @theme {
-  --font-sans: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
-  --font-serif: "Outfit", ui-serif, Georgia, serif;
+  --font-sans: Arial, Helvetica, sans-serif;
+  --font-serif: Arial, Helvetica, sans-serif;
+}
+
+html, body, #root {
+  min-height: 100%;
 }
 
 body {
   margin: 0;
   padding: 0;
   min-height: 100vh;
-  background-image: url('https://images.pexels.com/photos/7843687/pexels-photo-7843687.jpeg?auto=compress&cs=tinysrgb&w=1920');
-  background-size: cover;
-  background-position: center;
-  background-attachment: fixed;
-  background-repeat: no-repeat;
-  color: #1a1a1a;
-  font-family: var(--font-sans);
+  background: #f6f7f8;
+  color: #1f2933;
+  font-family: Arial, Helvetica, sans-serif;
 }
 
-/* Luxury Frosted Canvas & Glass Overlays - Botanical Background Clearly Visible & Crisp */
+/* Neutral workspace surfaces; no photo canvas, glass blur or decorative overlays. */
 .workspace-canvas {
-  background: rgba(255, 255, 255, 0.60);
-  backdrop-filter: blur(4px);
-  -webkit-backdrop-filter: blur(4px);
-  border-radius: 24px;
-  box-shadow: 0 16px 40px -10px rgba(0, 0, 0, 0.15), 0 0 0 1px rgba(255, 255, 255, 0.5);
+  background: #ffffff;
+  border: 1px solid #e1e5e9;
+  border-radius: 8px;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
 }
 
 .glass-panel-dark {
-  background: rgba(26, 51, 38, 0.65);
-  backdrop-filter: blur(4px);
-  -webkit-backdrop-filter: blur(4px);
-  border: 1px solid rgba(212, 175, 55, 0.35);
+  background: #1a3326;
+  border: 1px solid #d4af37;
 }
 
 .glass-panel-light {
-  background: rgba(255, 255, 255, 0.65);
-  backdrop-filter: blur(4px);
-  -webkit-backdrop-filter: blur(4px);
-  border: 1px solid rgba(255, 255, 255, 0.7);
+  background: #ffffff;
+  border: 1px solid #e1e5e9;
 }
 
-
-
-
-
-/* Readability veil for headings that sit over the photographic page canvas. */
 .photo-canvas-readability {
   position: relative;
   isolation: isolate;
@@ -56,9 +45,13 @@ body {
   position: absolute;
   inset: 0;
   z-index: -1;
-  border-radius: 1rem;
-  background: linear-gradient(90deg, rgba(255,255,255,0.95) 0%, rgba(255,255,255,0.85) 60%, rgba(255,255,255,0.20) 100%);
+  border-radius: 8px;
+  background: #ffffff;
   pointer-events: none;
+}
+
+.font-serif {
+  font-family: Arial, Helvetica, sans-serif !important;
 }
 
 
@@ -66,6 +59,10 @@ body {
 @media print {
   @page {
     size: A4 portrait;
+    margin: 0mm;
+  }
+  @page viemma-placard {
+    size: A4 landscape;
     margin: 0mm;
   }
   html, body, #root {
@@ -92,6 +89,15 @@ body {
     box-shadow: none !important;
     border: none !important;
     overflow: hidden !important;
+  }
+  .viemma-pdf-page.viemma-welcome-placard {
+    page: viemma-placard;
+    width: 297mm !important;
+    min-height: 210mm !important;
+    max-height: 210mm !important;
+    padding: 13mm 15mm !important;
+    page-break-after: always !important;
+    break-after: page !important;
   }
   .viemma-pdf-page:last-child {
     page-break-after: auto !important;
