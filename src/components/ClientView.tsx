@@ -1183,18 +1183,20 @@ export const ClientView: React.FC<Props> = ({ state: rawState, onBackToWorkspace
             <Shield size={15} />
           </div>
           <div>
-            <span className="text-[9px] uppercase tracking-wider text-[#D4AF37] font-bold block leading-none">VIP Concierge</span>
+            <span className="text-[9px] uppercase tracking-wider text-[#D4AF37] font-bold block leading-none">Viemma Tours</span>
             <span className="text-xs font-bold text-white block leading-tight">{consultantName}</span>
           </div>
         </div>
 
         <div className="flex items-center gap-2">
-          <a
-            href={`tel:${consultantPhone}`}
-            className="px-3 py-1.5 rounded-xl bg-[#D4AF37] text-[#1A3326] text-xs font-extrabold flex items-center gap-1 active:scale-95 shadow-sm"
-          >
-            <Phone size={12} /> Call
-          </a>
+          {consultantPhone && (
+            <a
+              href={`tel:${consultantPhone}`}
+              className="px-3 py-1.5 rounded-xl bg-[#D4AF37] text-[#1A3326] text-xs font-extrabold flex items-center gap-1 active:scale-95 shadow-sm"
+            >
+              <Phone size={12} /> Call
+            </a>
+          )}
           <button
             onClick={() => scrollToSection('concierge-chat')}
             className="px-3 py-1.5 rounded-xl bg-white/15 text-white text-xs font-bold flex items-center gap-1 active:scale-95 border border-white/20"
