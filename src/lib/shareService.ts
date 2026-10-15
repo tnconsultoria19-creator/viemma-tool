@@ -65,9 +65,16 @@ export interface ClientShareDoc {
     groupNames?: string[];
     supplierName?: string;
     supplierPhone?: string;
+    weatherDependency?: string;
+    packingAdvice?: string;
+    dressCode?: string;
+    suitableAges?: string;
+    accessibility?: string[];
+    safetyNotes?: string;
   }>;
   accommodations: Array<{
     id: number;
+    status?: string;
     hotel: string;
     roomType: string;
     cin: string;
@@ -467,6 +474,12 @@ export function buildClientProjection(trip: AppState, token: string): ClientShar
       gallery: a.gallery,
       inc: a.inc || [],
       groupNames: (trip.namedGroups || []).filter(g => (a.groupIds || []).includes(g.id)).map(g => g.name),
+      weatherDependency: a.weatherDependency || '',
+      packingAdvice: a.packingAdvice || '',
+      dressCode: a.dressCode || '',
+      suitableAges: a.suitableAges || '',
+      accessibility: a.accessibility || [],
+      safetyNotes: a.safetyNotes || '',
       ...(clientSettings.showSupplierDetails ? {
         supplierName: a.supplier || '',
         supplierPhone: a.supPhone || ''
@@ -474,6 +487,7 @@ export function buildClientProjection(trip: AppState, token: string): ClientShar
     })),
     accommodations: activeRooms.map(r => ({
       id: r.id,
+      status: r.status || 'Held',
       hotel: r.hotel,
       roomType: r.roomType,
       cin: r.cin,
@@ -1019,6 +1033,7 @@ export function clientDocToAppState(doc: ClientShareDoc): AppState {
     })),
     rooms: doc.accommodations.map(r => ({
       ...r,
+      status: (r.status || 'Held') as any,
       conf: '',
       pay: 'Fully Paid' as const,
       bed: 'King',
