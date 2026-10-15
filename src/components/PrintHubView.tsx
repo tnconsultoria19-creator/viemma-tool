@@ -186,6 +186,7 @@ export const PrintHubView: React.FC<PrintHubViewProps> = (props) => {
   const placardHotelOrDestination = scopedHotels[0]?.propertyName
     || scopedTransfers[0]?.dropoffLocation
     || '';
+  const placardFlight = scopedFlights.find(flight => flight.direction === 'Arrival') || scopedFlights[0];
 
   const handleEditPageParagraphs = (pageNumber: number, nextParagraphs: [string, string]) => {
     setCustomParagraphOverrides((prev) => ({
@@ -1124,7 +1125,7 @@ export const PrintHubView: React.FC<PrintHubViewProps> = (props) => {
                 <header className="flex items-start justify-between border-b border-slate-300 pb-3">
                   <div>
                     <p className="text-xs text-slate-600 uppercase tracking-[0.16em]">Airport collection</p>
-                    <h1 className="text-sm font-semibold text-slate-900 mt-1">WELCOME</h1>
+                    <p className="text-sm text-slate-700 mt-1">Welcome sign</p>
                   </div>
                   <span className="font-mono text-xs text-slate-600">Trip {group.tripId}</span>
                 </header>
@@ -1143,7 +1144,7 @@ export const PrintHubView: React.FC<PrintHubViewProps> = (props) => {
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-x-8 gap-y-3 text-sm">
                     <div>
                       <span className="block text-xs text-slate-500">Flight number</span>
-                      <span className="font-semibold text-slate-900">{scopedFlights[0]?.flightNumber || 'To be confirmed'}</span>
+                      <span className="font-semibold text-slate-900">{placardFlight?.flightNumber || 'To be confirmed'}</span>
                     </div>
                     <div>
                       <span className="block text-xs text-slate-500">Pick-up time</span>
@@ -1151,7 +1152,7 @@ export const PrintHubView: React.FC<PrintHubViewProps> = (props) => {
                     </div>
                     <div>
                       <span className="block text-xs text-slate-500">Arrival time</span>
-                      <span className="font-semibold text-slate-900">{scopedFlights[0]?.arrivalTime || 'To be confirmed'}</span>
+                      <span className="font-semibold text-slate-900">{placardFlight?.arrivalTime || 'To be confirmed'}</span>
                     </div>
                     <div>
                       <span className="block text-xs text-slate-500">Hotel / destination</span>
