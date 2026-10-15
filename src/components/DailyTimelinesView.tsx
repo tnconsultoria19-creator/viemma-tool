@@ -55,7 +55,7 @@ export const DailyTimelinesView: React.FC<DailyTimelinesViewProps> = ({ state, o
       driver: 'N/A',
       vehicle: 'N/A',
       status: f.status,
-      paxCount: f.paxIds?.length || 1,
+      paxCount: f.paxIds?.length ?? 1,
       groupIds: groupIdsForRoster(f.paxIds),
       groupNames: groupNamesForIds(groupIdsForRoster(f.paxIds)),
       originalObj: f
@@ -77,7 +77,7 @@ export const DailyTimelinesView: React.FC<DailyTimelinesViewProps> = ({ state, o
         driver: a.responsiblePerson || 'Assigned Guide',
         vehicle: 'Transfer Fleet',
         status: a.status,
-        paxCount: a.paxIds?.length || state.guests.length,
+        paxCount: a.paxIds?.length ?? state.guests.length,
         groupIds: groupIdsForRoster(a.paxIds, a.groupIds),
         groupNames: groupNamesForIds(groupIdsForRoster(a.paxIds, a.groupIds)),
         originalObj: a
@@ -93,7 +93,7 @@ export const DailyTimelinesView: React.FC<DailyTimelinesViewProps> = ({ state, o
       driver: 'N/A',
       vehicle: 'N/A',
       status: r.status || 'Confirmed',
-      paxCount: r.guestIds?.length || 2,
+      paxCount: r.guestIds?.length ?? 2,
       groupIds: groupIdsForRoster(r.guestIds),
       groupNames: groupNamesForIds(groupIdsForRoster(r.guestIds)),
       originalObj: r
