@@ -604,11 +604,11 @@ export const ActivitiesView: React.FC<ActivitiesViewProps> = ({
     return issues;
   };
 
-  const handleOpenAddForm = () => {
-    // Start from an empty activity record. Operational details must be confirmed for this trip.
+  const handleOpenAddForm = (targetDayNum: number = typeof selectedDayFilter === 'number' ? selectedDayFilter : 1) => {
+    // Start from an empty activity record on the day currently in focus. Operational details must be confirmed.
     setAForm({
-      day: 1,
-      date: state.client?.startDate || '',
+      day: targetDayNum,
+      date: getDayIsoDate(targetDayNum),
       slot: 'Morning',
       name: '',
       desc: '',
