@@ -900,21 +900,33 @@ export const ClientView: React.FC<Props> = ({ state: rawState, onBackToWorkspace
 
                 {state.rooms[0] ? (
                   <div className="space-y-3">
-                    <div 
-                      onClick={() => openLightbox(state.rooms[0].propertyImages || [SOUTH_AFRICA_DESTINATION_HEROES[1]], 0)}
-                      className="h-44 rounded-2xl overflow-hidden bg-gray-100 relative cursor-pointer group shadow-xs"
+                    <div
+                      onClick={() => {
+                        const images = (state.rooms[0].propertyImages || []).filter(Boolean);
+                        if (images.length > 0) openLightbox(images, 0);
+                      }}
+                      className={`h-44 rounded-2xl overflow-hidden bg-gray-100 relative group shadow-xs ${state.rooms[0].propertyImages?.some(Boolean) ? 'cursor-pointer' : ''}`}
                     >
-                      <img 
-                        src={state.rooms[0].propertyImages?.[0] || SOUTH_AFRICA_DESTINATION_HEROES[1]} 
-                        alt={state.rooms[0].hotel} 
-                        className="w-full h-full object-cover group-hover:scale-105 transition duration-500"
-                      />
+                      <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-gradient-to-br from-slate-100 to-slate-200 text-slate-500">
+                        <Hotel size={24} className="text-[#1A3326]" />
+                        <span className="text-xs font-semibold">Accommodation photo not provided</span>
+                      </div>
+                      {state.rooms[0].propertyImages?.[0] && (
+                        <img
+                          src={state.rooms[0].propertyImages[0]}
+                          alt={state.rooms[0].hotel}
+                          className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition duration-500"
+                          onError={(event) => { (event.target as HTMLImageElement).style.display = 'none'; }}
+                        />
+                      )}
                       <span className="absolute bottom-2.5 left-2.5 px-2 py-1 rounded bg-black/70 backdrop-blur-xs text-white text-[10px] font-bold">
                         {state.rooms[0].nights} Nights Stay
                       </span>
-                      <span className="absolute bottom-2.5 right-2.5 px-2 py-1 rounded bg-black/70 backdrop-blur-xs text-white text-[10px] font-bold">
-                        Tap for Photos
-                      </span>
+                      {state.rooms[0].propertyImages?.some(Boolean) && (
+                        <span className="absolute bottom-2.5 right-2.5 px-2 py-1 rounded bg-black/70 backdrop-blur-xs text-white text-[10px] font-bold">
+                          Tap for Photos
+                        </span>
+                      )}
                     </div>
 
                     <div>
