@@ -1,6 +1,6 @@
-import type { AppState, Activity, Flight, Guest, Room, Transfer } from '../types';
+import type { AppState, Activity, Driver, Flight, Guest, Room, Transfer, Vehicle } from '../types';
 
-export type TripJsonScope = 'all' | 'clients' | 'flights' | 'transfers' | 'hotels' | 'programme' | 'timeline' | 'finance';
+export type TripJsonScope = 'all' | 'clients' | 'flights' | 'transfers' | 'hotels' | 'programme' | 'timeline' | 'finance' | 'drivers' | 'vehicles';
 export type TripJsonMode = 'merge' | 'replace';
 
 export interface TripJsonApplyResult {
@@ -314,6 +314,66 @@ function mapActivity(source: AnyRecord, existing: Activity | undefined, index: n
   };
 }
 
+function mapDriver(source: AnyRecord, existing: Driver | undefined, index: number): Driver {
+  const name = text(pick(source, 'name', 'fullName', 'driverName', 'preferredName'), existing?.name || `Driver ${index + 1}`);
+  const statusRaw = text(pick(source, 'status', 'availability'), existing?.status || 'Available').toLowerCase();
+  const status: Driver['status'] = statusRaw.includes('assign') ? 'Assigned'
+    : statusRaw.includes('off') || statusRaw.includes('leave') ? 'Off Duty'
+    : statusRaw.includes('unavailable') || statusRaw.includes('inactive') ? 'Unavailable'
+    : 'Available';
+  const availabilityRaw = text(pick(source, 'operationalAvailability', 'availabilityPattern', 'workingPattern'), existing?.operationalAvailability || 'Full-time');
+  const operationalAvailability: NonNullable<Driver['operationalAvailability']> =
+    ['Full-time', 'Part-time', 'On-Call', 'Weekend Only'].find(item => item.toLowerCase() === availabilityRaw.toLowerCase()) as NonNullable<Driver['operationalAvailability']> || 'Full-time';
+  return {
+    ...(existing || {}),
+    id: existing?.id || text(pick(source, 'id', 'driverId'), `driver-${Date.now()}-${index}`),
+    name,
+    preferredName: text(pick(source, 'preferredName', 'callName'), existing?.preferredName || ''),
+    phone: text(pick(source, 'phone', 'mobile', 'telephone', 'whatsapp'), existing?.phone || ''),
+    email: text(pick(source, 'email', 'emailAddress'), existing?.email || ''),
+    licenseNo: text(pick(source, 'licenseNo', 'licenceNo', 'licenseNumber', 'licenceNumber'), existing?.licenseNo || ''),
+    licenseCategory: text(pick(source, 'licenseCategory', 'licenceCategory', 'licenseClass'), existing?.licenseCategory || ''),
+    prdpNumber: text(pick(source, 'prdpNumber', 'prdpNo', 'professionalDrivingPermit'), existing?.prdpNumber || ''),
+    prdpExpiryDate: text(pick(source, 'prdpExpiryDate', 'prdpExpiry', 'prdpExpiryDate'), existing?.prdpExpiryDate || ''),
+    assignedVehicleId: text(pick(source, 'assignedVehicleId', 'vehicleId'), existing?.assignedVehicleId || ''),
+    operationalAvailability,
+    status,
+    notes: text(pick(source, 'notes', 'remarks'), existing?.notes || ''),
+    emergencyContactName: text(pick(source, 'emergencyContactName', 'emergencyName'), existing?.emergencyContactName || ''),
+    emergencyContactPhone: text(pick(source, 'emergencyContactPhone', 'emergencyPhone'), existing?.emergencyContactPhone || ''),
+  };
+}
+
+function mapVehicle(source: AnyRecord, existing: Vehicle | undefined, index: number): Vehicle {
+  const name = text(pick(source, 'name', 'vehicleName', 'model', 'makeAndModel'), existing?.name || `Vehicle ${index + 1}`);
+  const registration = text(pick(source, 'registration', 'registrationNumber', 'reg', 'numberPlate', 'licencePlate'), existing?.registration || '');
+  const typeRaw = text(pick(source, 'type', 'vehicleType', 'category'), existing?.type || 'Other');
+  const type: Vehicle['type'] = ['Luxury SUV', 'Minibus / Quantum', 'Mercedes V-Class', 'Sedan', 'Coach', '4x4 Safari', 'Other'].find(item => item.toLowerCase() === typeRaw.toLowerCase()) as Vehicle['type']
+    || (/quantum|minibus/i.test(typeRaw) ? 'Minibus / Quantum'
+      : /v.?class/i.test(typeRaw) ? 'Mercedes V-Class'
+      : /suv/i.test(typeRaw) ? 'Luxury SUV'
+      : /coach|bus/i.test(typeRaw) ? 'Coach'
+      : /4.?x.?4|safari/i.test(typeRaw) ? '4x4 Safari'
+      : /sedan/i.test(typeRaw) ? 'Sedan' : 'Other');
+  const statusRaw = text(pick(source, 'status', 'vehicleStatus'), existing?.status || 'Available').toLowerCase();
+  const status: Vehicle['status'] = statusRaw.includes('maint') ? 'Maintenance'
+    : statusRaw.includes('service') ? 'In Service'
+    : statusRaw.includes('assign') || statusRaw.includes('dispatch') ? 'Assigned'
+    : statusRaw.includes('inactive') || statusRaw.includes('retired') ? 'Inactive'
+    : 'Available';
+  return {
+    ...(existing || {}),
+    id: existing?.id || text(pick(source, 'id', 'vehicleId'), `vehicle-${Date.now()}-${index}`),
+    name, type, registration,
+    capacity: Math.max(1, number(pick(source, 'capacity', 'passengerCapacity', 'seats'), existing?.capacity || 1)),
+    luggageCapacity: Math.max(0, number(pick(source, 'luggageCapacity', 'luggage', 'bagCapacity'), existing?.luggageCapacity || 0)),
+    assignedDriverId: text(pick(source, 'assignedDriverId', 'driverId'), existing?.assignedDriverId || ''),
+    status,
+    notes: text(pick(source, 'notes', 'remarks'), existing?.notes || ''),
+    imageUrl: text(pick(source, 'imageUrl', 'photoUrl'), existing?.imageUrl || ''),
+  };
+}
+
 const modeAllowed = (scope: TripJsonScope, section: TripJsonScope) => scope === 'all' || scope === section ||
   (scope === 'timeline' && section === 'programme') || (scope === 'programme' && section === 'timeline');
 
@@ -332,6 +392,8 @@ export function applyTripJson(
     (pick(root, 'clientName', 'guestName', 'contactName') !== undefined ? root : null);
   const travellerSources = sourceArray(root, 'travellers', 'travelers', 'guests', 'passengers', 'tourParty');
   const flightSources = sourceArray(root, 'flights', 'flightDetails', 'airTravel');
+  const driverSources = sourceArray(root, 'drivers', 'driverDetails', 'tourDrivers');
+  const vehicleSources = sourceArray(root, 'vehicles', 'fleet', 'vehicleRegister');
   const transferSources = sourceArray(root, 'transfers', 'groundTransfers', 'transport');
   const roomSources = sourceArray(root, 'rooms', 'hotels', 'accommodations', 'stays', 'hotelBookings');
   let activitySources = sourceArray(root, 'activities', 'programme', 'program', 'dayTours', 'experiences');
@@ -458,6 +520,36 @@ export function applyTripJson(
     return next.guests.find(g => g.id === importedId) || next.guests.find(g => same(`${g.first} ${g.last}`, value) || same(g.preferredName, value));
   };
   // The mapping above normally leaves passenger linking to the item-specific mapper. Resolve any names to current guest IDs there.
+
+  if (modeAllowed(scope, 'drivers') && driverSources) {
+    const incoming = driverSources.map((source, index) => {
+      const name = text(pick(source, 'name', 'fullName', 'driverName', 'preferredName'));
+      const phone = text(pick(source, 'phone', 'mobile', 'telephone', 'whatsapp'));
+      const existing = next.drivers.find(driver =>
+        (name && same(driver.name, name)) ||
+        (phone && same(driver.phone, phone)) ||
+        (pick(source, 'id', 'driverId') !== undefined && same(driver.id, pick(source, 'id', 'driverId')))
+      );
+      return mapDriver(source, existing, index);
+    });
+    next.drivers = mergeBy(next.drivers, incoming, mode, (a, b) => a.id === b.id || same(a.name, b.name) || (Boolean(a.phone) && same(a.phone, b.phone)));
+    changed.push(`${incoming.length} driver record(s)`);
+  }
+
+  if (modeAllowed(scope, 'vehicles') && vehicleSources) {
+    const incoming = vehicleSources.map((source, index) => {
+      const registration = text(pick(source, 'registration', 'registrationNumber', 'reg', 'numberPlate', 'licencePlate'));
+      const name = text(pick(source, 'name', 'vehicleName', 'model', 'makeAndModel'));
+      const existing = next.vehicles.find(vehicle =>
+        (registration && same(vehicle.registration, registration)) ||
+        (name && same(vehicle.name, name)) ||
+        (pick(source, 'id', 'vehicleId') !== undefined && same(vehicle.id, pick(source, 'id', 'vehicleId')))
+      );
+      return mapVehicle(source, existing, index);
+    });
+    next.vehicles = mergeBy(next.vehicles, incoming, mode, (a, b) => a.id === b.id || (Boolean(a.registration) && same(a.registration, b.registration)) || same(a.name, b.name));
+    changed.push(`${incoming.length} vehicle record(s)`);
+  }
 
   if (modeAllowed(scope, 'flights') && flightSources) {
     const incoming = flightSources.map((source, index) => {
