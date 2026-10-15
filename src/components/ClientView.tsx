@@ -377,7 +377,7 @@ export const ClientView: React.FC<Props> = ({ state: rawState, onBackToWorkspace
           <div className="space-y-3.5 text-left w-full md:max-w-2xl animate-in fade-in slide-in-from-bottom-6 duration-700">
             
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-black/60 backdrop-blur-md text-[#D4AF37] text-[11px] font-bold uppercase tracking-widest border border-[#D4AF37]/30">
-              <Sparkles size={12} /> Bespoke South African Expedition
+              <Sparkles size={12} /> Personalised Itinerary
             </div>
 
             {/* Large Editorial Headline */}
@@ -965,15 +965,17 @@ export const ClientView: React.FC<Props> = ({ state: rawState, onBackToWorkspace
                   <Car size={15} className="text-emerald-800" /> Private Transfers
                 </div>
 
-                <div className="p-3.5 bg-[#FAF9F6] rounded-2xl border border-gray-200 text-xs space-y-1.5">
-                  <div className="flex items-center justify-between font-bold text-gray-900">
-                    <span>VIP Ground Chauffeur</span>
-                    <span className="text-emerald-800 text-[11px]">Included</span>
+                {state.transfers.filter(transfer => transfer.status !== 'Cancelled').length > 0 && (
+                  <div className="p-3.5 bg-[#FAF9F6] rounded-2xl border border-gray-200 text-xs space-y-1.5">
+                    <div className="flex items-center justify-between font-bold text-gray-900">
+                      <span>Scheduled Ground Transfers</span>
+                      <span className="text-slate-600 text-[11px]">{state.transfers.filter(transfer => transfer.status !== 'Cancelled').length} listed</span>
+                    </div>
+                    <p className="text-gray-600 text-[11px] leading-relaxed">
+                      Transfer details are listed in the itinerary. Confirm pickup instructions, vehicle and driver with Viemma or the supplier before departure.
+                    </p>
                   </div>
-                  <p className="text-gray-600 text-[11px] leading-relaxed">
-                    Dedicated luxury Mercedes vehicle and professional English-speaking chauffeur on standby for all scheduled movements.
-                  </p>
-                </div>
+                )}
               </div>
 
               {/* Dedicated Concierge Message Desk */}
