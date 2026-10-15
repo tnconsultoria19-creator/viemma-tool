@@ -99,39 +99,36 @@ export const FinanceView: React.FC<FinanceViewProps> = ({
       </div>
 
       {/* Modern SaaS Client selling price & Performance Card */}
-      <div className="bg-[#1A3326] text-white rounded-3xl p-8 md:p-10 shadow-xl relative overflow-hidden flex flex-col lg:flex-row lg:items-center justify-between gap-8">
-        {/* Ambient glow accent */}
-        <div className="absolute right-0 top-0 w-96 h-96 bg-yellow-500/10 rounded-full blur-3xl pointer-events-none"></div>
-        
-        <div className="space-y-4 max-w-xl z-10">
-          <span className="text-xs font-bold uppercase tracking-[0.25em] text-yellow-400">Grand Retail Proposal</span>
+      <div className="bg-white text-slate-900 rounded-md p-6 md:p-7 border border-slate-200 flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+        <div className="space-y-3 max-w-xl">
+          <span className="text-sm font-semibold text-slate-600">Client selling price</span>
           <h2 className="text-3xl md:text-4xl font-bold tracking-tight">
             {f.currency !== 'ZAR' && (
               <span className="block text-yellow-400 text-4xl md:text-5xl font-extrabold mb-1">
                 {currencySymbol(f.currency)} {retailTotalCurr.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
               </span>
             )}
-            <span className="text-sm text-gray-300 block">
-              Equates to <strong className="text-white text-base">R {retailTotalZAR.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</strong> ZAR billing
+            <span className="text-sm text-slate-600 block">
+              Equates to <strong className="text-slate-900 text-base">R {retailTotalZAR.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</strong> ZAR billing
             </span>
           </h2>
-          <p className="text-sm text-gray-300 leading-relaxed">
+          <p className="text-sm text-slate-600 leading-relaxed">
             Calculated from supplier costs, markup, commission, discounts and contingency.
           </p>
         </div>
 
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 min-w-[300px] md:min-w-[450px] z-10">
-          <div className="bg-white/5 backdrop-blur-md rounded-2xl p-5 border border-white/10">
-            <span className="text-[9px] text-gray-400 font-bold uppercase tracking-widest block mb-1">Total Cost Sum</span>
-            <span className="text-lg font-bold block text-white">R {totalCost.toLocaleString()}</span>
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 min-w-[300px] md:min-w-[450px]">
+          <div className="bg-slate-50 rounded-md p-4 border border-slate-200">
+            <span className="text-xs font-medium text-slate-500 block mb-1">Total Cost Sum</span>
+            <span className="text-lg font-semibold block text-slate-900">R {totalCost.toLocaleString()}</span>
           </div>
-          <div className="bg-white/5 backdrop-blur-md rounded-2xl p-5 border border-white/10">
-            <span className="text-[9px] text-yellow-400 font-bold uppercase tracking-widest block mb-1">Target Yield</span>
-            <span className="text-lg font-bold block text-yellow-400">R {netProfit.toLocaleString()}</span>
+          <div className="bg-slate-50 rounded-md p-4 border border-slate-200">
+            <span className="text-xs font-medium text-slate-500 block mb-1">Target Yield</span>
+            <span className="text-lg font-semibold block text-slate-900">R {netProfit.toLocaleString()}</span>
           </div>
-          <div className="bg-white/5 backdrop-blur-md rounded-2xl p-5 border border-white/10 col-span-2 sm:col-span-1">
-            <span className="text-[9px] text-gray-400 font-bold uppercase tracking-widest block mb-1">Commissions</span>
-            <span className="text-lg font-bold block text-white">R {commTotal.toLocaleString()}</span>
+          <div className="bg-slate-50 rounded-md p-4 border border-slate-200 col-span-2 sm:col-span-1">
+            <span className="text-xs font-medium text-slate-500 block mb-1">Commissions</span>
+            <span className="text-lg font-semibold block text-slate-900">R {commTotal.toLocaleString()}</span>
           </div>
         </div>
       </div>
