@@ -2643,30 +2643,17 @@ export const IntakeView: React.FC<IntakeViewProps> = ({
                 </div>
               )}
 
-              {/* Assignments breakdown */}
               {(() => {
-                const assignedF = state.flights.filter(f => f.paxIds?.includes(guestToRemove.id));
-                const assignedT = state.transfers.filter(t => t.paxIds?.includes(guestToRemove.id));
-                const assignedR = state.rooms.filter(r => r.guestIds?.includes(guestToRemove.id) || r.allocatedRooms?.some(ar => ar.guestIds?.includes(guestToRemove.id)));
-                const assignedA = state.activities.filter(a => a.paxIds?.includes(guestToRemove.id));
-
-                if (assignedF.length > 0 || assignedT.length > 0 || assignedR.length > 0 || assignedA.length > 0) {
-                  return (
-                    <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-1.5">
-                      <span className="font-bold text-gray-700 block">Active Operational Assignments to be Unlinked:</span>
-                      <ul className="list-disc list-inside space-y-0.5 text-gray-600 text-[11px]">
-                        {assignedF.length > 0 && <li>{assignedF.length} Flight segment(s)</li>}
-                        {assignedT.length > 0 && <li>{assignedT.length} Ground transfer(s)</li>}
-                        {assignedR.length > 0 && <li>{assignedR.length} Accommodation room(s)</li>}
-                        {assignedA.length > 0 && <li>{assignedA.length} Scheduled activity(ies)</li>}
-                      </ul>
-                      <p className="text-[10px] text-gray-500 pt-1">
-                        All unassigned services will remain intact for the other group travellers.
-                      </p>
-                    </div>
-                  );
-                }
-                return null;
+                const hasLinkedBookings =
+                  state.flights.some(f => f.paxIds?.includes(guestToRemove.id)) ||
+                  state.transfers.some(t => t.paxIds?.includes(guestToRemove.id)) ||
+                  state.rooms.some(r => r.guestIds?.includes(guestToRemove.id) || r.allocatedRooms?.some(ar => ar.guestIds?.includes(guestToRemove.id))) ||
+                  state.activities.some(a => a.paxIds?.includes(guestToRemove.id));
+                return hasLinkedBookings ? (
+                  <p className="text-xs text-slate-600">
+                    This traveller is linked to existing booking records. Removing the traveller will remove their links, but the trip services and the other travellers’ details will remain.
+                  </p>
+                ) : null;
               })()}
             </div>
 
