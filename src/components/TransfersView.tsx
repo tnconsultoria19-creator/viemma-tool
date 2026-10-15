@@ -197,14 +197,14 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
     <div className="space-y-8 max-w-[1500px] mx-auto animate-in fade-in duration-500">
       
       {/* Title Header */}
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 p-5 md:p-6 bg-white/95 backdrop-blur-md border border-white/80 rounded-2xl shadow-sm">
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 p-5 md:p-6 bg-white border border-slate-200 rounded-md">
         <div className="space-y-2">
           <span className="text-xs uppercase tracking-[0.2em] font-bold text-[#8A6A00] flex items-center gap-2">
-            <Car size={14} /> Ground Operations
+            <Car size={14} /> Transfers
           </span>
-          <h1 className="text-3xl font-bold tracking-tight text-[#10233F] font-sans">Ground Logistics & Fleet Tracker</h1>
+          <h1 className="text-3xl font-bold tracking-tight text-[#10233F] font-sans">Transfers</h1>
           <p className="text-slate-600 max-w-2xl text-sm leading-relaxed">
-            Schedule private chauffeured transfers, airport shuttle pickups, fleet vehicle capacities, driver dispatch and routing checkpoints.
+            Record airport transfers, hotel collections, point-to-point journeys, driver details and vehicle allocation.
           </p>
         </div>
         {editingTransferId === null && (
@@ -213,13 +213,13 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
               onClick={() => setShowPickupPlacard(true)} 
               className="flex items-center gap-2 px-4 py-3 rounded-xl border border-amber-300 bg-amber-50 hover:bg-amber-100 text-[#1A3326] text-xs font-bold shadow-xs hover:translate-y-[-1px] transition-all duration-150"
             >
-              <Users size={14} className="text-amber-700" /> Airport Welcome Placard
+              <Users size={14} className="text-amber-700" /> Welcome sign
             </button>
             <button 
               onClick={handleOpenAddForm} 
               className="flex items-center gap-2 px-5 py-3 rounded-xl bg-[#1A3326] text-white hover:bg-[#12241b] text-xs font-bold shadow-md hover:translate-y-[-1px] transition-all duration-150"
             >
-              <Plus size={14} /> Schedule Ground Transfer
+              <Plus size={14} /> Add transfer
             </button>
           </div>
         )}
@@ -244,10 +244,10 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
           {/* Header */}
           <div className="bg-[#1A3326] text-white p-5 md:p-6 flex items-center justify-between">
             <div>
-              <span className="text-[10px] uppercase tracking-[0.2em] font-bold text-[#D4AF37] block mb-1">Interactive Logistical Desk</span>
+              <span className="text-[10px] uppercase tracking-[0.2em] font-bold text-[#D4AF37] block mb-1">Transfer details</span>
               <h2 className="text-xl md:text-2xl font-bold font-sans flex items-center gap-2">
                 <Car size={20} className="text-[#D4AF37]" />
-                {editingTransferId === -1 ? 'Configure Fleet Transfer' : 'Update Fleet Transfer'}
+                {editingTransferId === -1 ? 'Add transfer' : 'Edit transfer'}
               </h2>
             </div>
             <div className="flex gap-3">
@@ -261,7 +261,7 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
                 onClick={handleSaveTransfer} 
                 className="px-4 py-2 rounded-xl bg-[#D4AF37] text-[#1A3326] hover:bg-[#b89528] text-xs font-bold shadow-sm hover:translate-y-[-1px] transition-all"
               >
-                Save Dispatch Rules
+                Save transfer
               </button>
             </div>
           </div>
@@ -524,7 +524,7 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 
                 <div className="space-y-1.5">
-                  <label className="text-[11px] text-gray-500 font-bold uppercase tracking-wider block">Chauffeur Driver</label>
+                  <label className="text-[11px] text-gray-500 font-bold uppercase tracking-wider block">Driver</label>
                   <select 
                     value={tForm.driver || ''} 
                     onChange={handleDriverChange}
@@ -548,7 +548,7 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="text-[11px] text-gray-500 font-bold uppercase tracking-wider block">Fleet Vehicle Model</label>
+                  <label className="text-[11px] text-gray-500 font-bold uppercase tracking-wider block">Vehicle</label>
                   <input 
                     type="text" 
                     value={tForm.vehicle || ''} 
