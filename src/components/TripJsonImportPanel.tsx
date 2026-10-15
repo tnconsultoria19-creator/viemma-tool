@@ -22,8 +22,8 @@ const scopeForTab = (tab: string): TripJsonScope => {
 };
 
 const scopeLabels: Record<TripJsonScope, string> = {
-  all: 'Whole itinerary',
-  clients: 'Client details',
+  all: 'Full consultation (all sections)',
+  clients: 'Client and traveller details',
   flights: 'Flights',
   transfers: 'Transfers',
   hotels: 'Hotels',
@@ -67,16 +67,16 @@ export const TripJsonImportPanel: React.FC<TripJsonImportPanelProps> = ({ state,
   };
 
   return (
-    <section className="mb-5 bg-white border border-slate-200 rounded-md">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 px-4 py-3">
+    <section className="mb-6 bg-white border border-slate-200 rounded-md">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-5 px-5 py-4">
         <div className="flex items-start gap-3">
           <FileJson size={17} className="mt-0.5 text-slate-600 shrink-0" />
           <div>
-            <h2 className="text-sm font-semibold text-slate-900">Paste ChatGPT JSON</h2>
+            <h2 className="text-sm font-semibold text-slate-900">Import structured trip data</h2>
             <p className="mt-0.5 text-xs text-slate-600">
               {scope === 'all'
-                ? 'Use the full consultation output to fill client details, travellers, flights, transfers, hotels and the programme.'
-                : `Paste a focused output for ${scopeLabels[scope].toLowerCase()}. The other sections will stay unchanged.`}
+                ? 'Paste the JSON from a full client or agent conversation to fill the itinerary across tabs. Keep unknown details blank rather than guessing.'
+                : `Paste a focused output for ${scopeLabels[scope].toLowerCase()}. Other sections will stay unchanged.`}
             </p>
           </div>
         </div>
@@ -93,7 +93,7 @@ export const TripJsonImportPanel: React.FC<TripJsonImportPanelProps> = ({ state,
       </div>
 
       {expanded && (
-        <div className="border-t border-slate-200 p-4 space-y-3">
+        <div className="border-t border-slate-200 p-5 space-y-4">
           <div className="flex flex-col md:flex-row md:items-end gap-3">
             <label className="block space-y-1 flex-1">
               <span className="text-xs font-medium text-slate-700">What should this JSON update?</span>
@@ -108,14 +108,14 @@ export const TripJsonImportPanel: React.FC<TripJsonImportPanelProps> = ({ state,
               </select>
             </label>
             <label className="block space-y-1 md:w-64">
-              <span className="text-xs font-medium text-slate-700">How should records be handled?</span>
+              <span className="text-xs font-medium text-slate-700">When matching records already exist</span>
               <select
                 value={mode}
                 onChange={event => setMode(event.target.value as TripJsonMode)}
                 className="w-full h-9 border border-slate-300 rounded-md px-2.5 bg-white text-sm text-slate-900"
               >
-                <option value="merge">Merge and update matching records</option>
-                <option value="replace">Replace records in the selected section</option>
+                <option value="merge">Merge supplied fields (recommended)</option>
+                <option value="replace">Replace records in this section</option>
               </select>
             </label>
           </div>
@@ -127,14 +127,14 @@ export const TripJsonImportPanel: React.FC<TripJsonImportPanelProps> = ({ state,
               spellCheck={false}
               value={jsonText}
               onChange={event => { setJsonText(event.target.value); setFeedback(null); }}
-              placeholder={'Paste the complete JSON object from ChatGPT here…\n\nExample: { "client": { "name": "..." }, "travellers": [], "flights": [], "transfers": [], "hotels": [], "activities": [] }'}
+              placeholder={'Paste the JSON object here…\n\nExample keys: client, travellers, flights, transfers, hotels, itinerary, finance, welcomePlacard'}
               className="w-full rounded-md border border-slate-300 bg-white p-3 text-xs leading-5 font-mono text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-700/20 focus:border-emerald-700"
             />
           </label>
 
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <p className="text-xs text-slate-600 max-w-3xl">
-              Merge is the safer default. It updates matching records and adds new ones without clearing other tabs. Use Replace only when the JSON contains the complete list for that section.
+              Merge is safer: it updates supplied fields and adds new matching records without clearing unrelated tabs. Use Replace only when the JSON contains the complete list for this section.
             </p>
             <button
               type="button"
