@@ -35,6 +35,19 @@ export type DataVisibility =
   | 'INTERNAL' 
   | 'SENSITIVE_INTERNAL';
 
+export type TourTypology =
+  | 'half_day_tour'
+  | 'full_day_tour'
+  | 'multi_day_tour'
+  | 'multi_day_safari'
+  | 'airport_transfer'
+  | 'point_to_point_transfer'
+  | 'private_transfer'
+  | 'private_guided_tour'
+  | 'scheduled_shared_tour'
+  | 'self_drive_itinerary'
+  | 'tailor_made_tour';
+
 export interface Client {
   name: string;
   preferredName?: string;
@@ -43,7 +56,7 @@ export interface Client {
   whatsapp?: string;
   country: string;
   contactMethod: 'whatsapp' | 'email' | 'call';
-  tripType: 'multi' | 'day' | 'transfer';
+  tripType: 'multi' | 'day' | 'transfer'; // Backwards-compatible grouping for existing rules\n  tourTypology?: TourTypology;
   startDate: string;
   endDate: string;
   durationText: string;
@@ -602,7 +615,7 @@ export interface AppState {
   experienceLibrary: ExperienceLibraryItem[];
   destinationLibrary: DestinationLibraryItem[];
   finance: {
-    currency: 'ZAR' | 'USD' | 'EUR' | 'BRL';
+    currency: 'ZAR' | 'USD' | 'EUR' | 'BRL' | 'AOA';
     rates: {
       USD: number;
       EUR: number;
@@ -635,6 +648,11 @@ export interface AppState {
   namedGroups?: TravellerGroup[];
   dayTitles?: Record<number, string>;
   changeLog?: TripChangeLogEntry[];
+  welcomePlacard?: {
+    showAgencyName: boolean;
+    agencyName: string;
+    guestName?: string;
+  };
   clientPricing?: {
     currency: string;
     total: number;
