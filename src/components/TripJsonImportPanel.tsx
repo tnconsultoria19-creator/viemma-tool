@@ -36,7 +36,7 @@ const scopeLabels: Record<TripJsonScope, string> = {
 
 export const TripJsonImportPanel: React.FC<TripJsonImportPanelProps> = ({ state, activeTab, onApply }) => {
   const defaultScope = useMemo(() => scopeForTab(activeTab), [activeTab]);
-  const [expanded, setExpanded] = useState(true);
+  const [expanded, setExpanded] = useState(activeTab === 'guests');
   const [scope, setScope] = useState<TripJsonScope>(defaultScope);
   const [mode, setMode] = useState<TripJsonMode>('merge');
   const [jsonText, setJsonText] = useState('');
@@ -44,7 +44,7 @@ export const TripJsonImportPanel: React.FC<TripJsonImportPanelProps> = ({ state,
 
   useEffect(() => {
     setScope(defaultScope);
-    setExpanded(true);
+    setExpanded(activeTab === 'guests');
     setJsonText('');
     setFeedback(null);
   }, [activeTab, defaultScope]);
