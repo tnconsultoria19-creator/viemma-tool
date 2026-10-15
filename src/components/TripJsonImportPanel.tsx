@@ -22,8 +22,8 @@ const scopeForTab = (tab: string): TripJsonScope => {
 };
 
 const scopeLabels: Record<TripJsonScope, string> = {
-  all: 'Full consultation (all sections)',
-  clients: 'Client and traveller details',
+  all: 'Full client conversation (all tabs)',
+  clients: 'Clients and travellers',
   flights: 'Flights',
   transfers: 'Transfers',
   hotels: 'Hotels',
@@ -36,7 +36,7 @@ const scopeLabels: Record<TripJsonScope, string> = {
 
 export const TripJsonImportPanel: React.FC<TripJsonImportPanelProps> = ({ state, activeTab, onApply }) => {
   const defaultScope = useMemo(() => scopeForTab(activeTab), [activeTab]);
-  const [expanded, setExpanded] = useState(activeTab === 'guests');
+  const [expanded, setExpanded] = useState(true);
   const [scope, setScope] = useState<TripJsonScope>(defaultScope);
   const [mode, setMode] = useState<TripJsonMode>('merge');
   const [jsonText, setJsonText] = useState('');
@@ -44,7 +44,8 @@ export const TripJsonImportPanel: React.FC<TripJsonImportPanelProps> = ({ state,
 
   useEffect(() => {
     setScope(defaultScope);
-    setExpanded(activeTab === 'guests');
+    setExpanded(true);
+    setJsonText('');
     setFeedback(null);
   }, [activeTab, defaultScope]);
 
@@ -87,7 +88,7 @@ export const TripJsonImportPanel: React.FC<TripJsonImportPanelProps> = ({ state,
           aria-expanded={expanded}
         >
           <ClipboardPaste size={14} />
-          {expanded ? 'Close importer' : 'Paste JSON'}
+          {expanded ? 'Hide JSON' : 'Paste JSON'}
           <ChevronDown size={14} className={expanded ? 'rotate-180' : ''} />
         </button>
       </div>
