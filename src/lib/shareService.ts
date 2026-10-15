@@ -48,6 +48,7 @@ export interface ClientShareDoc {
   activities: Array<{
     id: number;
     day: number;
+    dayTitle?: string;
     name: string;
     desc: string;
     slot: string;
@@ -451,6 +452,7 @@ export function buildClientProjection(trip: AppState, token: string): ClientShar
     activities: activeActivities.map(a => ({
       id: a.id,
       day: a.day,
+      dayTitle: trip.dayTitles?.[a.day] || '',
       name: a.name,
       desc: a.clientDescription || a.desc,
       slot: a.slot,
@@ -1011,6 +1013,10 @@ export function clientDocToAppState(doc: ClientShareDoc): AppState {
       buffer: 0
     },
     clientPricing: doc.pricing,
+    dayTitles: doc.activities.reduce((titles, activity) => {
+      if (activity.dayTitle) titles[activity.day] = activity.dayTitle;
+      return titles;
+    }, { ...(base.dayTitles || {}) } as Record<number, string>),
     publishing: {
       ...base.publishing,
       settings: {
