@@ -51,6 +51,7 @@ export interface ClientShareDoc {
     name: string;
     desc: string;
     slot: string;
+    status?: string;
     date?: string;
     start: string;
     endTime?: string;
@@ -390,11 +391,16 @@ async function buildShareAccessPolicy(trip: AppState): Promise<ShareAccessPolicy
  * Projection builders - strictly strip internal confidential data
  */
 export function buildClientProjection(trip: AppState, token: string): ClientShareDoc {
-  const timeline = buildNormalizedTimeline(trip).filter(event => event.status !== 'Cancelled');
+  // Never present draft/requested activities to clients as scheduled or confirmed.
+  const timeline = buildNormalizedTimeline(trip).filter(event =>
+    event.status !== 'Cancelled' && event.status !== 'Draft' && event.status !== 'Requested'
+  );
   const activeFlights = (trip.flights || []).filter(item => item.status !== 'Cancelled');
   const activeTransfers = (trip.transfers || []).filter(item => item.status !== 'Cancelled');
   const activeRooms = (trip.rooms || []).filter(item => item.status !== 'Cancelled');
-  const activeActivities = (trip.activities || []).filter(item => item.status !== 'Cancelled');
+  const activeActivities = (trip.activities || []).filter(item =>
+    item.status !== 'Cancelled' && item.status !== 'Draft' && item.status !== 'Requested'
+  );
   const clientSettings = trip.publishing?.settings || {};
   const flightCosts = activeFlights.reduce((sum, item) => sum + item.cost * item.qty, 0);
   const transferCosts = activeTransfers.reduce((sum, item) => sum + item.cost + item.tolls + item.parking, 0);
@@ -448,6 +454,7 @@ export function buildClientProjection(trip: AppState, token: string): ClientShar
       name: a.name,
       desc: a.clientDescription || a.desc,
       slot: a.slot,
+      status: a.status || 'Planned',
       date: a.date || '',
       start: a.start,
       endTime: a.endTime || '',
@@ -982,7 +989,7 @@ export function clientDocToAppState(doc: ClientShareDoc): AppState {
       ...a,
       slot: a.slot as any,
       pickup: a.pickupLoc,
-      status: 'Confirmed' as const,
+      status: (a.status || 'Planned') as any,
       conf: '',
       supplier: a.supplierName || '',
       supPhone: a.supplierPhone || '',
