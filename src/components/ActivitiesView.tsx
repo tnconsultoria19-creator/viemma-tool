@@ -2069,24 +2069,7 @@ export const ActivitiesView: React.FC<ActivitiesViewProps> = ({
                               <span>+ Browse Catalogue</span>
                             </button>
                             <button
-                              onClick={() => {
-                                const targetDate = getDayIsoDate(dayNum);
-                                setAForm({
-                                  day: dayNum,
-                                  date: targetDate,
-                                  slot: 'Morning',
-                                  name: '',
-                                  desc: '',
-                                  start: '09:00',
-                                  endTime: '12:00',
-                                  dur: '3 hours',
-                                  status: 'Planned',
-                                  paxIds: state.guests.map(g => g.id),
-                                  venue: '',
-                                  responsiblePerson: 'Lead Guide'
-                                });
-                                setEditingActivityId(-1);
-                              }}
+                              onClick={() => handleOpenAddForm(dayNum)}
                               className="px-3 py-2 rounded-xl bg-[#D4AF37] text-[#1A3326] text-xs font-black transition flex items-center gap-1.5 shadow-sm hover:bg-[#c29d2b] cursor-pointer active:scale-95"
                               title={`Add custom activity to Day ${dayNum}`}
                             >
