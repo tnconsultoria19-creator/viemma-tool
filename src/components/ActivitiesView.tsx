@@ -604,6 +604,11 @@ export const ActivitiesView: React.FC<ActivitiesViewProps> = ({
     return issues;
   };
 
+  const handleOpenCatalogueForCurrentDay = () => {
+    setCatalogTargetDay(typeof selectedDayFilter === 'number' ? selectedDayFilter : 1);
+    setIsCatalogOpen(true);
+  };
+
   const handleOpenAddForm = (targetDayNum: number = typeof selectedDayFilter === 'number' ? selectedDayFilter : 1) => {
     // Start from an empty activity record on the day currently in focus. Operational details must be confirmed.
     setAForm({
@@ -859,7 +864,7 @@ export const ActivitiesView: React.FC<ActivitiesViewProps> = ({
           {editingActivityId === null && (
             <div className="flex flex-wrap items-center gap-2 shrink-0">
               <button 
-                onClick={() => setIsCatalogOpen(true)}
+                onClick={handleOpenCatalogueForCurrentDay}
                 className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-[#D4AF37] text-[#1A3326] hover:bg-[#c29d2b] text-xs font-black shadow-md hover:scale-102 active:scale-95 transition cursor-pointer"
                 title="Browse and select activities from curated DMC library"
               >
@@ -1956,7 +1961,7 @@ export const ActivitiesView: React.FC<ActivitiesViewProps> = ({
               </div>
               <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
                 <button 
-                  onClick={() => setIsCatalogOpen(true)}
+                  onClick={handleOpenCatalogueForCurrentDay}
                   className="px-5 py-2.5 bg-[#D4AF37] text-[#1A3326] rounded-xl text-xs font-black shadow-md hover:bg-[#c29d2b] transition flex items-center gap-2 cursor-pointer active:scale-95"
                 >
                   <Sparkles size={14} />
