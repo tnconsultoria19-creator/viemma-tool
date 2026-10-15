@@ -173,7 +173,7 @@ export const PrintHubView: React.FC<PrintHubViewProps> = (props) => {
 
   const welcomePlacard = props.state?.welcomePlacard || {
     showAgencyName: true,
-    agencyName: 'Viemma Tours',
+    agencyName: 'Vema Tours',
     guestName: '',
   };
   const updateWelcomePlacard = (updates: Partial<NonNullable<AppState['welcomePlacard']>>) => {
@@ -567,7 +567,7 @@ export const PrintHubView: React.FC<PrintHubViewProps> = (props) => {
                     value={welcomePlacard.agencyName}
                     onChange={e => updateWelcomePlacard({ agencyName: e.target.value })}
                     disabled={!welcomePlacard.showAgencyName}
-                    placeholder="Viemma Tours or partner agency"
+                    placeholder="Vema Tours or partner agency"
                     className="w-full h-9 px-3 rounded-md border border-slate-300 text-sm disabled:bg-slate-100 disabled:text-slate-400"
                   />
                 </label>
@@ -1147,7 +1147,7 @@ export const PrintHubView: React.FC<PrintHubViewProps> = (props) => {
                       <span className="font-semibold text-slate-900">{placardFlight?.arrivalTime || 'To be confirmed'}</span>
                     </div>
                     <div>
-                      <span className="block text-xs text-slate-500">Hotel / destination</span>
+                      <span className="block text-xs text-slate-500">Hotel / drop-off</span>
                       <span className="font-semibold text-slate-900">{placardHotelOrDestination || 'To be confirmed'}</span>
                     </div>
                   </div>
