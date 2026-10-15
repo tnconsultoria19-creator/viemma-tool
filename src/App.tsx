@@ -34,6 +34,7 @@ import { DriversView } from './components/DriversView';
 import { DailyTimelinesView } from './components/DailyTimelinesView';
 import { DriverItineraryView } from './components/DriverItineraryView';
 import { AIItineraryImportModal } from './components/AIItineraryImportModal';
+import { TripJsonImportPanel } from './components/TripJsonImportPanel';
 import { generateNextTripReference } from './utils/tripReference';
 import { 
   Home, 
@@ -86,6 +87,7 @@ export const INITIAL_STATE: AppState = {
     country: '',
     contactMethod: 'whatsapp',
     tripType: 'multi',
+    tourTypology: 'multi_day_tour',
     startDate: '',
     endDate: '',
     durationText: 'Select dates',
@@ -124,6 +126,7 @@ export const INITIAL_STATE: AppState = {
   internalNotes: '',
   namedGroups: [],
   dayTitles: {},
+  welcomePlacard: { showAgencyName: true, agencyName: 'Viemma Tours', guestName: '' },
   publishing: {
     tripId: 'VT-2026-1048',
     publicUrl: 'https://portal.viemmatours.com/trip/VT-2026-1048',
@@ -567,7 +570,7 @@ export default function App() {
     { id: 'trips', label: 'Trips Portfolio', icon: <Briefcase size={15} /> },
     { id: 'guests', label: 'Clients', icon: <Users size={15} /> },
     { id: 'flights', label: 'Flights', icon: <Plane size={15} /> },
-    { id: 'transfers', label: 'Vehicles', icon: <Car size={15} /> },
+    { id: 'transfers', label: 'Transfers', icon: <Car size={15} /> },
     { id: 'rooming', label: 'Hotels', icon: <Hotel size={15} /> },
     { id: 'activities', label: 'Suppliers', icon: <Route size={15} /> },
     { id: 'finance', label: 'Finance', icon: <Coins size={15} /> },
@@ -1467,11 +1470,11 @@ export default function App() {
                 {[
                   { id: 'home', label: 'Home', icon: <Home size={14} /> },
                   { id: 'guests', label: 'Clients', icon: <Users size={14} /> },
-                  { id: 'activities', label: 'Programme', icon: <Route size={14} /> },
-                  { id: 'timelines', label: 'Timelines', icon: <Calendar size={14} /> },
                   { id: 'flights', label: 'Flights', icon: <Plane size={14} /> },
                   { id: 'transfers', label: 'Transfers', icon: <Car size={14} /> },
                   { id: 'rooming', label: 'Hotels', icon: <Hotel size={14} /> },
+                  { id: 'activities', label: 'Programme', icon: <Route size={14} /> },
+                  { id: 'timelines', label: 'Timeline', icon: <Calendar size={14} /> },
                 ].map(tab => (
                   <button
                     key={tab.id}
@@ -1516,10 +1519,10 @@ export default function App() {
                   <button
                     onClick={() => setIsAIImportOpen(true)}
                     className="h-9 px-2.5 xl:px-3 rounded-xl border border-white/15 bg-white/5 text-gray-200 hover:text-white hover:bg-white/10 hover:border-[#D4AF37] transition-all text-xs font-bold shadow-xs flex items-center gap-1.5 active:scale-95 focus-visible:ring-2 focus-visible:ring-[#D4AF37] focus:outline-none shrink-0 cursor-pointer"
-                    title="Import full itinerary payload from AI Assistant (ChatGPT, Gemini, Claude)"
+                    title="Paste a structured trip JSON from ChatGPT"
                   >
-                    <Sparkles size={13} className="text-[#D4AF37]" />
-                    <span>AI Import</span>
+                    <FileText size={13} className="text-[#D4AF37]" />
+                    <span>Import JSON</span>
                   </button>
                 )}
 
@@ -1632,12 +1635,12 @@ export default function App() {
                   { id: 'guests', label: 'Clients', icon: <Users size={15} /> },
                   { id: 'flights', label: 'Flights', icon: <Plane size={15} /> },
                   { id: 'transfers', label: 'Transfers', icon: <Car size={15} /> },
-                  { id: 'fleet', label: 'Transport Fleet', icon: <Truck size={15} /> },
-                  { id: 'drivers', label: 'Drivers', icon: <Users size={15} /> },
-                  { id: 'timelines', label: 'Daily Timelines', icon: <Calendar size={15} /> },
-                  { id: 'driver-itinerary', label: 'Driver Itinerary', icon: <FileText size={15} /> },
                   { id: 'rooming', label: 'Hotels', icon: <Hotel size={15} /> },
                   { id: 'activities', label: 'Programme', icon: <Route size={15} /> },
+                  { id: 'timelines', label: 'Timeline', icon: <Calendar size={15} /> },
+                  { id: 'fleet', label: 'Transport Fleet', icon: <Truck size={15} /> },
+                  { id: 'drivers', label: 'Drivers', icon: <Users size={15} /> },
+                  { id: 'driver-itinerary', label: 'Driver Itinerary', icon: <FileText size={15} /> },
                   { id: 'library', label: 'Experience Library', icon: <BookOpen size={15} /> },
                   { id: 'finance', label: 'Finance', icon: <Coins size={15} /> },
                   { id: 'analytics', label: 'Analytics', icon: <TrendingUp size={15} /> },
@@ -1718,6 +1721,7 @@ export default function App() {
 
           {activeRoleView === 'owner' && (
             <div className="w-full flex-1 flex flex-col">
+              <TripJsonImportPanel state={state} activeTab={activeTab} onApply={updateFullState} />
               {activeTab === 'home' && (
                 <HomeView 
                   state={state} 
