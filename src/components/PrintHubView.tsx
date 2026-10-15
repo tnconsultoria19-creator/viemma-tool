@@ -1122,26 +1122,18 @@ export const PrintHubView: React.FC<PrintHubViewProps> = (props) => {
                 className="viemma-pdf-page viemma-welcome-placard bg-white text-slate-900 border border-slate-300 mx-auto flex flex-col justify-between"
                 style={{ width: '297mm', minHeight: '210mm', padding: '13mm 15mm' }}
               >
-                <header className="flex items-start justify-between border-b border-slate-300 pb-3">
-                  <div>
-                    <p className="text-xs text-slate-600 uppercase tracking-[0.16em]">Airport collection</p>
-                    <p className="text-sm text-slate-700 mt-1">Welcome sign</p>
-                  </div>
-                  <span className="font-mono text-xs text-slate-600">Trip {group.tripId}</span>
-                </header>
-
-                <main className="flex-1 flex flex-col items-center justify-center text-center px-8 py-6">
-                  <p className="text-base sm:text-lg font-medium text-slate-700 tracking-[0.18em] mb-3">WELCOME</p>
+                <main className="flex-1 flex flex-col items-center justify-center text-center px-8 py-8">
+                  <p className="text-base sm:text-lg font-medium text-slate-700 tracking-[0.12em] mb-3">WELCOME</p>
                   <h2 className="w-full text-5xl sm:text-6xl font-semibold text-slate-950 leading-tight break-words">
                     {placardGuestName}
                   </h2>
                   {welcomePlacard.showAgencyName && welcomePlacard.agencyName.trim() && (
-                    <p className="mt-3 text-sm text-slate-600">{welcomePlacard.agencyName.trim()}</p>
+                    <p className="mt-2 text-xs text-slate-600">{welcomePlacard.agencyName.trim()}</p>
                   )}
                 </main>
 
                 <footer className="border-t border-slate-300 pt-3">
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-x-8 gap-y-3 text-sm">
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-x-6 gap-y-2 text-xs sm:text-sm">
                     <div>
                       <span className="block text-xs text-slate-500">Flight number</span>
                       <span className="font-semibold text-slate-900">{placardFlight?.flightNumber || 'To be confirmed'}</span>
