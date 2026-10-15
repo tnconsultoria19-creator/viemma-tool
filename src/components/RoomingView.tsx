@@ -597,7 +597,7 @@ export const RoomingView: React.FC<RoomingViewProps> = ({
 
       {/* QUICK BOOK PANEL */}
       {showQuickBook && (
-        <div className="bg-gradient-to-br from-[#1A3326] to-[#12241b] text-white rounded-md p-6 md:p-8 shadow-sm border border-[#D4AF37]/20 space-y-6  relative overflow-hidden">
+        <div className="bg-[#1A3326] text-white rounded-md p-5 md:p-6 border border-[#1A3326] space-y-5 relative overflow-hidden">
           <div className="absolute right-0 top-0 w-80 h-80 bg-[#D4AF37]/5 rounded-full blur-3xl pointer-events-none"></div>
           
           <div className="flex items-center justify-between border-b border-white/10 pb-4">
