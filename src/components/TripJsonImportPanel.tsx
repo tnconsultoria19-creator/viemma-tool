@@ -45,6 +45,7 @@ export const TripJsonImportPanel: React.FC<TripJsonImportPanelProps> = ({ state,
   useEffect(() => {
     setScope(defaultScope);
     setExpanded(true);
+    setJsonText('');
     setFeedback(null);
   }, [activeTab, defaultScope]);
 
