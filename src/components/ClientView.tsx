@@ -1,6 +1,7 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { AppState, ExperienceLibraryItem } from '../types';
 import { getClientTripView } from '../utils/roleFiltering';
+import { createArchitecturalFallbackDataUri } from '../utils/pdfExportEngine';
 import { ImageLightbox, LightboxImage } from './ImageLightbox';
 import { 
   Hotel, 
@@ -41,46 +42,6 @@ interface Props {
   onBackToAdmin?: () => void;
 }
 
-// Curated South Africa Luxury Destination Fallback Images
-const SOUTH_AFRICA_DESTINATION_HEROES = [
-  'https://images.pexels.com/photos/32456962/pexels-photo-32456962.jpeg?auto=compress&cs=tinysrgb&w=1920', // African Safari Wildlife
-  'https://images.unsplash.com/photo-1580618672591-eb180b1a973f?q=80&w=1920&auto=format&fit=crop', // Luxury Safari Camp Sunset
-  'https://images.pexels.com/photos/259414/pexels-photo-259414.jpeg?auto=compress&cs=tinysrgb&w=1920', // Cape Town Atlantic Coast
-  'https://images.unsplash.com/photo-1516426122078-c23e76319801?q=80&w=1920&auto=format&fit=crop', // Sabi Sands Safari Lion
-];
-
-const DESTINATION_DEFAULTS: Record<string, { img: string; title: string; desc: string; gallery: string[] }> = {
-  'cape town': {
-    img: 'https://images.pexels.com/photos/259414/pexels-photo-259414.jpeg?auto=compress&cs=tinysrgb&w=1200',
-    title: 'Cape Town & Peninsula',
-    desc: 'Cradled between towering mountains and two oceans, the Mother City boasts world-class culinary excellence, dramatic coastal drives, and rich heritage.',
-    gallery: [
-      'https://images.unsplash.com/photo-1507699622108-4be3abd695ad?q=80&w=800&auto=format&fit=crop',
-      'https://images.unsplash.com/photo-1576485290814-1c72aa4bbb8e?q=80&w=800&auto=format&fit=crop',
-      'https://images.unsplash.com/photo-1516426122078-c23e76319801?q=80&w=800&auto=format&fit=crop'
-    ]
-  },
-  'winelands': {
-    img: 'https://images.unsplash.com/photo-1506377247377-2a5b3b417ebb?q=80&w=1200&auto=format&fit=crop',
-    title: 'Cape Winelands & Franschhoek',
-    desc: 'Centuries-old Cape Dutch estates nestled beneath dramatic mountain peaks, renowned for world-class gastronomy, private cellars, and tranquil olive groves.',
-    gallery: [
-      'https://images.unsplash.com/photo-1510812431401-41d2bd2722f3?q=80&w=800&auto=format&fit=crop',
-      'https://images.unsplash.com/photo-1506377247377-2a5b3b417ebb?q=80&w=800&auto=format&fit=crop'
-    ]
-  },
-  'kruger': {
-    img: 'https://images.pexels.com/photos/32456962/pexels-photo-32456962.jpeg?auto=compress&cs=tinysrgb&w=1200',
-    title: 'Sabi Sand & Greater Kruger',
-    desc: 'Unrivalled private wildlife conservation sanctuary where Africa’s Big Five roam freely across pristine bushveld, guided by master trackers.',
-    gallery: [
-      'https://images.unsplash.com/photo-1516426122078-c23e76319801?q=80&w=800&auto=format&fit=crop',
-      'https://images.unsplash.com/photo-1580618672591-eb180b1a973f?q=80&w=800&auto=format&fit=crop',
-      'https://images.pexels.com/photos/32456962/pexels-photo-32456962.jpeg?auto=compress&cs=tinysrgb&w=800'
-    ]
-  }
-};
-
 export const ClientView: React.FC<Props> = ({ state: rawState, onBackToWorkspace, onBackToAdmin }) => {
   const handleBack = onBackToAdmin || onBackToWorkspace;
 
@@ -114,7 +75,7 @@ export const ClientView: React.FC<Props> = ({ state: rawState, onBackToWorkspace
 
   const openLightbox = (images: (string | LightboxImage)[], index: number = 0) => {
     const list: LightboxImage[] = images.map(img => {
-      if (typeof img === 'string') return { url: img, title: 'South African Experience' };
+      if (typeof img === 'string') return { url: img, title: 'Itinerary image' };
       return img;
     }).filter(item => Boolean(item.url));
 
@@ -246,12 +207,19 @@ export const ClientView: React.FC<Props> = ({ state: rawState, onBackToWorkspace
 
   // Hero carousel slides
   const heroSlides = useMemo(() => {
-    const custom = state.editorial?.heroImageUrl;
-    if (custom && custom.trim().length > 0 && !custom.includes('7843687')) {
-      return [custom, ...SOUTH_AFRICA_DESTINATION_HEROES.slice(0, 3)];
-    }
-    return SOUTH_AFRICA_DESTINATION_HEROES;
-  }, [state.editorial?.heroImageUrl]);
+    const custom = state.editorial?.heroImageUrl?.trim();
+    const activityImages = (state.activities || [])
+      .filter(activity => activity.status !== 'Cancelled' && activity.status !== 'Draft' && activity.status !== 'Requested')
+      .flatMap(activity => [activity.heroImage, ...(activity.gallery || [])]);
+    const accommodationImages = (state.rooms || [])
+      .filter(room => room.status !== 'Cancelled')
+      .flatMap(room => room.propertyImages || []);
+    const realImages = Array.from(new Set([custom, ...activityImages, ...accommodationImages]
+      .filter((url): url is string => Boolean(url && url.trim())))).slice(0, 4);
+    return realImages.length > 0
+      ? realImages
+      : [createArchitecturalFallbackDataUri(state.title || 'Viemma Tours itinerary', 'hero')];
+  }, [state.editorial?.heroImageUrl, state.activities, state.rooms, state.title]);
 
   useEffect(() => {
     const timer = setInterval(() => {
