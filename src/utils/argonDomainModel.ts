@@ -104,6 +104,8 @@ export interface ActivityRecord {
   groupIds?: string[];
   groupNames?: string[];
   dayTitle?: string;
+  heroImageUrl?: string;
+  gallery?: string[];
   title: string;
   date: string;
   startTime: string;
