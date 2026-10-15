@@ -829,31 +829,31 @@ export const IntakeView: React.FC<IntakeViewProps> = ({
               {(viewMode === 'both' || viewMode === 'hierarchy') && (
                 <div className="space-y-2">
                   <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 pb-1 text-sm text-slate-700">
-                    <span>Group Roster ({state.guests.length} Total • {state.guests.filter(g => g.isLead).length} Lead • {state.guests.filter(g => !g.isLead && !g.isProvisional).length} Confirmed • {state.guests.filter(g => g.isProvisional).length} Provisional)</span>
-                    <span className="text-[10px] text-gray-400">Edit details or check documents.</span>
+                    <span>{state.guests.length} travellers · {state.guests.filter(g => g.isLead).length} lead · {state.guests.filter(g => !g.isLead && !g.isProvisional).length} confirmed · {state.guests.filter(g => g.isProvisional).length} to name</span>
+                    <span className="text-xs text-slate-500">Edit a profile or check documents.</span>
                   </div>
 
                   <div className="bg-white border-t border-slate-200 divide-y divide-slate-100 overflow-hidden">
                     {state.guests.map((g, index) => {
                       // Check missing operational items
                       const missingItems: string[] = [];
-                      if (g.isProvisional) missingItems.push('Provisional (Name Unconfirmed)');
-                      if (!g.passportNo) missingItems.push('Passport No');
-                      if (!g.passportExpiry) missingItems.push('Passport Expiry');
+                      if (g.isProvisional) missingItems.push('Name not confirmed');
+                      if (!g.passportNo) missingItems.push('Passport number');
+                      if (!g.passportExpiry) missingItems.push('Passport expiry');
                       if (!g.nationality && !g.country) missingItems.push('Nationality');
-                      if (!g.individualEmail && !g.individualPhone && g.isLead) missingItems.push('Contact Details');
+                      if (!g.individualEmail && !g.individualPhone && g.isLead) missingItems.push('Contact details');
 
                       const hasFlight = state.flights.some(f => f.paxIds?.includes(g.id));
                       const hasRoom = state.rooms.some(r => r.guestIds?.includes(g.id) || r.allocatedRooms?.some(ar => ar.guestIds?.includes(g.id)));
-                      if (!hasFlight && state.flights.length > 0) missingItems.push('Flight Unassigned');
-                      if (!hasRoom && state.rooms.length > 0) missingItems.push('Room Unassigned');
+                      if (!hasFlight && state.flights.length > 0) missingItems.push('Flight not linked');
+                      if (!hasRoom && state.rooms.length > 0) missingItems.push('Accommodation not linked');
 
                       return (
                         <div 
                           key={g.id}
                           className="px-3 py-4 flex flex-col md:flex-row md:items-center justify-between gap-x-6 gap-y-3 hover:bg-slate-50"
                         >
-                          <div className="flex items-center gap-3 min-w-0">
+                          <div className="flex items-start gap-4 min-w-0">
                             <span className="text-xs font-mono font-bold text-gray-400 w-5 text-right shrink-0">
                               {index + 1}.
                             </span>
@@ -880,7 +880,7 @@ export const IntakeView: React.FC<IntakeViewProps> = ({
                           </div>
 
                           {/* Row Action Buttons */}
-                          <div className="flex items-center gap-2 self-end md:self-center shrink-0">
+                          <div className="flex flex-wrap items-center gap-3 self-start md:self-center shrink-0">
                             <button
                               type="button"
                               onClick={() => handleOpenEditGuest(g, 'details')}
