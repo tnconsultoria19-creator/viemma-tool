@@ -841,22 +841,22 @@ export const ActivitiesView: React.FC<ActivitiesViewProps> = ({
     <div className="space-y-8 max-w-[1500px] mx-auto animate-in fade-in duration-500">
       
       {/* Title Header with Mode Switcher and Quick Actions */}
-      <div className="space-y-4 p-5 md:p-6 bg-white/95 backdrop-blur-md border border-white/80 rounded-2xl shadow-sm">
+      <div className="space-y-4 p-5 md:p-6 bg-white border border-slate-200 rounded-md">
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
           <div className="space-y-1.5">
             <div className="flex items-center gap-2">
-              <span className="text-[10px] uppercase tracking-[0.2em] font-extrabold text-[#D4AF37] flex items-center gap-1.5 bg-[#1A3326] px-3 py-1 rounded-lg">
-                <Compass size={13} /> EXCURSIONS & DAILY PROGRAMME
+              <span className="text-sm font-semibold text-slate-600 flex items-center gap-1.5">
+                <Compass size={13} /> Daily programme
               </span>
               <span className="text-xs font-semibold text-slate-600">
                 {state.ref || 'VT-2026-001'} • {tripDaysCount} Itinerary Days • {state.activities?.filter(a => a.status !== 'Cancelled').length || 0} Scheduled Activities
               </span>
             </div>
-            <h1 className="text-2xl md:text-3xl font-extrabold tracking-tight text-[#10233F] font-sans">
-              Daily Activity Programme & Excursions
+            <h1 className="text-2xl md:text-3xl font-semibold tracking-tight text-slate-900 font-sans">
+              Tour programme
             </h1>
             <p className="text-slate-600 max-w-3xl text-xs md:text-sm leading-relaxed">
-              Curate and organise activities across daily schedules, assign participant groups, resolve operational conflicts, and build the verified itinerary for participants.
+              Add tours and activities by day, set start and finish times, and assign the relevant travellers and transport.
             </p>
           </div>
 
@@ -1122,10 +1122,10 @@ export const ActivitiesView: React.FC<ActivitiesViewProps> = ({
           {/* Header */}
           <div className="bg-[#1A3326] text-white p-5 md:p-6 flex items-center justify-between">
             <div>
-              <span className="text-[10px] uppercase tracking-[0.2em] font-bold text-[#D4AF37] block mb-1">Interactive Catalog Dispatch</span>
+              <span className="text-[10px] uppercase tracking-[0.2em] font-bold text-[#D4AF37] block mb-1">Activity details</span>
               <h2 className="text-xl md:text-2xl font-bold font-sans flex items-center gap-2">
                 <Compass size={20} className="text-[#D4AF37]" />
-                {editingActivityId === -1 ? 'Configure Excursion Object' : 'Update Excursion Object'}
+                {editingActivityId === -1 ? 'Add activity' : 'Edit activity'}
               </h2>
             </div>
             <div className="flex gap-3 text-xs">
@@ -1139,7 +1139,7 @@ export const ActivitiesView: React.FC<ActivitiesViewProps> = ({
                 onClick={handleSaveActivity} 
                 className="px-4 py-2 rounded-xl bg-[#D4AF37] text-[#1A3326] hover:bg-[#b89528] font-bold shadow-sm hover:translate-y-[-1px] transition-all"
               >
-                Save Outing Rules
+                Save activity
               </button>
             </div>
           </div>
@@ -1952,7 +1952,7 @@ export const ActivitiesView: React.FC<ActivitiesViewProps> = ({
                 <Compass size={32} className="text-[#D4AF37]" />
               </div>
               <div className="space-y-2">
-                <span className="text-[10px] uppercase font-bold text-[#D4AF37] tracking-widest block">Itinerary Programme Empty</span>
+                <span className="text-[10px] uppercase font-bold text-[#D4AF37] tracking-widest block">No activities added</span>
                 <h3 className="font-extrabold text-gray-900 text-lg">No Daily Activities Scheduled</h3>
                 <p className="text-xs text-gray-500 max-w-sm mx-auto leading-relaxed">
                   Build the travel experience by selecting signature excursions from the curated DMC library or crafting bespoke daily outings.
@@ -2422,7 +2422,7 @@ export const ActivitiesView: React.FC<ActivitiesViewProps> = ({
               {viewMode === 'participant' && (
                 <div className="space-y-6">
                   <div className="bg-[#1A3326] text-white p-6 rounded-md space-y-2">
-                    <span className="text-[10px] uppercase font-bold text-[#D4AF37] tracking-widest block">Client Presentation View</span>
+                    <span className="text-[10px] uppercase font-bold text-[#D4AF37] tracking-widest block">Client itinerary preview</span>
                     <h2 className="text-2xl font-bold font-sans">{state.client?.name || 'Valued Guests'} — Daily Journey Itinerary</h2>
                     <p className="text-xs text-gray-300 max-w-2xl leading-relaxed">
                       This sequence shows the verified day-by-day experience as presented to participants in their digital dossier and client editorial pages.

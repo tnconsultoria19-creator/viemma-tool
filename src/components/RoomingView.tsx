@@ -332,7 +332,7 @@ export const RoomingView: React.FC<RoomingViewProps> = ({
       rate: qbRate,
       supp: 0,
       reqs: ["Quiet Side"],
-      notes: "Auto-provisioned via DMC Quick Booking Desk.",
+      notes: "Auto-provisioned via DMC Quick add stay.",
       allocatedRooms: [
         {
           id: Date.now() + 1,
@@ -514,14 +514,14 @@ export const RoomingView: React.FC<RoomingViewProps> = ({
     <div className="space-y-8 max-w-[1500px] mx-auto animate-in fade-in duration-500">
       
       {/* Title Header */}
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 p-5 md:p-6 bg-white/95 backdrop-blur-md border border-white/80 rounded-2xl shadow-sm">
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 p-5 md:p-6 bg-white border border-slate-200 rounded-md">
         <div className="space-y-2">
-          <span className="text-xs uppercase tracking-[0.2em] font-bold text-[#8A6A00] flex items-center gap-2">
-            <Hotel size={14} /> ACCOMMODATION & ROOMING
+          <span className="text-sm font-semibold text-slate-600 flex items-center gap-2">
+            <Hotel size={14} /> Accommodation
           </span>
-          <h1 className="text-3xl font-bold tracking-tight text-[#10233F] font-sans">Lodging Properties & Room Allocations</h1>
+          <h1 className="text-3xl font-bold tracking-tight text-[#10233F] font-sans">Hotels and rooming</h1>
           <p className="text-slate-600 max-w-2xl text-sm leading-relaxed">
-            Link luxury properties and allocate tour party travellers into realistic room configurations (Single, Double, Twin, Triple, Family, Suites).
+            Record accommodation, stay dates, room types, meal basis and which travellers are sharing each room.
           </p>
         </div>
         
@@ -531,13 +531,13 @@ export const RoomingView: React.FC<RoomingViewProps> = ({
               onClick={() => setShowQuickBook(!showQuickBook)} 
               className="flex items-center gap-2 px-5 py-3 rounded-xl border border-[#D4AF37] text-[#1A3326] bg-yellow-50 hover:bg-yellow-100 text-xs font-bold shadow-sm transition"
             >
-              <Briefcase size={14} className="text-[#D4AF37]" /> Quick Booking Desk
+              <Briefcase size={14} className="text-[#D4AF37]" /> Quick add stay
             </button>
             <button 
               onClick={handleOpenAddForm} 
               className="flex items-center gap-2 px-5 py-3 rounded-xl bg-[#1A3326] text-white hover:bg-[#12241b] text-xs font-bold shadow-md hover:translate-y-[-1px] transition duration-150"
             >
-              <Plus size={14} /> Link Luxury Stay
+              <Plus size={14} /> Add hotel stay
             </button>
           </div>
         )}
@@ -548,7 +548,7 @@ export const RoomingView: React.FC<RoomingViewProps> = ({
         <div className="bg-white rounded-2xl border border-gray-200 p-4 shadow-xs space-y-3">
           <div className="flex flex-wrap items-center justify-between gap-3 text-xs">
             <div className="flex items-center gap-2">
-              <span className="font-bold text-[#10233F]">Rooming Allocation Status:</span>
+              <span className="font-bold text-[#10233F]">Room allocation:</span>
               <span className={`px-2.5 py-0.5 rounded-full font-bold text-[11px] ${
                 unallocatedGuests.length === 0 && state.rooms.length > 0
                   ? 'bg-emerald-100 text-emerald-800'
@@ -559,7 +559,7 @@ export const RoomingView: React.FC<RoomingViewProps> = ({
             </div>
 
             <div className="text-[11px] text-gray-500">
-              {state.rooms.length} Stay Propert{state.rooms.length === 1 ? 'y' : 'ies'} •{' '}
+              {state.rooms.length} hotel booking{state.rooms.length === 1 ? '' : 's'} •{' '}
               {state.rooms.reduce((acc, r) => acc + (r.allocatedRooms?.length || 0), 0)} Allocated Rooms
             </div>
           </div>
@@ -602,7 +602,7 @@ export const RoomingView: React.FC<RoomingViewProps> = ({
           
           <div className="flex items-center justify-between border-b border-white/10 pb-4">
             <div>
-              <span className="text-[10px] uppercase tracking-[0.2em] font-bold text-[#D4AF37] block mb-1">Instant Preset Provisioning</span>
+              <span className="text-[10px] uppercase tracking-[0.2em] font-bold text-[#D4AF37] block mb-1">Quick add stay</span>
               <h3 className="text-lg md:text-xl font-bold font-sans flex items-center gap-2">
                 <Hotel size={18} className="text-[#D4AF37]" /> Quick Booking Desk
               </h3>
@@ -727,10 +727,10 @@ export const RoomingView: React.FC<RoomingViewProps> = ({
           {/* Header */}
           <div className="bg-[#1A3326] text-white p-5 md:p-6 flex items-center justify-between">
             <div>
-              <span className="text-[10px] uppercase tracking-[0.2em] font-bold text-[#D4AF37] block mb-1">Interactive Property Rooming</span>
+              <span className="text-[10px] uppercase tracking-[0.2em] font-bold text-[#D4AF37] block mb-1">Hotel details</span>
               <h2 className="text-xl md:text-2xl font-bold font-sans flex items-center gap-2">
                 <Hotel size={20} className="text-[#D4AF37]" />
-                {editingRoomId === -1 ? 'Link Luxury Stay Property' : 'Update Stay Property'}
+                {editingRoomId === -1 ? 'Add hotel stay' : 'Edit hotel stay'}
               </h2>
             </div>
             <div className="flex gap-3 text-xs">
@@ -754,7 +754,7 @@ export const RoomingView: React.FC<RoomingViewProps> = ({
             {/* GROUP 1: Property Operational Information */}
             <div className="bg-white rounded-md p-6 border border-gray-100 shadow-sm space-y-6">
               <h3 className="text-xs uppercase font-bold text-[#1A3326] tracking-wider border-b border-gray-100 pb-2 flex items-center gap-2">
-                <Compass size={14} className="text-[#D4AF37]" /> Property Knowledge Object
+                <Compass size={14} className="text-[#D4AF37]" /> Hotel details
               </h3>
               
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">

@@ -154,7 +154,7 @@ export const DailyTimelinesView: React.FC<DailyTimelinesViewProps> = ({ state, o
   return (
     <div className="w-full max-w-[1400px] mx-auto space-y-6 pb-20 animate-in fade-in">
       {/* Header bar */}
-      <div className="bg-white rounded-2xl p-6 border border-gray-100 shadow-xs flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+      <div className="bg-white rounded-md p-5 border border-slate-200 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-2">
             <div className="p-2 rounded-xl bg-emerald-50 text-emerald-800">
@@ -179,17 +179,24 @@ export const DailyTimelinesView: React.FC<DailyTimelinesViewProps> = ({ state, o
       </div>
 
       {/* Filter Tabs */}
-      <div className="bg-white rounded-2xl p-4 border border-gray-100 shadow-xs flex flex-wrap items-center justify-between gap-4">
+      <div className="bg-white rounded-md p-4 border border-slate-200 flex flex-wrap items-center justify-between gap-4">
         <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0">
-          {(['ALL', 'TRANSFERS', 'FLIGHTS', 'ACTIVITIES', 'HOTELS'] as const).map((tab) => (
+          {([
+            { value: 'ALL', label: 'All' },
+            { value: 'TRANSFERS', label: 'Transfers' },
+            { value: 'FLIGHTS', label: 'Flights' },
+            { value: 'ACTIVITIES', label: 'Activities' },
+            { value: 'HOTELS', label: 'Hotels' },
+          ] as const).map(({ value, label }) => (
             <button
-              key={tab}
-              onClick={() => setFilterType(tab)}
-              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition whitespace-nowrap ${
-                filterType === tab ? 'bg-[#1A3326] text-white shadow-xs' : 'bg-gray-50 text-gray-600 hover:bg-gray-100'
+              key={value}
+              type="button"
+              onClick={() => setFilterType(value)}
+              className={`px-3 py-1.5 rounded-md text-sm font-medium transition whitespace-nowrap ${
+                filterType === value ? 'bg-[#1A3326] text-white' : 'bg-white text-gray-700 hover:bg-gray-50 border border-slate-200'
               }`}
             >
-              {tab.charAt(0) + tab.slice(1).toLowerCase()}
+              {label}
             </button>
           ))}
         </div>
