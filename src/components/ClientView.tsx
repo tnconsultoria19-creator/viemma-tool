@@ -691,7 +691,7 @@ export const ClientView: React.FC<Props> = ({ state: rawState, onBackToWorkspace
               </div>
 
               <h3 className="text-2xl sm:text-3xl md:text-4xl font-serif font-bold text-white leading-tight">
-                {activeDestinationInfo.name} Experience
+                {state.dayTitles?.[currentDay] || (activeDestinationInfo.name === 'Day at a glance' ? 'Programme for the day' : `${activeDestinationInfo.name} Experience`)}
               </h3>
 
               <p className="text-xs sm:text-sm text-gray-200 max-w-2xl line-clamp-2 sm:line-clamp-none font-medium">
