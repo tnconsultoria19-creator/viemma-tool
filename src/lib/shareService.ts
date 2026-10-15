@@ -916,7 +916,7 @@ export function subscribeToShareDoc(
               const parsed = JSON.parse(cached);
               const expiresAt = parsed?.accessPolicy?.expiresAt;
               const expiryTime = expiresAt
-                ? new Date(/^\\d{4}-\\d{2}-\\d{2}$/.test(expiresAt) ? `${expiresAt}T23:59:59.999` : expiresAt).getTime()
+                ? new Date(/^\d{4}-\d{2}-\d{2}$/.test(expiresAt) ? `${expiresAt}T23:59:59.999` : expiresAt).getTime()
                 : null;
               const expired = expiryTime !== null && (!Number.isFinite(expiryTime) || Date.now() > expiryTime);
               const protectedPayloadMissing = Boolean(parsed.accessPolicy?.passwordRequired && !parsed.encryptedPayload);
