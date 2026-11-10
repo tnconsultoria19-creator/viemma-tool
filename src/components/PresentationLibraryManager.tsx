@@ -106,7 +106,7 @@ export const PresentationLibraryManager: React.FC<Props> = ({ library, onChange,
               <ImagePlus size={25} className="text-slate-500"/>
               <p className="text-sm font-semibold">Upload, drag and drop, or paste an image</p>
               <p className="text-xs text-slate-500">JPG, PNG or WebP · Maximum 15 MB</p>
-              <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={e=>void uploadFile(e.target.files?.[0])}/>
+              <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={e=>{ const file = e.target.files?.[0]; e.currentTarget.value = ''; void uploadFile(file); }}/>
               <button type="button" disabled={saving} onClick={()=>fileRef.current?.click()} className="px-3 py-2 rounded-lg border border-slate-300 text-sm font-semibold flex items-center gap-2"><Upload size={15}/> Choose image</button>
               {progress !== null && <div className="w-full max-w-xs"><div className="h-1.5 bg-slate-100 rounded-full overflow-hidden"><div className="h-full bg-emerald-600" style={{width:`${progress}%`}}/></div><p className="text-xs text-slate-500 mt-1">Uploading {progress}%</p></div>}
             </div>
