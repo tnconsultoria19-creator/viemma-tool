@@ -26,13 +26,14 @@ export interface PresentationLibraryDescription {
 export interface PresentationLibraryData {
   assets: PresentationLibraryAsset[];
   descriptions: PresentationLibraryDescription[];
+  pageImages?: Record<string, { heroUrl?: string; supportingUrl?: string }>;
   updatedAt?: string;
 }
 
 const DOC_PATH = 'presentationLibraries/viemma-master';
 const LOCAL_KEY = 'viemma_presentation_library_v1';
 
-export const EMPTY_PRESENTATION_LIBRARY: PresentationLibraryData = { assets: [], descriptions: [] };
+export const EMPTY_PRESENTATION_LIBRARY: PresentationLibraryData = { assets: [], descriptions: [], pageImages: {} };
 
 function readLocal(): PresentationLibraryData {
   try {
