@@ -1,4 +1,4 @@
-import React, { useState, useRef, useMemo } from 'react';
+import React, { useState, useRef, useMemo, useEffect } from 'react';
 import {
   TripGroupStructure,
   FlightRecord,
@@ -43,10 +43,13 @@ import {
   CheckCircle2,
   XCircle,
   HelpCircle,
-  Sliders
+  Sliders,
+  Images
 } from 'lucide-react';
 
 import { DB_DEFAULT } from '../dbDefaults';
+import { PresentationLibraryManager } from './PresentationLibraryManager';
+import { EMPTY_PRESENTATION_LIBRARY, PresentationLibraryData, subscribePresentationLibrary, savePresentationLibrary } from '../lib/presentationLibraryService';
 
 export type PdfDocumentMode =
   | 'client-editorial'
@@ -145,8 +148,37 @@ export const PrintHubView: React.FC<PrintHubViewProps> = (props) => {
   const [activePageFilter, setActivePageFilter] = useState<'all' | number>('all');
   const [exportStatus, setExportStatus] = useState<string>('');
   const [customParagraphOverrides, setCustomParagraphOverrides] = useState<
-    Record<number, [string, string]>
+    Record<string, [string, string]>
   >({});
+
+  // Shared presentation media and bilingual editorial copy library.
+  const [presentationLibrary, setPresentationLibrary] = useState<PresentationLibraryData>(EMPTY_PRESENTATION_LIBRARY);
+  const [isMediaLibraryOpen, setIsMediaLibraryOpen] = useState(false);
+  const [presentationLanguage, setPresentationLanguage] = useState<'English' | 'Português'>('English');
+
+  useEffect(() => subscribePresentationLibrary(setPresentationLibrary, error => {
+    console.warn('Presentation library subscription failed:', error);
+    setExportStatus('Presentation library could not sync from Firebase. Local saved items remain available.');
+  }), []);
+
+  const persistPresentationLibrary = async (next: PresentationLibraryData) => {
+    setPresentationLibrary(next);
+    try {
+      const destination = await savePresentationLibrary(next);
+      setExportStatus(destination === 'cloud'
+        ? 'Presentation library saved to Firebase.'
+        : 'Presentation library saved on this device. Sign in as Viemma staff to sync across devices.');
+    } catch (error) {
+      console.error('Presentation library save failed:', error);
+      setExportStatus('Library saved locally, but Firebase sync failed. Check staff access and Firestore rules.');
+    }
+  };
+
+  const getPresentationPageKey = (page: ClientEditorialPageData) =>
+    [page.pageCategory, page.title, group.defaults.destination || 'South Africa']
+      .map(value => String(value || '').trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, ''))
+      .join('::');
+
 
   // Operational Job Sheet Filters (Driver Job Sheet & Translator Job Sheet)
   const [selectedDriverSheetId, setSelectedDriverSheetId] = useState<string>('ALL');
@@ -210,16 +242,22 @@ export const PrintHubView: React.FC<PrintHubViewProps> = (props) => {
       heroImageUrl,
       supportingImageUrl,
     });
-    return base.map((p) =>
-      customParagraphOverrides[p.pageNumber]
-        ? {
-            ...p,
-            paragraphs: customParagraphOverrides[p.pageNumber],
-            insufficientContentFlag: false,
-          }
-        : p
-    );
-  }, [printGroup, scopedFlights, scopedHotels, scopedTransfers, scopedActivities, heroImageUrl, supportingImageUrl, customParagraphOverrides]);
+    return base.map((p) => {
+      const key = getPresentationPageKey(p);
+      const savedDescription = presentationLibrary.descriptions.find(item => item.key === key);
+      const savedParagraphs = presentationLanguage === 'Português'
+        ? savedDescription?.portuguese
+        : savedDescription?.english;
+      const pageImages = presentationLibrary.pageImages?.[key];
+      return {
+        ...p,
+        paragraphs: customParagraphOverrides[`${p.pageNumber}:${presentationLanguage}`] || savedParagraphs || p.paragraphs,
+        heroImage: pageImages?.heroUrl ? { ...p.heroImage, url: pageImages.heroUrl } : p.heroImage,
+        supportingImage: pageImages?.supportingUrl ? { ...p.supportingImage, url: pageImages.supportingUrl } : p.supportingImage,
+        insufficientContentFlag: customParagraphOverrides[`${p.pageNumber}:${presentationLanguage}`] || savedParagraphs ? false : p.insufficientContentFlag,
+      };
+    });
+  }, [printGroup, scopedFlights, scopedHotels, scopedTransfers, scopedActivities, heroImageUrl, supportingImageUrl, customParagraphOverrides, presentationLibrary, presentationLanguage]);
 
   const insufficientPagesCount = editorialPages.filter((p) => p.insufficientContentFlag).length;
   const leadPerson = printGroup.travellers.find((t) => t.id === printGroup.leadTravellerId) || printGroup.travellers[0];
@@ -244,8 +282,52 @@ export const PrintHubView: React.FC<PrintHubViewProps> = (props) => {
   const handleEditPageParagraphs = (pageNumber: number, nextParagraphs: [string, string]) => {
     setCustomParagraphOverrides((prev) => ({
       ...prev,
-      [pageNumber]: nextParagraphs,
+      [`${pageNumber}:${presentationLanguage}`]: nextParagraphs,
     }));
+  };
+
+  const handleSaveReusableDescription = async (pageNumber: number, nextParagraphs: [string, string]) => {
+    const page = editorialPages.find(item => item.pageNumber === pageNumber);
+    if (!page) return;
+    const key = getPresentationPageKey(page);
+    const existing = presentationLibrary.descriptions.find(item => item.key === key);
+    const nextDescription = {
+      key,
+      title: page.title,
+      destination: group.defaults.destination || 'South Africa',
+      ...(existing || {}),
+      ...(presentationLanguage === 'Português'
+        ? { portuguese: nextParagraphs }
+        : { english: nextParagraphs }),
+      updatedAt: new Date().toISOString(),
+    };
+    const next: PresentationLibraryData = {
+      ...presentationLibrary,
+      descriptions: [
+        ...presentationLibrary.descriptions.filter(item => item.key !== key),
+        nextDescription,
+      ],
+    };
+    await persistPresentationLibrary(next);
+    setCustomParagraphOverrides(prev => ({ ...prev, [`${pageNumber}:${presentationLanguage}`]: nextParagraphs }));
+  };
+
+  const handleSelectPageImage = async (pageNumber: number, slot: 'hero' | 'supporting', url: string) => {
+    const page = editorialPages.find(item => item.pageNumber === pageNumber);
+    if (!page) return;
+    const key = getPresentationPageKey(page);
+    const current = presentationLibrary.pageImages?.[key] || {};
+    const next: PresentationLibraryData = {
+      ...presentationLibrary,
+      pageImages: {
+        ...(presentationLibrary.pageImages || {}),
+        [key]: {
+          ...current,
+          ...(slot === 'hero' ? { heroUrl: url } : { supportingUrl: url }),
+        },
+      },
+    };
+    await persistPresentationLibrary(next);
   };
 
   const handleExportPdf = async () => {
@@ -770,6 +852,17 @@ export const PrintHubView: React.FC<PrintHubViewProps> = (props) => {
                     }`}
                   >
                     Landscape (Presentation Deck)
+                  </button>
+                </div>
+
+                <div className="inline-flex items-center gap-2">
+                  <label className="text-[11px] font-semibold text-slate-600" htmlFor="presentation-language">Copy language</label>
+                  <select id="presentation-language" value={presentationLanguage} onChange={e => setPresentationLanguage(e.target.value as 'English' | 'Português')} className="rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs">
+                    <option value="English">English</option>
+                    <option value="Português">Português</option>
+                  </select>
+                  <button type="button" onClick={() => setIsMediaLibraryOpen(true)} className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50">
+                    <Images size={14}/> Media library ({presentationLibrary.assets.length})
                   </button>
                 </div>
 
@@ -1302,6 +1395,10 @@ export const PrintHubView: React.FC<PrintHubViewProps> = (props) => {
                   orientation={editorialOrientation}
                   showOperatorWarnings={true}
                   onEditParagraphs={handleEditPageParagraphs}
+                  onSaveReusableDescription={handleSaveReusableDescription}
+                  presentationImages={presentationLibrary.assets}
+                  onSelectImage={handleSelectPageImage}
+                  languageLabel={presentationLanguage}
                 />
               ))}
 
@@ -2001,6 +2098,13 @@ export const PrintHubView: React.FC<PrintHubViewProps> = (props) => {
 
           </div>
         </div>
+      )}
+      {isMediaLibraryOpen && (
+        <PresentationLibraryManager
+          library={presentationLibrary}
+          onChange={persistPresentationLibrary}
+          onClose={() => setIsMediaLibraryOpen(false)}
+        />
       )}
     </div>
   );
