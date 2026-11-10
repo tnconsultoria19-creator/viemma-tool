@@ -1,4 +1,5 @@
 import { doc, getDoc, onSnapshot, setDoc } from 'firebase/firestore';
+import { onAuthStateChanged } from 'firebase/auth';
 import { getDownloadURL, getStorage, ref, uploadBytesResumable, deleteObject } from 'firebase/storage';
 import { appFirebase, auth, db, isCloudConnected, isStaffUser } from './firebase';
 
@@ -49,18 +50,30 @@ export function subscribePresentationLibrary(
   callback: (library: PresentationLibraryData) => void,
   onError?: (error: unknown) => void
 ): () => void {
-  if (db && isCloudConnected && auth?.currentUser && isStaffUser(auth.currentUser)) {
-    return onSnapshot(doc(db, 'presentationLibraries', 'viemma-master'), snapshot => {
-      callback(snapshot.exists()
-        ? { ...EMPTY_PRESENTATION_LIBRARY, ...(snapshot.data() as PresentationLibraryData) }
-        : EMPTY_PRESENTATION_LIBRARY);
-    }, error => {
-      onError?.(error);
-      callback(readLocal());
-    });
+  if (!auth) {
+    callback(readLocal());
+    return () => {};
   }
-  callback(readLocal());
-  return () => {};
+  let unsubscribeDocument = () => {};
+  const unsubscribeAuth = onAuthStateChanged(auth, user => {
+    unsubscribeDocument();
+    if (db && isCloudConnected && user && isStaffUser(user)) {
+      unsubscribeDocument = onSnapshot(doc(db, 'presentationLibraries', 'viemma-master'), snapshot => {
+        callback(snapshot.exists()
+          ? { ...EMPTY_PRESENTATION_LIBRARY, ...(snapshot.data() as PresentationLibraryData) }
+          : EMPTY_PRESENTATION_LIBRARY);
+      }, error => {
+        onError?.(error);
+        callback(readLocal());
+      });
+    } else {
+      callback(readLocal());
+    }
+  });
+  return () => {
+    unsubscribeDocument();
+    unsubscribeAuth();
+  };
 }
 
 export async function savePresentationLibrary(library: PresentationLibraryData): Promise<'cloud' | 'local'> {
