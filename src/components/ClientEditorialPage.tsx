@@ -104,15 +104,15 @@ export const ClientEditorialPage: React.FC<ClientEditorialPageProps> = ({
               <>
                 <label className="text-[10px] font-semibold text-slate-600 flex items-center gap-1.5">
                   Hero image
-                  <select value={page.heroImage.url} onChange={e => onSelectImage(page.pageNumber, 'hero', e.target.value)} className="max-w-[190px] rounded-md border border-slate-200 bg-white px-2 py-1.5 text-[11px] font-normal">
-                    <option value={page.heroImage.url}>Current / default</option>
+                  <select value={presentationImages.some(image => image.url === page.heroImage.url) ? page.heroImage.url : ''} onChange={e => onSelectImage(page.pageNumber, 'hero', e.target.value)} className="max-w-[190px] rounded-md border border-slate-200 bg-white px-2 py-1.5 text-[11px] font-normal">
+                    <option value="">Use generated / default image</option>
                     {presentationImages.map(image => <option key={image.id} value={image.url}>{image.name}</option>)}
                   </select>
                 </label>
                 <label className="text-[10px] font-semibold text-slate-600 flex items-center gap-1.5">
                   Supporting image
-                  <select value={page.supportingImage.url} onChange={e => onSelectImage(page.pageNumber, 'supporting', e.target.value)} className="max-w-[190px] rounded-md border border-slate-200 bg-white px-2 py-1.5 text-[11px] font-normal">
-                    <option value={page.supportingImage.url}>Current / default</option>
+                  <select value={presentationImages.some(image => image.url === page.supportingImage.url) ? page.supportingImage.url : ''} onChange={e => onSelectImage(page.pageNumber, 'supporting', e.target.value)} className="max-w-[190px] rounded-md border border-slate-200 bg-white px-2 py-1.5 text-[11px] font-normal">
+                    <option value="">Use generated / default image</option>
                     {presentationImages.map(image => <option key={image.id} value={image.url}>{image.name}</option>)}
                   </select>
                 </label>
