@@ -190,6 +190,11 @@ export const ClientEditorialPage: React.FC<ClientEditorialPageProps> = ({
                     <button type="button" onClick={() => setIsEditingText(false)} className="px-2 py-1 text-xs text-slate-600">
                       Cancel
                     </button>
+                    {onSaveReusableDescription && (
+                      <button type="button" onClick={() => onSaveReusableDescription(page.pageNumber, [draftP1.trim(), draftP2.trim()])} className="px-2.5 py-1 text-xs font-semibold border border-[#1A3326] text-[#1A3326] rounded">
+                        Save reusable {languageLabel} copy
+                      </button>
+                    )}
                     <button type="submit" className="px-2.5 py-1 text-xs font-semibold bg-slate-900 text-white rounded">
                       Apply
                     </button>
