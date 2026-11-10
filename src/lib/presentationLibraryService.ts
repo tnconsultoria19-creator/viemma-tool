@@ -31,7 +31,6 @@ export interface PresentationLibraryData {
   updatedAt?: string;
 }
 
-const DOC_PATH = 'presentationLibraries/viemma-master';
 const LOCAL_KEY = 'viemma_presentation_library_v1';
 
 export const EMPTY_PRESENTATION_LIBRARY: PresentationLibraryData = { assets: [], descriptions: [], pageImages: {} };
@@ -59,9 +58,23 @@ export function subscribePresentationLibrary(
     unsubscribeDocument();
     if (db && isCloudConnected && user && isStaffUser(user)) {
       unsubscribeDocument = onSnapshot(doc(db, 'presentationLibraries', 'viemma-master'), snapshot => {
-        callback(snapshot.exists()
+        const cloudLibrary = snapshot.exists()
           ? { ...EMPTY_PRESENTATION_LIBRARY, ...(snapshot.data() as PresentationLibraryData) }
-          : EMPTY_PRESENTATION_LIBRARY);
+          : EMPTY_PRESENTATION_LIBRARY;
+        const localLibrary = readLocal();
+        const mergedAssets = new Map<string, PresentationLibraryAsset>();
+        cloudLibrary.assets.forEach(asset => mergedAssets.set(asset.id, asset));
+        localLibrary.assets.forEach(asset => { if (!mergedAssets.has(asset.id)) mergedAssets.set(asset.id, asset); });
+        const mergedDescriptions = new Map<string, PresentationLibraryDescription>();
+        cloudLibrary.descriptions.forEach(item => mergedDescriptions.set(item.key, item));
+        localLibrary.descriptions.forEach(item => { if (!mergedDescriptions.has(item.key)) mergedDescriptions.set(item.key, item); });
+        callback({
+          ...EMPTY_PRESENTATION_LIBRARY,
+          ...cloudLibrary,
+          assets: Array.from(mergedAssets.values()),
+          descriptions: Array.from(mergedDescriptions.values()),
+          pageImages: { ...(localLibrary.pageImages || {}), ...(cloudLibrary.pageImages || {}) },
+        });
       }, error => {
         onError?.(error);
         callback(readLocal());
