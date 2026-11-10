@@ -2677,13 +2677,12 @@ export const ActivitiesView: React.FC<ActivitiesViewProps> = ({
                       .filter(activity => activity.day === dayNum && activity.status !== 'Cancelled' && matchesSelectedGroup(activity))
                       .slice()
                       .sort((a, b) => (a.start || '99:99').localeCompare(b.start || '99:99'));
-                    const dayDate = getDayIsoDate(dayNum);
                     return (
                       <section key={dayNum} className="bg-white border border-slate-200 rounded-xl overflow-hidden">
                         <header className="px-4 py-3 bg-slate-50 border-b border-slate-200 flex items-center justify-between gap-3">
                           <div>
                             <h4 className="text-sm font-semibold text-slate-900">{customDayTitles[dayNum] || `Day ${dayNum} Programme`}</h4>
-                            <p className="text-[11px] text-slate-500">{dayDate || getDayFormattedDate(dayNum)} · {dayActivities.length} activities</p>
+                            <p className="text-[11px] text-slate-500">{getDayFormattedDate(dayNum)} · {dayActivities.length} activities</p>
                           </div>
                           <button type="button" onClick={() => { setCatalogTargetDay(dayNum); setIsCatalogOpen(true); }} className="shrink-0 inline-flex items-center gap-1.5 rounded-lg bg-[#1A3326] text-white px-3 py-2 text-xs font-semibold hover:bg-[#274a39]">
                             <Plus size={13}/> Add
