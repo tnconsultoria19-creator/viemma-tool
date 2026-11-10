@@ -148,7 +148,7 @@ export const PrintHubView: React.FC<PrintHubViewProps> = (props) => {
   const [activePageFilter, setActivePageFilter] = useState<'all' | number>('all');
   const [exportStatus, setExportStatus] = useState<string>('');
   const [customParagraphOverrides, setCustomParagraphOverrides] = useState<
-    Record<number, [string, string]>
+    Record<string, [string, string]>
   >({});
 
   // Shared presentation media and bilingual editorial copy library.
@@ -251,10 +251,10 @@ export const PrintHubView: React.FC<PrintHubViewProps> = (props) => {
       const pageImages = presentationLibrary.pageImages?.[key];
       return {
         ...p,
-        paragraphs: customParagraphOverrides[p.pageNumber] || savedParagraphs || p.paragraphs,
+        paragraphs: customParagraphOverrides[`${p.pageNumber}:${presentationLanguage}`] || savedParagraphs || p.paragraphs,
         heroImage: pageImages?.heroUrl ? { ...p.heroImage, url: pageImages.heroUrl } : p.heroImage,
         supportingImage: pageImages?.supportingUrl ? { ...p.supportingImage, url: pageImages.supportingUrl } : p.supportingImage,
-        insufficientContentFlag: customParagraphOverrides[p.pageNumber] || savedParagraphs ? false : p.insufficientContentFlag,
+        insufficientContentFlag: customParagraphOverrides[`${p.pageNumber}:${presentationLanguage}`] || savedParagraphs ? false : p.insufficientContentFlag,
       };
     });
   }, [printGroup, scopedFlights, scopedHotels, scopedTransfers, scopedActivities, heroImageUrl, supportingImageUrl, customParagraphOverrides, presentationLibrary, presentationLanguage]);
@@ -282,7 +282,7 @@ export const PrintHubView: React.FC<PrintHubViewProps> = (props) => {
   const handleEditPageParagraphs = (pageNumber: number, nextParagraphs: [string, string]) => {
     setCustomParagraphOverrides((prev) => ({
       ...prev,
-      [pageNumber]: nextParagraphs,
+      [`${pageNumber}:${presentationLanguage}`]: nextParagraphs,
     }));
   };
 
@@ -309,7 +309,7 @@ export const PrintHubView: React.FC<PrintHubViewProps> = (props) => {
       ],
     };
     await persistPresentationLibrary(next);
-    setCustomParagraphOverrides(prev => ({ ...prev, [pageNumber]: nextParagraphs }));
+    setCustomParagraphOverrides(prev => ({ ...prev, [`${pageNumber}:${presentationLanguage}`]: nextParagraphs }));
   };
 
   const handleSelectPageImage = async (pageNumber: number, slot: 'hero' | 'supporting', url: string) => {
