@@ -56,9 +56,18 @@ export const PresentationLibraryManager: React.FC<Props> = ({ library, onChange,
   };
 
   const handlePaste = (event: React.ClipboardEvent) => {
-    const imageItem = Array.from(event.clipboardData.items).find(item => item.type.startsWith('image/'));
-    const file = imageItem?.getAsFile();
-    if (file) { event.preventDefault(); void uploadFile(file); }
+    const clipboardItems = event.clipboardData.items;
+    for (let index = 0; index < clipboardItems.length; index += 1) {
+      const item = clipboardItems[index];
+      if (item.type.startsWith('image/')) {
+        const file = item.getAsFile();
+        if (file) {
+          event.preventDefault();
+          void uploadFile(file);
+          return;
+        }
+      }
+    }
   };
 
   const removeAsset = async (asset: PresentationLibraryAsset) => {
