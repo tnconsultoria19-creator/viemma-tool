@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   ClientEditorialPageData,
   createArchitecturalFallbackDataUri,
@@ -9,6 +9,10 @@ interface ClientEditorialPageProps {
   orientation?: 'portrait' | 'landscape';
   showOperatorWarnings?: boolean;
   onEditParagraphs?: (pageNumber: number, nextParagraphs: [string, string]) => void;
+  presentationImages?: Array<{ id: string; name: string; url: string }>;
+  onSelectImage?: (pageNumber: number, slot: 'hero' | 'supporting', url: string) => void;
+  onSaveReusableDescription?: (pageNumber: number, nextParagraphs: [string, string]) => void;
+  languageLabel?: string;
 }
 
 /**
@@ -25,6 +29,10 @@ export const ClientEditorialPage: React.FC<ClientEditorialPageProps> = ({
   orientation = 'portrait',
   showOperatorWarnings = true,
   onEditParagraphs,
+  presentationImages = [],
+  onSelectImage,
+  onSaveReusableDescription,
+  languageLabel = 'English',
 }) => {
   const [heroSrc, setHeroSrc] = useState(page.heroImage.url);
   const [supportSrc, setSupportSrc] = useState(page.supportingImage.url);
@@ -33,6 +41,13 @@ export const ClientEditorialPage: React.FC<ClientEditorialPageProps> = ({
   const [draftP2, setDraftP2] = useState(page.paragraphs[1]);
 
   const isLandscape = orientation === 'landscape';
+
+  useEffect(() => {
+    setHeroSrc(page.heroImage.url);
+    setSupportSrc(page.supportingImage.url);
+    setDraftP1(page.paragraphs[0]);
+    setDraftP2(page.paragraphs[1]);
+  }, [page.pageNumber, page.heroImage.url, page.supportingImage.url, page.paragraphs]);
 
   const handleSaveText = (e: React.FormEvent) => {
     e.preventDefault();
@@ -82,6 +97,30 @@ export const ClientEditorialPage: React.FC<ClientEditorialPageProps> = ({
             <p className="text-xs text-slate-600 mt-1 font-medium">{page.subtitle}</p>
           )}
         </div>
+
+        {(onSelectImage || onSaveReusableDescription) && (
+          <div className="no-print mb-3 flex flex-wrap items-center gap-2.5 rounded-lg border border-slate-200 bg-slate-50 p-2.5">
+            {onSelectImage && (
+              <>
+                <label className="text-[10px] font-semibold text-slate-600 flex items-center gap-1.5">
+                  Hero image
+                  <select value={page.heroImage.url} onChange={e => onSelectImage(page.pageNumber, 'hero', e.target.value)} className="max-w-[190px] rounded-md border border-slate-200 bg-white px-2 py-1.5 text-[11px] font-normal">
+                    <option value={page.heroImage.url}>Current / default</option>
+                    {presentationImages.map(image => <option key={image.id} value={image.url}>{image.name}</option>)}
+                  </select>
+                </label>
+                <label className="text-[10px] font-semibold text-slate-600 flex items-center gap-1.5">
+                  Supporting image
+                  <select value={page.supportingImage.url} onChange={e => onSelectImage(page.pageNumber, 'supporting', e.target.value)} className="max-w-[190px] rounded-md border border-slate-200 bg-white px-2 py-1.5 text-[11px] font-normal">
+                    <option value={page.supportingImage.url}>Current / default</option>
+                    {presentationImages.map(image => <option key={image.id} value={image.url}>{image.name}</option>)}
+                  </select>
+                </label>
+              </>
+            )}
+            <span className="ml-auto text-[10px] text-slate-500">Copy language: {languageLabel}</span>
+          </div>
+        )}
 
         {isLandscape ? (
           /* LANDSCAPE PRESENTATION DECK LAYOUT (16:10 / A4 Landscape) */
@@ -279,6 +318,15 @@ export const ClientEditorialPage: React.FC<ClientEditorialPageProps> = ({
                       >
                         Cancel
                       </button>
+                      {onSaveReusableDescription && (
+                        <button
+                          type="button"
+                          onClick={() => onSaveReusableDescription(page.pageNumber, [draftP1.trim(), draftP2.trim()])}
+                          className="px-3 py-1 text-xs font-semibold border border-[#1A3326] text-[#1A3326] rounded"
+                        >
+                          Save reusable {languageLabel} copy
+                        </button>
+                      )}
                       <button
                         type="submit"
                         className="px-3 py-1 text-xs font-semibold bg-slate-900 text-white rounded"
