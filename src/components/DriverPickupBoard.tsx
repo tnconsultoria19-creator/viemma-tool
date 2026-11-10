@@ -63,8 +63,37 @@ export const DriverPickupBoard: React.FC<DriverPickupBoardProps> = ({ state, onB
   const driverName = matchedTransfer?.driver || state.drivers?.[0]?.name || 'Viemma Chauffeur';
   const vehicleName = matchedTransfer?.vehicle || state.vehicles?.[0]?.name || 'Luxury VIP Vehicle';
 
+  const [showAgencyBranding, setShowAgencyBranding] = useState(
+    state.welcomePlacard?.showAgencyName ?? true
+  );
+  const [customAgencyName, setCustomAgencyName] = useState(
+    state.welcomePlacard?.agencyName || state.agent?.agencyName || 'Viemma Tours & Safaris'
+  );
+  const [destinationHotel, setDestinationHotel] = useState(
+    matchedTransfer?.to || state.rooms?.[0]?.hotel || 'Luxury Hotel & Resort'
+  );
+  const [collectionTime, setCollectionTime] = useState(
+    matchedTransfer?.time && matchedTransfer.time !== selectedFlight?.arrTime
+      ? matchedTransfer.time
+      : ''
+  );
+
   return (
     <div className="space-y-6">
+      {/* Print Page Orientation Style Rule */}
+      <style>{`
+        @media print {
+          @page {
+            size: landscape;
+            margin: 0;
+          }
+          body {
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+          }
+        }
+      `}</style>
+
       {/* ON-SCREEN CONTROLS (Hidden during printing) */}
       <div className="print:hidden bg-white rounded-2xl p-5 border border-gray-200 shadow-xs space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-gray-100 pb-4">
@@ -80,7 +109,7 @@ export const DriverPickupBoard: React.FC<DriverPickupBoardProps> = ({ state, onB
             )}
             <div>
               <span className="text-[10px] uppercase tracking-wider font-bold text-[#D4AF37]">
-                A4 Printable Chauffeur Placard
+                A4 Landscape Printable Chauffeur Placard
               </span>
               <h2 className="text-lg font-bold text-[#1A3326]">Airport Driver Pickup Board</h2>
             </div>
@@ -92,13 +121,13 @@ export const DriverPickupBoard: React.FC<DriverPickupBoardProps> = ({ state, onB
               className="px-6 py-2.5 rounded-xl bg-[#1A3326] text-white hover:bg-[#234433] text-xs font-bold transition shadow-md flex items-center gap-2 cursor-pointer"
             >
               <Printer size={15} className="text-[#D4AF37]" />
-              <span>Print A4 Pickup Board</span>
+              <span>Print Landscape Board</span>
             </button>
           </div>
         </div>
 
-        {/* Configuration Row */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs">
+        {/* Configuration Grid */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 text-xs">
           <div>
             <label className="font-bold text-gray-600 block mb-1">Select Inbound Arrival Flight</label>
             <select
@@ -127,111 +156,143 @@ export const DriverPickupBoard: React.FC<DriverPickupBoardProps> = ({ state, onB
           </div>
 
           <div>
-            <label className="font-bold text-gray-600 block mb-1">Terminal Pickup Point</label>
+            <label className="font-bold text-gray-600 block mb-1">Agency / Operator Branding</label>
+            <div className="flex items-center gap-2">
+              <input
+                type="text"
+                value={customAgencyName}
+                onChange={(e) => setCustomAgencyName(e.target.value)}
+                disabled={!showAgencyBranding}
+                className="w-full p-2.5 rounded-xl border border-gray-200 font-medium text-xs disabled:bg-gray-100"
+                placeholder="Agency Name"
+              />
+              <label className="flex items-center gap-1 shrink-0 text-[11px] font-semibold text-gray-700 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={showAgencyBranding}
+                  onChange={(e) => setShowAgencyBranding(e.target.checked)}
+                  className="rounded text-[#1A3326]"
+                />
+                Show
+              </label>
+            </div>
+          </div>
+
+          <div>
+            <label className="font-bold text-gray-600 block mb-1">Destination Hotel / Resort</label>
             <input
               type="text"
-              value={pickupPoint}
-              onChange={(e) => setPickupPoint(e.target.value)}
-              className="w-full p-2.5 rounded-xl border border-gray-200 font-medium"
-              placeholder="e.g. International Arrivals — Door 4"
+              value={destinationHotel}
+              onChange={(e) => setDestinationHotel(e.target.value)}
+              className="w-full p-2.5 rounded-xl border border-gray-200 font-medium text-xs"
+              placeholder="e.g. The Silo Hotel, Cape Town"
             />
           </div>
         </div>
       </div>
 
-      {/* THE ACTUAL A4 PRINTABLE PLACARD CONTAINER */}
-      <div className="bg-white p-2 md:p-8 rounded-3xl shadow-lg border border-gray-200 max-w-[210mm] mx-auto print:p-0 print:border-none print:shadow-none print:m-0 print:max-w-none">
+      {/* THE ACTUAL A4 LANDSCAPE PRINTABLE PLACARD CONTAINER */}
+      <div className="bg-white p-2 md:p-6 rounded-3xl shadow-lg border border-gray-200 max-w-[297mm] mx-auto print:p-0 print:border-none print:shadow-none print:m-0 print:max-w-none">
         
-        {/* A4 Sheet Dimensions Frame */}
-        <div className="w-full min-h-[297mm] p-8 md:p-12 border-4 border-[#1A3326] rounded-2xl flex flex-col justify-between bg-white text-black relative print:border-4 print:p-10 print:min-h-screen">
+        {/* A4 Landscape Dimensions Frame (297mm x 210mm) */}
+        <div className="w-full min-h-[200mm] p-8 md:p-10 border-4 border-[#1A3326] rounded-2xl flex flex-col justify-between bg-white text-black relative print:border-4 print:p-8 print:min-h-screen">
           
-          {/* HEADER: VIEMMA TOURS EMBLEM */}
-          <div className="text-center border-b-2 border-[#1A3326]/20 pb-8 space-y-2">
-            <div className="inline-block">
-              <span className="font-serif text-[#1A3326] text-3xl md:text-4xl font-extrabold tracking-[0.25em] block">
-                VIEMMA
+          {/* HEADER: AGENCY / OPERATOR EMBLEM */}
+          <div className="text-center border-b-2 border-[#1A3326]/20 pb-4 space-y-1">
+            {showAgencyBranding ? (
+              <div className="inline-block">
+                <span className="font-serif text-[#1A3326] text-3xl md:text-4xl font-extrabold tracking-[0.25em] block uppercase">
+                  {customAgencyName}
+                </span>
+                <span className="text-[10px] uppercase tracking-[0.4em] text-[#D4AF37] font-bold block mt-0.5">
+                  VIP Chauffeur & Private Ground Handling
+                </span>
+              </div>
+            ) : (
+              <span className="text-xs uppercase tracking-[0.3em] font-bold text-gray-400 block">
+                PRIVATE VIP ARRIVAL WELCOME
               </span>
-              <span className="text-xs uppercase tracking-[0.5em] text-[#D4AF37] font-bold block mt-1">
-                TOURS & SAFARIS
-              </span>
-            </div>
-            <p className="text-[10px] tracking-widest uppercase font-semibold text-gray-500">
-              VIP Chauffeur Meet & Greet Service • Southern Africa
-            </p>
+            )}
           </div>
 
-          {/* MAIN PROMINENT PASSENGER NAME (Readable from 10 meters) */}
-          <div className="my-auto py-12 text-center space-y-4">
-            <span className="text-xs uppercase font-extrabold tracking-[0.3em] text-[#D4AF37] block">
+          {/* MAIN PROMINENT PASSENGER NAME (Centered, Huge & Clear) */}
+          <div className="my-auto py-6 text-center space-y-3">
+            <span className="text-xs uppercase font-extrabold tracking-[0.35em] text-[#D4AF37] block">
               WELCOME TO SOUTH AFRICA
             </span>
-            <div className="p-6 md:p-8 bg-slate-50 border-2 border-[#1A3326] rounded-2xl print:bg-white">
-              <h1 className="text-4xl md:text-6xl font-serif font-black text-[#1A3326] tracking-wide break-words leading-tight">
+            <div className="py-6 px-8 bg-slate-50 border-2 border-[#1A3326] rounded-2xl print:bg-white inline-block w-full">
+              <h1 className="text-5xl md:text-7xl font-serif font-black text-[#1A3326] tracking-wider break-words leading-none uppercase">
                 {placardName}
               </h1>
             </div>
-            <div className="flex items-center justify-center gap-3 text-sm font-bold text-gray-600 uppercase tracking-widest pt-2">
+            <div className="flex items-center justify-center gap-4 text-xs font-bold text-gray-600 uppercase tracking-widest pt-1">
               <span className="bg-gray-100 px-3 py-1 rounded-full border border-gray-200">
                 {passengerCount} {passengerCount === 1 ? 'Guest' : 'Guests'}
               </span>
-              <span className="bg-gray-100 px-3 py-1 rounded-full border border-gray-200 font-mono">
-                Ref: {state.ref || 'VT-2026'}
+              <span className="bg-gray-100 px-3 py-1 rounded-full border border-gray-200">
+                Hotel: {destinationHotel}
               </span>
             </div>
           </div>
 
           {/* OPERATIONAL FLIGHT & PICKUP LOGISTICS STRIP */}
-          <div className="border-t-2 border-[#1A3326]/20 pt-8 space-y-6">
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-center">
-              <div className="p-3 bg-gray-50 rounded-xl border border-gray-200 print:bg-white">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-gray-500 block">Airline</span>
-                <span className="text-base font-extrabold text-[#1A3326] block mt-1">{airlineName}</span>
+          <div className="border-t-2 border-[#1A3326]/20 pt-4 space-y-4">
+            <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 text-center">
+              <div className="p-2.5 bg-gray-50 rounded-xl border border-gray-200 print:bg-white">
+                <span className="text-[9px] font-bold uppercase tracking-wider text-gray-500 block">Airline</span>
+                <span className="text-sm font-extrabold text-[#1A3326] block mt-0.5">{airlineName}</span>
               </div>
 
-              <div className="p-3 bg-gray-50 rounded-xl border border-gray-200 print:bg-white">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-gray-500 block">Flight No</span>
-                <span className="text-base font-extrabold text-[#1A3326] font-mono block mt-1">{flightNumber}</span>
+              <div className="p-2.5 bg-gray-50 rounded-xl border border-gray-200 print:bg-white">
+                <span className="text-[9px] font-bold uppercase tracking-wider text-gray-500 block">Flight No</span>
+                <span className="text-sm font-extrabold text-[#1A3326] font-mono block mt-0.5">{flightNumber}</span>
               </div>
 
-              <div className="p-3 bg-gray-50 rounded-xl border border-gray-200 print:bg-white">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-gray-500 block">Arrival Date</span>
-                <span className="text-base font-extrabold text-[#1A3326] block mt-1">{arrivalDate}</span>
+              <div className="p-2.5 bg-gray-50 rounded-xl border border-gray-200 print:bg-white">
+                <span className="text-[9px] font-bold uppercase tracking-wider text-gray-500 block">Arrival Date</span>
+                <span className="text-sm font-extrabold text-[#1A3326] block mt-0.5">{arrivalDate}</span>
               </div>
 
-              <div className="p-3 bg-gray-50 rounded-xl border border-gray-200 print:bg-white">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-gray-500 block">Arrival Time</span>
-                <span className="text-base font-extrabold text-[#1A3326] font-mono block mt-1">{arrivalTime}</span>
+              <div className="p-2.5 bg-gray-50 rounded-xl border border-gray-200 print:bg-white">
+                <span className="text-[9px] font-bold uppercase tracking-wider text-gray-500 block">Flight Arrival</span>
+                <span className="text-sm font-extrabold text-[#1A3326] font-mono block mt-0.5">{arrivalTime}</span>
+              </div>
+
+              <div className="p-2.5 bg-gray-50 rounded-xl border border-gray-200 print:bg-white col-span-2 sm:col-span-1">
+                <span className="text-[9px] font-bold uppercase tracking-wider text-gray-500 block">Collection Time</span>
+                <span className="text-sm font-extrabold text-[#1A3326] font-mono block mt-0.5">
+                  {collectionTime ? collectionTime : arrivalTime}
+                </span>
               </div>
             </div>
 
             {/* PICKUP LOCATION & VEHICLE DETAILS */}
-            <div className="p-4 bg-gray-50 rounded-xl border border-gray-200 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs print:bg-white">
-              <div className="text-left space-y-1">
-                <span className="font-bold text-gray-500 uppercase tracking-wider text-[10px] block">Meeting Point:</span>
-                <span className="font-extrabold text-[#1A3326] text-sm">{pickupPoint}</span>
-                <p className="text-[11px] text-gray-600">{pickupAirport}</p>
+            <div className="p-3 bg-gray-50 rounded-xl border border-gray-200 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs print:bg-white">
+              <div className="text-left space-y-0.5">
+                <span className="font-bold text-gray-500 uppercase tracking-wider text-[9px] block">Meeting Point & Destination:</span>
+                <span className="font-extrabold text-[#1A3326] text-xs">{pickupPoint} • {destinationHotel}</span>
+                <p className="text-[10px] text-gray-600">{pickupAirport}</p>
               </div>
 
-              <div className="text-right sm:text-right space-y-1 shrink-0">
-                <span className="font-bold text-gray-500 uppercase tracking-wider text-[10px] block">Chauffeur & Dispatch:</span>
-                <span className="font-bold text-[#1A3326]">{driverName}</span>
-                <p className="text-[11px] text-gray-600">{vehicleName}</p>
+              <div className="text-right sm:text-right space-y-0.5 shrink-0">
+                <span className="font-bold text-gray-500 uppercase tracking-wider text-[9px] block">Chauffeur & Vehicle:</span>
+                <span className="font-bold text-[#1A3326] text-xs">{driverName}</span>
+                <p className="text-[10px] text-gray-600">{vehicleName}</p>
               </div>
             </div>
 
             {pickupNotes && (
-              <p className="text-[11px] text-center text-gray-500 italic">
+              <p className="text-[10px] text-center text-gray-500 italic">
                 Notice: {pickupNotes}
               </p>
             )}
 
             {/* FOOTER VERIFICATION */}
-            <div className="flex items-center justify-between border-t border-gray-200 pt-4 text-[10px] text-gray-400 font-mono">
-              <span>Viemma Tours Workspace OS • 24/7 Operations Duty Dispatch</span>
+            <div className="flex items-center justify-between border-t border-gray-200 pt-3 text-[9px] text-gray-400 font-mono">
+              <span>Viemma Tours Workspace OS • Operations Duty Dispatch</span>
               <span>Emergency Operations: +27 21 555 0199</span>
             </div>
           </div>
-
         </div>
       </div>
     </div>

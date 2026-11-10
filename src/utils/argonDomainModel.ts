@@ -63,6 +63,21 @@ export interface FlightRecord {
   travellerIds?: string[];
 }
 
+export interface RoomAllocationRecord {
+  id: string;
+  roomType: 'Single' | 'Double' | 'Twin' | 'Triple' | 'Family' | 'Suite';
+  roomNumberOrLabel?: string;
+  travellerIds: string[];
+}
+
+export interface DriverProfileRecord {
+  id: string;
+  fullName: string;
+  phone: string;
+  status: string;
+  prdpExpiryDate?: string;
+}
+
 export interface HotelBookingRecord {
   id: string;
   tripId: string;
@@ -71,12 +86,15 @@ export interface HotelBookingRecord {
   checkInDate: string;
   checkOutDate: string;
   roomType?: string;
-  settlementStatus: 'Unpaid' | 'Deposit Paid' | 'Paid';
+  settlementStatus: 'Unpaid' | 'Deposit Paid' | 'Paid' | 'Negotiation / Pending Confirmation';
   verifiedAddress?: string;
   googleMapsUrl?: string;
   addressUnresolvedFlag?: boolean;
   travellerIds?: string[];
   internalNotes?: string;
+  rooms?: RoomAllocationRecord[];
+  balanceDueDate?: string;
+  balanceAmount?: number;
 }
 
 export interface TransferRecord {

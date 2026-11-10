@@ -35,6 +35,10 @@ import { DailyTimelinesView } from './components/DailyTimelinesView';
 import { DriverItineraryView } from './components/DriverItineraryView';
 import { AIItineraryImportModal } from './components/AIItineraryImportModal';
 import { TripJsonImportPanel } from './components/TripJsonImportPanel';
+import { ContextualTripRibbon } from './components/ContextualTripRibbon';
+import { GlobalCommandPalette, OperationalNavTab } from './components/GlobalCommandPalette';
+import { WorkspaceDensityMode } from './components/ui/OperationalStatusPill';
+import { TripGroupStructure, FlightRecord, HotelBookingRecord, DriverProfileRecord } from './utils/argonDomainModel';
 import { generateNextTripReference } from './utils/tripReference';
 import { 
   Home, 
@@ -902,6 +906,105 @@ export default function App() {
   };
 
 
+  const [workspaceDensity, setWorkspaceDensity] = useState<WorkspaceDensityMode>('comfortable');
+  const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState<boolean>(false);
+
+  const activeGroupStructure = useMemo<TripGroupStructure>(() => {
+    const leadGuest = state.guests.find(g => g.isLead) || state.guests[0];
+    return {
+      id: `grp_${state.ref || 'default'}`,
+      tripId: state.ref || 'VT-2026-1048',
+      groupName: state.client.name || 'Private VIP Party',
+      leadTravellerId: leadGuest ? String(leadGuest.id) : '101',
+      defaults: {
+        destination: state.client.tags?.[0] || 'Cape Town & Winelands',
+        startDate: state.client.startDate,
+        endDate: state.client.endDate,
+        contactEmail: state.client.email,
+        contactPhone: state.client.phone,
+        nationalityDefault: state.client.country,
+      },
+      travellers: state.guests.map(g => ({
+        id: String(g.id),
+        tripId: state.ref || 'VT-2026-1048',
+        groupId: `grp_${state.ref || 'default'}`,
+        fullName: `${g.first} ${g.last}`.trim() || g.preferredName || 'Traveller',
+        category: (g.age === 'Child' ? 'Child' : g.age === 'Infant' ? 'Infant' : g.age === 'Elderly' ? 'Senior' : 'Adult') as any,
+        isLead: Boolean(g.isLead),
+        isProvisional: Boolean(g.isProvisional),
+        email: g.individualEmail || state.client.email,
+        phone: g.individualPhone || state.client.phone,
+        nationality: g.nationality || g.country || state.client.country,
+        passportNo: g.passportNo,
+        passportExpiry: g.passportExpiry,
+        dietaryRequirements: Array.isArray(g.diet) ? g.diet.join(', ') : g.diet,
+        medicalOrAccessibilityNotes: Array.isArray(g.mob) ? g.mob.join(', ') : g.mob,
+        missingFields: [
+          ...(!g.first && !g.last ? ['Full Name'] : []),
+          ...(!g.nationality && !g.country ? ['Nationality'] : []),
+          ...(!g.passportNo ? ['Passport No'] : []),
+        ]
+      }))
+    };
+  }, [state]);
+
+  const allSearchGroups = useMemo<TripGroupStructure[]>(() => {
+    return [activeGroupStructure];
+  }, [activeGroupStructure]);
+
+  const allSearchFlights = useMemo<FlightRecord[]>(() => {
+    return state.flights.map(f => ({
+      id: String(f.id),
+      tripId: state.ref,
+      groupId: `grp_${state.ref}`,
+      direction: f.direction as any,
+      flightNumber: f.flightNo,
+      airline: f.airline,
+      departureAirport: f.from,
+      arrivalAirport: f.to,
+      departureDate: f.date,
+      departureTime: f.depTime,
+      arrivalDate: f.date,
+      arrivalTime: f.arrTime,
+      pnr: f.pnr,
+      travellerIds: (f.paxIds || []).map(String)
+    }));
+  }, [state.flights, state.ref]);
+
+  const allSearchHotels = useMemo<HotelBookingRecord[]>(() => {
+    return state.rooms.map(r => ({
+      id: String(r.id),
+      tripId: state.ref,
+      groupId: `grp_${state.ref}`,
+      propertyName: r.hotel,
+      checkInDate: r.cin,
+      checkOutDate: r.cout,
+      roomType: r.roomType,
+      settlementStatus: (r.pay as any) || 'Unpaid',
+      verifiedAddress: r.address,
+      googleMapsUrl: r.googleMapsUrl,
+      travellerIds: (r.guestIds || []).map(String),
+      rooms: [
+        {
+          id: `rm_${r.id}`,
+          roomType: (r.roomType as any) || 'Double',
+          roomNumberOrLabel: r.roomType,
+          travellerIds: (r.guestIds || []).map(String)
+        }
+      ]
+    }));
+  }, [state.rooms, state.ref]);
+
+  const allSearchDrivers = useMemo<DriverProfileRecord[]>(() => {
+    return (state.drivers || []).map(d => ({
+      id: String(d.id),
+      fullName: d.name,
+      phone: d.phone,
+      status: d.status,
+      prdpExpiryDate: d.prdpExpiryDate
+    }));
+  }, [state.drivers]);
+
   const handleUpdateState = (updates: Partial<AppState>) => {
     const updated = { ...state, ...updates };
     updateFullState(updated);
@@ -1698,6 +1801,33 @@ export default function App() {
           </div>
         </>
       )}
+
+      {/* STICKY CONTEXTUAL TRIP RIBBON (Phase 2 & 3 Ops) */}
+      {!isClientView && activeRoleView === 'owner' && (
+        <ContextualTripRibbon
+          group={activeGroupStructure}
+          density={workspaceDensity}
+          onChangeDensity={setWorkspaceDensity}
+          onOpenCommandPalette={() => setIsCommandPaletteOpen(true)}
+        />
+      )}
+
+      {/* GLOBAL COMMAND PALETTE (Cmd+K) */}
+      <GlobalCommandPalette
+        isOpen={isCommandPaletteOpen}
+        onClose={() => setIsCommandPaletteOpen(false)}
+        groups={allSearchGroups}
+        flights={allSearchFlights}
+        hotels={allSearchHotels}
+        drivers={allSearchDrivers}
+        onSelectTrip={(ref) => handleSelectTrip(ref)}
+        onNavigateTab={(tab) => {
+          if (tab === 'clients') setActiveTab('guests');
+          else if (tab === 'hotels') setActiveTab('rooming');
+          else if (tab === 'programme') setActiveTab('activities');
+          else setActiveTab(tab);
+        }}
+      />
 
       {/* CORE WORKSPACE CONTEXT FRAME */}
       {activeRoleView === 'client' ? (
