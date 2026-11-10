@@ -46,7 +46,15 @@ import {
   Sliders
 } from 'lucide-react';
 
-export type PdfDocumentMode = 'client-editorial' | 'driver-pickup-board' | 'operator-ground-sheet' | 'financial-audit';
+import { DB_DEFAULT } from '../dbDefaults';
+
+export type PdfDocumentMode =
+  | 'client-editorial'
+  | 'driver-pickup-board'
+  | 'driver-job-sheet'
+  | 'translator-job-sheet'
+  | 'operator-ground-sheet'
+  | 'financial-audit';
 export type HubViewTab = 'pdf-qc' | 'digital-publishing';
 
 export interface PrintHubViewProps {
@@ -133,11 +141,56 @@ export const PrintHubView: React.FC<PrintHubViewProps> = (props) => {
 
   // PDF Document mode
   const [mode, setMode] = useState<PdfDocumentMode>('client-editorial');
+  const [editorialOrientation, setEditorialOrientation] = useState<'portrait' | 'landscape'>('portrait');
   const [activePageFilter, setActivePageFilter] = useState<'all' | number>('all');
   const [exportStatus, setExportStatus] = useState<string>('');
   const [customParagraphOverrides, setCustomParagraphOverrides] = useState<
     Record<number, [string, string]>
   >({});
+
+  // Operational Job Sheet Filters (Driver Job Sheet & Translator Job Sheet)
+  const [selectedDriverSheetId, setSelectedDriverSheetId] = useState<string>('ALL');
+  const [driverSheetInstructions, setDriverSheetInstructions] = useState<string>('');
+  const [selectedTranslatorId, setSelectedTranslatorId] = useState<string>('ALL');
+  const [selectedTranslatorLang, setSelectedTranslatorLang] = useState<string>('Portuguese');
+  const [authorizeClientContactForTranslator, setAuthorizeClientContactForTranslator] = useState<boolean>(true);
+  const [translatorSheetInstructions, setTranslatorSheetInstructions] = useState<string>('');
+
+  const availableDrivers = useMemo(() => {
+    const stateDrivers = props.state?.drivers || [];
+    return stateDrivers.length > 0 ? stateDrivers : [];
+  }, [props.state?.drivers]);
+
+  const availableGuidesAndTranslators = useMemo(() => {
+    const stateGuides = props.state?.guides || [];
+    const defaultGuides = DB_DEFAULT.guides || [];
+    const formatGuideLanguages = (langs: any): string[] => {
+      if (Array.isArray(langs)) return langs;
+      const list: string[] = [];
+      if (langs?.portuguese) list.push('Portuguese');
+      if (langs?.spanish) list.push('Spanish');
+      if (langs?.english) list.push('English');
+      return list.length > 0 ? list : ['English'];
+    };
+    const byName = new Map<string, { id: string; name: string; phone: string; email?: string; languages: string[] }>();
+    defaultGuides.forEach(g => {
+      byName.set(g.name.toLowerCase(), {
+        id: String(g.id),
+        name: g.name,
+        phone: g.phone,
+        languages: formatGuideLanguages(g.languages),
+      });
+    });
+    stateGuides.forEach(g => {
+      byName.set(g.name.toLowerCase(), {
+        id: String(g.id),
+        name: g.name,
+        phone: g.phone,
+        languages: formatGuideLanguages(g.languages),
+      });
+    });
+    return Array.from(byName.values());
+  }, [props.state?.guides]);
 
   // Publishing & access control state
   const [copiedRole, setCopiedRole] = useState<string | null>(null);
@@ -197,10 +250,17 @@ export const PrintHubView: React.FC<PrintHubViewProps> = (props) => {
 
   const handleExportPdf = async () => {
     setActivePageFilter('all');
+    const resolvedOrientation =
+      mode === 'driver-pickup-board'
+        ? 'landscape'
+        : mode === 'client-editorial'
+        ? editorialOrientation
+        : 'portrait';
     setTimeout(async () => {
       const result = await exportValidatedPrintPdfDocument({
         containerElement: printContainerRef.current,
         documentTitle: `${group.tripId}-${mode}`,
+        orientation: resolvedOrientation,
         onStatusChange: (msg) => setExportStatus(msg),
       });
       if (!result.success && result.error) {
@@ -523,7 +583,29 @@ export const PrintHubView: React.FC<PrintHubViewProps> = (props) => {
                     : 'bg-white text-slate-700 border border-slate-200 hover:bg-slate-50'
                 }`}
               >
-                Driver Airport Pickup Sign
+                Airport Welcome Board
+              </button>
+              <button
+                type="button"
+                onClick={() => setMode('driver-job-sheet')}
+                className={`px-3 py-1.5 rounded-lg font-semibold transition cursor-pointer ${
+                  mode === 'driver-job-sheet'
+                    ? 'bg-slate-900 text-white shadow-xs'
+                    : 'bg-white text-slate-700 border border-slate-200 hover:bg-slate-50'
+                }`}
+              >
+                Driver Job Sheet
+              </button>
+              <button
+                type="button"
+                onClick={() => setMode('translator-job-sheet')}
+                className={`px-3 py-1.5 rounded-lg font-semibold transition cursor-pointer ${
+                  mode === 'translator-job-sheet'
+                    ? 'bg-slate-900 text-white shadow-xs'
+                    : 'bg-white text-slate-700 border border-slate-200 hover:bg-slate-50'
+                }`}
+              >
+                Translator Job Sheet
               </button>
               <button
                 type="button"
@@ -548,6 +630,84 @@ export const PrintHubView: React.FC<PrintHubViewProps> = (props) => {
                 Final Financial Audit
               </button>
             </div>
+
+            {mode === 'driver-job-sheet' && (
+              <div className="w-full grid grid-cols-1 sm:grid-cols-2 gap-4 border-t border-slate-200 pt-3 mt-1">
+                <label className="space-y-1">
+                  <span className="block text-xs font-medium text-slate-700">Assigned Driver</span>
+                  <select
+                    value={selectedDriverSheetId}
+                    onChange={e => setSelectedDriverSheetId(e.target.value)}
+                    className="w-full h-9 px-3 rounded-md border border-slate-300 text-sm bg-white"
+                  >
+                    <option value="ALL">All Assigned Drivers / Primary Chauffeur</option>
+                    {availableDrivers.map(d => (
+                      <option key={d.id} value={d.name}>{d.name} ({d.vehicleType || 'Fleet'} · {d.vehicleReg || 'Reg TBC'})</option>
+                    ))}
+                  </select>
+                </label>
+                <label className="space-y-1">
+                  <span className="block text-xs font-medium text-slate-700">Special Dispatch Instructions (optional)</span>
+                  <input
+                    type="text"
+                    value={driverSheetInstructions}
+                    onChange={e => setDriverSheetInstructions(e.target.value)}
+                    placeholder="e.g., Ensure chilled sparkling water, child booster seat, and arrive 20 mins prior."
+                    className="w-full h-9 px-3 rounded-md border border-slate-300 text-sm bg-white"
+                  />
+                </label>
+              </div>
+            )}
+
+            {mode === 'translator-job-sheet' && (
+              <div className="w-full grid grid-cols-1 sm:grid-cols-3 gap-4 border-t border-slate-200 pt-3 mt-1">
+                <label className="space-y-1">
+                  <span className="block text-xs font-medium text-slate-700">Translator / Language Guide</span>
+                  <select
+                    value={selectedTranslatorId}
+                    onChange={e => setSelectedTranslatorId(e.target.value)}
+                    className="w-full h-9 px-3 rounded-md border border-slate-300 text-sm bg-white"
+                  >
+                    <option value="ALL">Auto-Select from Programme / Lead Specialist</option>
+                    {availableGuidesAndTranslators.map(g => (
+                      <option key={g.id} value={g.name}>{g.name} ({g.languages.join(', ')})</option>
+                    ))}
+                  </select>
+                </label>
+                <label className="space-y-1">
+                  <span className="block text-xs font-medium text-slate-700">Required Translation Language</span>
+                  <select
+                    value={selectedTranslatorLang}
+                    onChange={e => setSelectedTranslatorLang(e.target.value)}
+                    className="w-full h-9 px-3 rounded-md border border-slate-300 text-sm bg-white"
+                  >
+                    <option value="Portuguese">Portuguese (Angola / Brazil / Portugal)</option>
+                    <option value="Spanish">Spanish</option>
+                    <option value="English">English</option>
+                    <option value="Portuguese & English">Bilingual: Portuguese & English</option>
+                    <option value="Spanish & English">Bilingual: Spanish & English</option>
+                  </select>
+                </label>
+                <div className="space-y-1">
+                  <label className="flex items-center gap-2 text-xs font-medium text-slate-700 pt-1">
+                    <input
+                      type="checkbox"
+                      checked={authorizeClientContactForTranslator}
+                      onChange={e => setAuthorizeClientContactForTranslator(e.target.checked)}
+                      className="h-4 w-4 accent-[#1A3326]"
+                    />
+                    <span>Include authorized client contact info</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={translatorSheetInstructions}
+                    onChange={e => setTranslatorSheetInstructions(e.target.value)}
+                    placeholder="Special briefing / dietary / VIP protocol notes..."
+                    className="w-full h-8 px-3 rounded-md border border-slate-300 text-xs bg-white"
+                  />
+                </div>
+              </div>
+            )}
 
             {mode === 'driver-pickup-board' && (
               <div className="w-full flex flex-col sm:flex-row sm:items-end gap-4 border-t border-slate-200 pt-3 mt-1">
@@ -584,38 +744,66 @@ export const PrintHubView: React.FC<PrintHubViewProps> = (props) => {
               </div>
             )}
 
-            {/* Editorial Page Filter */}
+            {/* Editorial Orientation & Page Filter */}
             {mode === 'client-editorial' && (
-              <div className="flex flex-wrap items-center gap-1.5">
-                <span className="font-semibold text-slate-500 mr-1">Page Inspector:</span>
-                <button
-                  type="button"
-                  onClick={() => setActivePageFilter('all')}
-                  className={`px-2.5 py-1 rounded-md text-xs font-semibold cursor-pointer ${
-                    activePageFilter === 'all'
-                      ? 'bg-slate-900 text-white'
-                      : 'bg-white text-slate-700 border border-slate-200 hover:bg-slate-50'
-                  }`}
-                >
-                  All ({editorialPages.length})
-                </button>
-                {editorialPages.map((p) => (
+              <div className="flex flex-wrap items-center gap-3">
+                <div className="inline-flex items-center gap-1 bg-slate-100 p-1 rounded-lg border border-slate-200">
+                  <span className="text-[11px] font-semibold text-slate-600 px-1.5">Orientation:</span>
                   <button
-                    key={p.pageNumber}
                     type="button"
-                    onClick={() => setActivePageFilter(p.pageNumber)}
-                    className={`px-2.5 py-1 rounded-md text-xs font-semibold flex items-center gap-1 cursor-pointer ${
-                      activePageFilter === p.pageNumber
+                    onClick={() => setEditorialOrientation('portrait')}
+                    className={`px-2.5 py-1 rounded text-xs font-semibold cursor-pointer transition ${
+                      editorialOrientation === 'portrait'
+                        ? 'bg-[#1A3326] text-white shadow-2xs'
+                        : 'text-slate-700 hover:bg-white'
+                    }`}
+                  >
+                    Portrait (Magazine)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setEditorialOrientation('landscape')}
+                    className={`px-2.5 py-1 rounded text-xs font-semibold cursor-pointer transition ${
+                      editorialOrientation === 'landscape'
+                        ? 'bg-[#1A3326] text-white shadow-2xs'
+                        : 'text-slate-700 hover:bg-white'
+                    }`}
+                  >
+                    Landscape (Presentation Deck)
+                  </button>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-1.5">
+                  <span className="font-semibold text-slate-500 mr-1">Page Inspector:</span>
+                  <button
+                    type="button"
+                    onClick={() => setActivePageFilter('all')}
+                    className={`px-2.5 py-1 rounded-md text-xs font-semibold cursor-pointer ${
+                      activePageFilter === 'all'
                         ? 'bg-slate-900 text-white'
                         : 'bg-white text-slate-700 border border-slate-200 hover:bg-slate-50'
                     }`}
                   >
-                    <span>p.{p.pageNumber}</span>
-                    {p.insufficientContentFlag && (
-                      <span className="w-1.5 h-1.5 rounded-full bg-amber-500" title="Short content warning" />
-                    )}
+                    All ({editorialPages.length})
                   </button>
-                ))}
+                  {editorialPages.map((p) => (
+                    <button
+                      key={p.pageNumber}
+                      type="button"
+                      onClick={() => setActivePageFilter(p.pageNumber)}
+                      className={`px-2.5 py-1 rounded-md text-xs font-semibold flex items-center gap-1 cursor-pointer ${
+                        activePageFilter === p.pageNumber
+                          ? 'bg-slate-900 text-white'
+                          : 'bg-white text-slate-700 border border-slate-200 hover:bg-slate-50'
+                      }`}
+                    >
+                      <span>p.{p.pageNumber}</span>
+                      {p.insufficientContentFlag && (
+                        <span className="w-1.5 h-1.5 rounded-full bg-amber-500" title="Short content warning" />
+                      )}
+                    </button>
+                  ))}
+                </div>
               </div>
             )}
           </div>
@@ -1109,8 +1297,9 @@ export const PrintHubView: React.FC<PrintHubViewProps> = (props) => {
             {mode === 'client-editorial' &&
               visibleEditorialPages.map((page) => (
                 <ClientEditorialPage
-                  key={page.pageNumber}
+                  key={`${page.pageNumber}-${editorialOrientation}`}
                   page={page}
+                  orientation={editorialOrientation}
                   showOperatorWarnings={true}
                   onEditParagraphs={handleEditPageParagraphs}
                 />
@@ -1157,6 +1346,385 @@ export const PrintHubView: React.FC<PrintHubViewProps> = (props) => {
                 </footer>
               </article>
             )}
+
+            {/* MODE 2B: DEDICATED DRIVER JOB SHEET (Zero Financial Data, Full Operational Dispatch) */}
+            {mode === 'driver-job-sheet' && (() => {
+              const matchedDriver = selectedDriverSheetId !== 'ALL'
+                ? availableDrivers.find(d => d.name === selectedDriverSheetId)
+                : availableDrivers.find(d => d.status === 'Assigned') || availableDrivers[0];
+              const matchedVehicle = (props.state?.vehicles || []).find(
+                v => (matchedDriver?.vehicleReg && v.reg === matchedDriver.vehicleReg) || v.driverId === matchedDriver?.id
+              ) || (props.state?.vehicles || [])[0];
+              const rawFirstTransfer = props.state?.transfers?.[0];
+              const driverTransfers = scopedTransfers.filter(tr => {
+                if (selectedDriverSheetId === 'ALL') return true;
+                return !tr.driverId || tr.driverId.toLowerCase().includes(selectedDriverSheetId.toLowerCase()) || matchedDriver?.id === tr.driverId;
+              });
+              const driverActivities = scopedActivities
+                .filter(a => a.status !== 'Cancelled')
+                .filter(a => {
+                  if (selectedDriverSheetId === 'ALL') return true;
+                  return !a.driverName || a.driverName.toLowerCase().includes(selectedDriverSheetId.toLowerCase());
+                })
+                .slice()
+                .sort((a, b) => a.date.localeCompare(b.date) || a.startTime.localeCompare(b.startTime));
+
+              return (
+                <article
+                  className="viemma-pdf-page bg-white text-slate-900 border border-slate-300 shadow-md mx-auto flex flex-col justify-between"
+                  style={{ width: '210mm', minHeight: '297mm', padding: '15mm 16mm' }}
+                >
+                  <div className="space-y-5">
+                    <header className="border-b-2 border-[#1A3326] pb-4 flex items-start justify-between gap-4">
+                      <div>
+                        <span className="text-[10px] uppercase tracking-[0.22em] font-bold text-[#1A3326] block">
+                          VIEMMA TOURS • GROUND OPERATIONS DISPATCH
+                        </span>
+                        <h1 className="text-2xl font-bold text-slate-900 mt-0.5">
+                          Driver Job Sheet & Movement Order
+                        </h1>
+                        <p className="text-xs text-slate-600 mt-1">
+                          Client / Group: <strong>{printGroup.groupName}</strong> ({printGroup.travellers.length} Passengers) • Dates: {group.defaults.startDate || 'TBC'} to {group.defaults.endDate || 'TBC'}
+                        </p>
+                      </div>
+                      <div className="text-right text-xs text-slate-600 shrink-0 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2">
+                        <div className="font-bold text-slate-900">Lead Passenger</div>
+                        <div>{leadPerson?.fullName || printGroup.groupName}</div>
+                        <div className="text-[11px] text-slate-500">Total Pax: {printGroup.travellers.length}</div>
+                      </div>
+                    </header>
+
+                    {/* 1. Driver & Vehicle Assignment Block */}
+                    <section className="grid grid-cols-2 gap-4 bg-slate-50 p-4 rounded-xl border border-slate-200 text-xs">
+                      <div className="space-y-1">
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block">Assigned Chauffeur / Driver</span>
+                        <div className="text-sm font-bold text-slate-900">{matchedDriver?.name || rawFirstTransfer?.driver || 'Assigned Viemma Chauffeur'}</div>
+                        <div className="text-slate-700">Contact Phone: <strong>{matchedDriver?.phone || rawFirstTransfer?.phone || 'Confirm with Ops Desk'}</strong></div>
+                        {matchedDriver?.licenseNo && (
+                          <div className="text-slate-600">PrDP / Licence: {matchedDriver.licenseNo} (Exp: {matchedDriver.pdpExpiry || 'Verified'})</div>
+                        )}
+                      </div>
+                      <div className="space-y-1">
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block">Vehicle & Registration</span>
+                        <div className="text-sm font-bold text-slate-900">
+                          {matchedVehicle ? `${matchedVehicle.make} ${matchedVehicle.model} (${matchedVehicle.type})` : (matchedDriver?.vehicleType || rawFirstTransfer?.veh || 'Luxury Touring Vehicle')}
+                        </div>
+                        <div className="text-slate-700">
+                          Registration: <strong>{matchedVehicle?.reg || matchedDriver?.vehicleReg || rawFirstTransfer?.reg || 'Fleet Reg TBC'}</strong>
+                        </div>
+                        <div className="text-slate-600">
+                          Capacity: {matchedVehicle?.capacity ? `${matchedVehicle.capacity} Seats` : `${Math.max(4, printGroup.travellers.length)} Pax`}
+                        </div>
+                      </div>
+                    </section>
+
+                    {/* 2. Passenger Manifest & Special Requirements */}
+                    <section>
+                      <h2 className="text-xs font-bold uppercase tracking-wider text-[#1A3326] mb-2">
+                        1. Passenger Manifest ({printGroup.travellers.length} {printGroup.travellers.length === 1 ? 'Traveller' : 'Travellers'})
+                      </h2>
+                      <table className="w-full text-left border-collapse text-[11px] border border-slate-200">
+                        <thead>
+                          <tr className="bg-slate-100 border-b border-slate-300">
+                            <th className="py-1.5 px-2.5">Passenger Name</th>
+                            <th className="py-1.5 px-2.5">Category</th>
+                            <th className="py-1.5 px-2.5">Mobility / Child Seat / Notes</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-200">
+                          {printGroup.travellers.map(t => (
+                            <tr key={t.id}>
+                              <td className="py-1.5 px-2.5 font-semibold text-slate-900">{t.fullName} {t.isLead ? '(Lead)' : ''}</td>
+                              <td className="py-1.5 px-2.5 text-slate-700">{t.category}</td>
+                              <td className="py-1.5 px-2.5 text-slate-600">{t.medicalOrAccessibilityNotes || 'Standard seating'}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </section>
+
+                    {/* 3. Flight Arrival / Departure & Hotel Address Reference */}
+                    <section className="grid grid-cols-2 gap-4 text-xs">
+                      <div className="border border-slate-200 rounded-xl p-3.5 space-y-1.5">
+                        <h3 className="text-[10px] font-bold uppercase tracking-wider text-[#1A3326]">
+                          2. Linked Flight Details (Arrival & Departure)
+                        </h3>
+                        {scopedFlights.length === 0 ? (
+                          <p className="text-slate-500">No linked flights recorded.</p>
+                        ) : (
+                          scopedFlights.map(f => (
+                            <div key={f.id} className="pt-1 border-t border-slate-100 first:border-t-0">
+                              <div className="font-bold text-slate-900">{f.direction || 'Flight'}: {f.airline} {f.flightNumber}</div>
+                              <div className="text-slate-700">{f.departureDate || f.arrivalDate || 'Date TBC'} • {f.departureAirport} ({f.departureTime || 'TBC'}) → {f.arrivalAirport} ({f.arrivalTime || 'TBC'})</div>
+                            </div>
+                          ))
+                        )}
+                      </div>
+
+                      <div className="border border-slate-200 rounded-xl p-3.5 space-y-1.5">
+                        <h3 className="text-[10px] font-bold uppercase tracking-wider text-[#1A3326]">
+                          3. Hotel / Residence & Drop-Off Address
+                        </h3>
+                        {scopedHotels.length === 0 ? (
+                          <p className="text-slate-500">No accommodation recorded.</p>
+                        ) : (
+                          scopedHotels.map(h => (
+                            <div key={h.id} className="pt-1 border-t border-slate-100 first:border-t-0">
+                              <div className="font-bold text-slate-900">{h.propertyName}</div>
+                              <div className="text-slate-700">{h.checkInDate} to {h.checkOutDate}</div>
+                              <div className="text-slate-600 text-[11px]">{h.verifiedAddress || 'Confirm hotel main porte-cochère entrance'}</div>
+                            </div>
+                          ))
+                        )}
+                      </div>
+                    </section>
+
+                    {/* 4. Scheduled Ground Transfers & Pickups */}
+                    <section>
+                      <h2 className="text-xs font-bold uppercase tracking-wider text-[#1A3326] mb-2">
+                        4. Scheduled Transfers, Collection Times & Waypoints
+                      </h2>
+                      {driverTransfers.length === 0 ? (
+                        <p className="text-xs text-slate-500 border border-dashed border-slate-300 rounded-lg p-3">No dedicated transfers listed for this filter.</p>
+                      ) : (
+                        <table className="w-full text-left border-collapse text-[11px] border border-slate-200">
+                          <thead>
+                            <tr className="bg-slate-100 border-b border-slate-300">
+                              <th className="py-1.5 px-2.5">Date & Pickup Time</th>
+                              <th className="py-1.5 px-2.5">Pickup Location</th>
+                              <th className="py-1.5 px-2.5">Destination / Stops</th>
+                              <th className="py-1.5 px-2.5">Welcome Sign / Notes</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-slate-200">
+                            {driverTransfers.map(tr => (
+                              <tr key={tr.id}>
+                                <td className="py-2 px-2.5 font-mono font-bold text-slate-900 whitespace-nowrap">
+                                  {tr.date} • {tr.pickupTime}
+                                </td>
+                                <td className="py-2 px-2.5 font-semibold text-slate-900">{tr.pickupLocation}</td>
+                                <td className="py-2 px-2.5 text-slate-800">{tr.dropoffLocation}</td>
+                                <td className="py-2 px-2.5 text-slate-600">
+                                  {tr.pickupSignText ? `Board: "${tr.pickupSignText}"` : 'Standard Meet & Greet'}
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      )}
+                    </section>
+
+                    {/* 5. Daily Programme & Excursion Sequence */}
+                    <section>
+                      <h2 className="text-xs font-bold uppercase tracking-wider text-[#1A3326] mb-2">
+                        5. Daily Excursion & Activity Sequence
+                      </h2>
+                      {driverActivities.length === 0 ? (
+                        <p className="text-xs text-slate-500">No excursions scheduled.</p>
+                      ) : (
+                        <table className="w-full text-left border-collapse text-[11px] border border-slate-200">
+                          <thead>
+                            <tr className="bg-slate-100 border-b border-slate-300">
+                              <th className="py-1.5 px-2.5">Date & Time</th>
+                              <th className="py-1.5 px-2.5">Activity / Excursion</th>
+                              <th className="py-1.5 px-2.5">Pickup → Venue / Destination</th>
+                              <th className="py-1.5 px-2.5">Pax</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-slate-200">
+                            {driverActivities.map(act => (
+                              <tr key={act.id}>
+                                <td className="py-1.5 px-2.5 font-mono font-bold text-slate-900 whitespace-nowrap">
+                                  {act.date} • {act.startTime}{act.endTime ? `–${act.endTime}` : ''}
+                                </td>
+                                <td className="py-1.5 px-2.5 font-semibold text-slate-900">{act.title}</td>
+                                <td className="py-1.5 px-2.5 text-slate-700">{act.venue || act.location || 'As per itinerary'}</td>
+                                <td className="py-1.5 px-2.5 text-slate-700">{act.participantTravellerIds?.length || printGroup.travellers.length}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      )}
+                    </section>
+
+                    {/* 6. Special Operational Instructions */}
+                    <section className="bg-amber-50/70 border border-amber-200 rounded-xl p-3.5 text-xs space-y-1">
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-amber-900 block">
+                        6. Special Chauffeur & Dispatch Instructions
+                      </span>
+                      <p className="text-slate-800 leading-relaxed">
+                        {driverSheetInstructions.trim()
+                          || matchedDriver?.notes
+                          || 'Position vehicle 15 minutes prior to all scheduled collection times. Ensure vehicle interior is spotless, bottled water is stocked, and welcome board is clearly displayed for airport arrivals.'}
+                      </p>
+                    </section>
+                  </div>
+
+                  <footer className="pt-3 mt-4 border-t border-slate-200 flex justify-between text-[10px] text-slate-500">
+                    <span>Viemma Tours • Driver Job Sheet (Zero Financial Data)</span>
+                    <span>Dispatched: {new Date().toLocaleDateString('en-ZA')}</span>
+                  </footer>
+                </article>
+              );
+            })()}
+
+            {/* MODE 2C: DEDICATED TRANSLATOR / LANGUAGE GUIDE JOB SHEET */}
+            {mode === 'translator-job-sheet' && (() => {
+              const matchedTranslator = selectedTranslatorId !== 'ALL'
+                ? availableGuidesAndTranslators.find(g => g.name === selectedTranslatorId)
+                : availableGuidesAndTranslators.find(g =>
+                    g.languages.some(l => l.toLowerCase().includes(selectedTranslatorLang.split(' ')[0].toLowerCase()))
+                  ) || availableGuidesAndTranslators[0];
+
+              const relevantActivities = scopedActivities
+                .filter(a => a.status !== 'Cancelled')
+                .slice()
+                .sort((a, b) => a.date.localeCompare(b.date) || a.startTime.localeCompare(b.startTime));
+
+              const firstDate = group.defaults.startDate || relevantActivities[0]?.date || 'TBC';
+              const lastDate = group.defaults.endDate || relevantActivities[relevantActivities.length - 1]?.date || 'TBC';
+
+              return (
+                <article
+                  className="viemma-pdf-page bg-white text-slate-900 border border-slate-300 shadow-md mx-auto flex flex-col justify-between"
+                  style={{ width: '210mm', minHeight: '297mm', padding: '15mm 16mm' }}
+                >
+                  <div className="space-y-5">
+                    <header className="border-b-2 border-[#1A3326] pb-4 flex items-start justify-between gap-4">
+                      <div>
+                        <span className="text-[10px] uppercase tracking-[0.22em] font-bold text-[#1A3326] block">
+                          VIEMMA TOURS • SPECIALIST LANGUAGE & GUIDING BRIEF
+                        </span>
+                        <h1 className="text-2xl font-bold text-slate-900 mt-0.5">
+                          Translator & Language Guide Job Sheet
+                        </h1>
+                        <p className="text-xs text-slate-600 mt-1">
+                          Client / Group: <strong>{printGroup.groupName}</strong> ({printGroup.travellers.length} Travellers) • Assignment Period: {firstDate} to {lastDate}
+                        </p>
+                      </div>
+                      <div className="text-right text-xs bg-[#1A3326] text-white rounded-lg px-3.5 py-2 shrink-0">
+                        <div className="text-[10px] uppercase tracking-wider text-[#D4AF37] font-bold">Required Language</div>
+                        <div className="text-sm font-bold">{selectedTranslatorLang}</div>
+                      </div>
+                    </header>
+
+                    {/* 1. Translator & Client Summary */}
+                    <section className="grid grid-cols-2 gap-4 bg-slate-50 p-4 rounded-xl border border-slate-200 text-xs">
+                      <div className="space-y-1">
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block">Assigned Translator / Guide</span>
+                        <div className="text-sm font-bold text-slate-900">{matchedTranslator?.name || 'Assigned Viemma Language Specialist'}</div>
+                        <div className="text-slate-700">Contact: <strong>{matchedTranslator?.phone || 'Confirm with Ops'}</strong>{matchedTranslator?.email ? ` · ${matchedTranslator.email}` : ''}</div>
+                        <div className="text-slate-600">Languages: {(matchedTranslator?.languages || [selectedTranslatorLang]).join(', ')}</div>
+                      </div>
+
+                      <div className="space-y-1">
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block">Client & Group Profile</span>
+                        <div className="text-sm font-bold text-slate-900">{printGroup.groupName} ({printGroup.travellers.length} Pax)</div>
+                        <div className="text-slate-700">Lead Traveller: <strong>{leadPerson?.fullName || props.state?.client?.name || 'Valued Guest'}</strong></div>
+                        {authorizeClientContactForTranslator ? (
+                          <div className="text-slate-700">
+                            Authorized Contact: <strong>{props.state?.client?.phone || 'Via Viemma Concierge'}</strong>
+                            {props.state?.client?.email ? ` · ${props.state.client.email}` : ''}
+                          </div>
+                        ) : (
+                          <div className="text-slate-500 italic">Direct client contact withheld — coordinate via Viemma Operations Desk.</div>
+                        )}
+                      </div>
+                    </section>
+
+                    {/* 2. Meeting Location, Time & Residence */}
+                    <section className="grid grid-cols-2 gap-4 text-xs">
+                      <div className="border border-slate-200 rounded-xl p-3.5 space-y-1">
+                        <h3 className="text-[10px] font-bold uppercase tracking-wider text-[#1A3326]">
+                          1. Primary Meeting Location & Briefing Time
+                        </h3>
+                        <div className="font-bold text-slate-900">
+                          {scopedHotels[0]?.propertyName || scopedTransfers[0]?.pickupLocation || 'Client Hotel Lobby / Airport Arrival Hall'}
+                        </div>
+                        <div className="text-slate-700">
+                          Initial Meeting Time: <strong>{relevantActivities[0]?.startTime || scopedTransfers[0]?.pickupTime || '08:30'} (Report 20 mins prior)</strong>
+                        </div>
+                        <div className="text-slate-600 text-[11px]">
+                          Assignment Duration: Full programme coverage ({firstDate} – {lastDate})
+                        </div>
+                      </div>
+
+                      <div className="border border-slate-200 rounded-xl p-3.5 space-y-1">
+                        <h3 className="text-[10px] font-bold uppercase tracking-wider text-[#1A3326]">
+                          2. Traveller Dietary, Cultural & Medical Notes
+                        </h3>
+                        {printGroup.travellers.some(t => t.dietaryRequirements || t.medicalOrAccessibilityNotes) ? (
+                          <ul className="list-disc list-inside space-y-0.5 text-slate-700 text-[11px]">
+                            {printGroup.travellers.map(t => (
+                              (t.dietaryRequirements || t.medicalOrAccessibilityNotes) ? (
+                                <li key={t.id}>
+                                  <strong>{t.fullName}:</strong> {[t.dietaryRequirements, t.medicalOrAccessibilityNotes].filter(Boolean).join(' • ')}
+                                </li>
+                              ) : null
+                            ))}
+                          </ul>
+                        ) : (
+                          <p className="text-slate-600 text-[11px]">
+                            {props.state?.client?.diet || 'No special dietary or medical restrictions recorded. Reconfirm with lead guest upon welcome briefing.'}
+                          </p>
+                        )}
+                      </div>
+                    </section>
+
+                    {/* 3. Chronological Programme & Activities Requiring Translation */}
+                    <section>
+                      <h2 className="text-xs font-bold uppercase tracking-wider text-[#1A3326] mb-2">
+                        3. Daily Programme & Activities Requiring Interpretation ({selectedTranslatorLang})
+                      </h2>
+                      {relevantActivities.length === 0 ? (
+                        <p className="text-xs text-slate-500 border border-dashed border-slate-300 rounded-lg p-3">No activities scheduled in current scope.</p>
+                      ) : (
+                        <table className="w-full text-left border-collapse text-[11px] border border-slate-200">
+                          <thead>
+                            <tr className="bg-slate-100 border-b border-slate-300">
+                              <th className="py-1.5 px-2.5">Date & Time</th>
+                              <th className="py-1.5 px-2.5">Activity / Excursion</th>
+                              <th className="py-1.5 px-2.5">Meeting / Venue</th>
+                              <th className="py-1.5 px-2.5">Guiding & Translation Focus</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-slate-200">
+                            {relevantActivities.map(act => (
+                              <tr key={act.id}>
+                                <td className="py-2 px-2.5 font-mono font-bold text-slate-900 whitespace-nowrap">
+                                  {act.date} • {act.startTime}{act.endTime ? `–${act.endTime}` : ''}
+                                </td>
+                                <td className="py-2 px-2.5 font-semibold text-slate-900">{act.title}</td>
+                                <td className="py-2 px-2.5 text-slate-700">{act.venue || act.location || 'Hotel Lobby'}</td>
+                                <td className="py-2 px-2.5 text-slate-600">
+                                  {act.internalNotes || `${selectedTranslatorLang} interpretation, guest liaison & venue check-in`}
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      )}
+                    </section>
+
+                    {/* 4. Special Instructions */}
+                    <section className="bg-emerald-50/70 border border-emerald-200 rounded-xl p-3.5 text-xs space-y-1">
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-950 block">
+                        4. Special Instructions & Protocol
+                      </span>
+                      <p className="text-slate-800 leading-relaxed">
+                        {translatorSheetInstructions.trim()
+                          || `Provide seamless ${selectedTranslatorLang} interpretation during airport meet-and-greet, hotel check-in, restaurant briefings, and all guided excursions. Coordinate closely with the assigned Viemma chauffeur 30 minutes prior to each departure.`}
+                      </p>
+                    </section>
+                  </div>
+
+                  <footer className="pt-3 mt-4 border-t border-slate-200 flex justify-between text-[10px] text-slate-500">
+                    <span>Viemma Tours • Translator & Guide Job Sheet (Zero Financial Data)</span>
+                    <span>Generated: {new Date().toLocaleDateString('en-ZA')}</span>
+                  </footer>
+                </article>
+              );
+            })()}
 
             {/* MODE 3: OPERATOR GROUND SHEET (Full Manifest & Internal Notes) */}
             {mode === 'operator-ground-sheet' && (

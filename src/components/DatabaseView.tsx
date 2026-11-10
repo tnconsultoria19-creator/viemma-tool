@@ -26,6 +26,35 @@ interface DatabaseViewProps {
 export const DatabaseView: React.FC<DatabaseViewProps> = ({ state, onUpdateState }) => {
   const [subTab, setSubTab] = useState<'hotels' | 'activities' | 'extras' | 'agents' | 'guides' | 'drivers'>('hotels');
   const guides = state.guides?.length ? state.guides : DB_DEFAULT.guides as Guide[];
+  const [newGuideName, setNewGuideName] = useState('');
+  const [newGuidePhone, setNewGuidePhone] = useState('');
+  const [newGuideLangs, setNewGuideLangs] = useState<{ portuguese: boolean; spanish: boolean; english: boolean }>({
+    portuguese: true,
+    spanish: false,
+    english: true,
+  });
+
+  const handleAddGuideOrTranslator = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newGuideName.trim()) return;
+    const phoneVal = newGuidePhone.trim() || '+27 82 000 0000';
+    const nextGuide: Guide = {
+      id: `guide-${Date.now()}`,
+      name: newGuideName.trim(),
+      phone: phoneVal,
+      whatsapp: phoneVal,
+      languages: {
+        portuguese: newGuideLangs.portuguese,
+        spanish: newGuideLangs.spanish,
+        english: newGuideLangs.english,
+      },
+      sourceAgentId: '',
+      sourceAgentName: '',
+    };
+    onUpdateState({ guides: [nextGuide, ...guides] });
+    setNewGuideName('');
+    setNewGuidePhone('');
+  };
 
   const handleGuideSourceAgentChange = (guideId: string, sourceAgentId: string) => {
     const selectedAgent = DB_DEFAULT.agents.find(agent => agent.id === sourceAgentId);
@@ -259,13 +288,74 @@ export const DatabaseView: React.FC<DatabaseViewProps> = ({ state, onUpdateState
           <div className="space-y-6">
             <div className="flex items-center justify-between pb-3 border-b border-gray-100">
               <div>
-                <h3 className="font-bold text-gray-900 text-base font-sans">Guide Contact Directory</h3>
-                <p className="text-xs text-gray-400">Quick-access guide contacts and language details supplied in the contact list.</p>
+                <h3 className="font-bold text-gray-900 text-base font-sans">Guides & Translators Directory</h3>
+                <p className="text-xs text-gray-500">Manage specialist tour guides and language interpreters (Portuguese, Spanish, English) for daily programmes and job sheets.</p>
               </div>
               <span className="text-[10px] font-bold text-[#D4AF37] bg-yellow-50 border border-[#D4AF37]/20 px-3 py-1 rounded-xl uppercase tracking-wider">
                 {guides.length} contacts
               </span>
             </div>
+
+            <form onSubmit={handleAddGuideOrTranslator} className="bg-slate-50 border border-slate-200 rounded-2xl p-4 grid grid-cols-1 md:grid-cols-4 gap-3 items-end">
+              <div>
+                <label className="text-[10px] font-bold uppercase tracking-wider text-slate-600 block mb-1">Guide / Translator Name</label>
+                <input
+                  type="text"
+                  value={newGuideName}
+                  onChange={e => setNewGuideName(e.target.value)}
+                  placeholder="e.g., Sofia Mendes"
+                  className="w-full h-9 px-3 rounded-lg border border-slate-300 bg-white text-xs text-slate-900"
+                />
+              </div>
+              <div>
+                <label className="text-[10px] font-bold uppercase tracking-wider text-slate-600 block mb-1">Phone / WhatsApp</label>
+                <input
+                  type="text"
+                  value={newGuidePhone}
+                  onChange={e => setNewGuidePhone(e.target.value)}
+                  placeholder="+27 82 555 0199"
+                  className="w-full h-9 px-3 rounded-lg border border-slate-300 bg-white text-xs text-slate-900"
+                />
+              </div>
+              <div>
+                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-600 block mb-1">Languages Spoken</span>
+                <div className="flex items-center gap-3 h-9 text-xs text-slate-800">
+                  <label className="flex items-center gap-1.5 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={newGuideLangs.portuguese}
+                      onChange={e => setNewGuideLangs(prev => ({ ...prev, portuguese: e.target.checked }))}
+                      className="accent-[#1A3326]"
+                    />
+                    <span>PT</span>
+                  </label>
+                  <label className="flex items-center gap-1.5 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={newGuideLangs.spanish}
+                      onChange={e => setNewGuideLangs(prev => ({ ...prev, spanish: e.target.checked }))}
+                      className="accent-[#1A3326]"
+                    />
+                    <span>ES</span>
+                  </label>
+                  <label className="flex items-center gap-1.5 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={newGuideLangs.english}
+                      onChange={e => setNewGuideLangs(prev => ({ ...prev, english: e.target.checked }))}
+                      className="accent-[#1A3326]"
+                    />
+                    <span>EN</span>
+                  </label>
+                </div>
+              </div>
+              <button
+                type="submit"
+                className="h-9 px-4 rounded-lg bg-[#1A3326] text-white text-xs font-bold hover:bg-[#234533] transition flex items-center justify-center gap-1.5 cursor-pointer"
+              >
+                <Plus size={13} /> Add Translator / Guide
+              </button>
+            </form>
 
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
               {guides.map(guide => (

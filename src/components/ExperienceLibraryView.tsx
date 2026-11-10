@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { AppState, ExperienceLibraryItem, DestinationLibraryItem, Activity } from '../types';
-import { DEFAULT_EXPERIENCES, DEFAULT_DESTINATIONS } from '../data/libraryDefaults';
+import { DEFAULT_EXPERIENCES, DEFAULT_DESTINATIONS, mergeWithMasterCatalogue, mergeWithMasterDestinations } from '../data/libraryDefaults';
 import { 
   Sparkles, 
   Search, 
@@ -24,7 +24,10 @@ import {
   FileText,
   Bookmark,
   Calendar,
-  Route
+  Route,
+  Download,
+  Upload,
+  ExternalLink
 } from 'lucide-react';
 
 interface ExperienceLibraryViewProps {
@@ -39,10 +42,14 @@ export const ExperienceLibraryView: React.FC<ExperienceLibraryViewProps> = ({
   const [subTab, setSubTab] = useState<'experiences' | 'destinations'>('experiences');
   const [searchTerm, setSearchTerm] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('');
+  const [provinceFilter, setProvinceFilter] = useState('');
   const [destinationFilter, setDestinationFilter] = useState('');
+  const [showImportModal, setShowImportModal] = useState(false);
+  const [importJsonText, setImportJsonText] = useState('');
+  const [importError, setImportError] = useState<string | null>(null);
 
-  const experiences = state.experienceLibrary?.length ? state.experienceLibrary : DEFAULT_EXPERIENCES;
-  const destinations = state.destinationLibrary?.length ? state.destinationLibrary : DEFAULT_DESTINATIONS;
+  const experiences = useMemo(() => mergeWithMasterCatalogue(state.experienceLibrary), [state.experienceLibrary]);
+  const destinations = useMemo(() => mergeWithMasterDestinations(state.destinationLibrary), [state.destinationLibrary]);
 
   const [editingExperienceId, setEditingExperienceId] = useState<string | null>(null);
   const [expForm, setExpForm] = useState<Partial<ExperienceLibraryItem>>({});
@@ -218,11 +225,28 @@ export const ExperienceLibraryView: React.FC<ExperienceLibraryViewProps> = ({
 
   // Filtering
   const filteredExperiences = experiences.filter(exp => {
-    const matchesSearch = exp.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
-                          exp.supplier.toLowerCase().includes(searchTerm.toLowerCase());
+    const q = searchTerm.trim().toLowerCase();
+    const corpus = [
+      exp.name,
+      ...(exp.aliases || []),
+      exp.supplier,
+      exp.province,
+      exp.destination,
+      exp.town,
+      exp.location,
+      exp.category,
+      exp.subcategory,
+      exp.activityType,
+      exp.shortDescription,
+    ]
+      .filter(Boolean)
+      .join(' ')
+      .toLowerCase();
+    const matchesSearch = !q || corpus.includes(q) || q.split(/\s+/).every(t => corpus.includes(t));
     const matchesCategory = !categoryFilter || exp.category === categoryFilter;
+    const matchesProvince = !provinceFilter || exp.province === provinceFilter;
     const matchesDestination = !destinationFilter || exp.destination === destinationFilter;
-    return matchesSearch && matchesCategory && matchesDestination;
+    return matchesSearch && matchesCategory && matchesProvince && matchesDestination;
   });
 
   const filteredDestinations = destinations.filter(dest => {
@@ -231,21 +255,161 @@ export const ExperienceLibraryView: React.FC<ExperienceLibraryViewProps> = ({
            dest.country.toLowerCase().includes(searchTerm.toLowerCase());
   });
 
-  // Unique categories for filtering
-  const categories = Array.from(new Set(experiences.map(e => e.category)));
+  // Unique categories & provinces for filtering
+  const categories = Array.from(new Set(experiences.map(e => e.category).filter(Boolean)));
+  const provinces = Array.from(new Set(experiences.map(e => e.province).filter(Boolean))) as string[];
+
+  const handleToggleExperienceActive = (id: string) => {
+    const nextList = experiences.map(item =>
+      item.id === id ? { ...item, active: item.active === false ? true : false } : item
+    );
+    onUpdateState({ experienceLibrary: nextList });
+  };
+
+  const handleExportCatalogueJson = () => {
+    const payload = {
+      exportedAt: new Date().toISOString(),
+      experiences,
+      destinations,
+    };
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `viemma-master-catalogue-${new Date().toISOString().split('T')[0]}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    setAddedToastMessage(`Exported ${experiences.length} experiences and ${destinations.length} destinations as JSON.`);
+    setTimeout(() => setAddedToastMessage(null), 4000);
+  };
+
+  const handleImportCatalogueJson = () => {
+    setImportError(null);
+    try {
+      const parsed = JSON.parse(importJsonText);
+      const incomingExperiences: ExperienceLibraryItem[] = Array.isArray(parsed)
+        ? parsed
+        : Array.isArray(parsed.experiences)
+        ? parsed.experiences
+        : Array.isArray(parsed.catalogue)
+        ? parsed.catalogue
+        : [];
+      const incomingDestinations: DestinationLibraryItem[] = Array.isArray(parsed?.destinations)
+        ? parsed.destinations
+        : [];
+
+      if (incomingExperiences.length === 0 && incomingDestinations.length === 0) {
+        setImportError('JSON must contain an array of experiences or a { experiences, destinations } object.');
+        return;
+      }
+
+      const nextExperiences = [...experiences];
+      let addedCount = 0;
+      let updatedCount = 0;
+
+      for (const raw of incomingExperiences) {
+        if (!raw || !raw.name) continue;
+        const normalizedId = raw.id || `exp_${raw.name.toLowerCase().replace(/[^a-z0-9]+/g, '_')}`;
+        const existingIdx = nextExperiences.findIndex(
+          e =>
+            e.id === normalizedId ||
+            (e.name.trim().toLowerCase() === raw.name.trim().toLowerCase() &&
+              (e.destination || '').trim().toLowerCase() === (raw.destination || '').trim().toLowerCase())
+        );
+
+        const normalizedItem: ExperienceLibraryItem = {
+          id: existingIdx >= 0 ? nextExperiences[existingIdx].id : normalizedId,
+          name: raw.name.trim(),
+          aliases: Array.isArray(raw.aliases) ? raw.aliases : [],
+          province: raw.province || 'Western Cape',
+          destination: raw.destination || 'Cape Town',
+          town: raw.town || raw.destination || '',
+          location: raw.location || raw.town || raw.destination || '',
+          category: raw.category || 'Sightseeing',
+          subcategory: raw.subcategory || '',
+          activityType: raw.activityType || 'Experience',
+          duration: raw.duration || 'Half Day',
+          suitableSlot: raw.suitableSlot || 'Morning',
+          difficulty: raw.difficulty || 'Easy',
+          accessibilityNotes: raw.accessibilityNotes || '',
+          familySuitability: raw.familySuitability || 'All Ages',
+          images: Array.isArray(raw.images) && raw.images.length > 0 ? raw.images : (raw.featuredImage ? [raw.featuredImage] : []),
+          featuredImage: raw.featuredImage || raw.images?.[0] || 'https://images.unsplash.com/photo-1580060839134-75a5edca2e99?auto=format&fit=crop&w=1000&q=80',
+          highlights: Array.isArray(raw.highlights) ? raw.highlights : [],
+          luxuryDescription: raw.luxuryDescription || raw.shortDescription || '',
+          shortDescription: raw.shortDescription || raw.luxuryDescription || '',
+          seoDescription: raw.seoDescription || '',
+          familyDescription: raw.familyDescription || '',
+          adventureDescription: raw.adventureDescription || '',
+          faqs: Array.isArray(raw.faqs) ? raw.faqs : [],
+          priceAdult: Number(raw.priceAdult ?? 0),
+          priceChild: Number(raw.priceChild ?? 0),
+          supplier: raw.supplier || 'To be confirmed',
+          sourceUrl: raw.sourceUrl || '',
+          operatorUrl: raw.operatorUrl || '',
+          availabilityNotes: raw.availabilityNotes || '',
+          seasonalNotes: raw.seasonalNotes || '',
+          active: raw.active !== false,
+        };
+
+        if (existingIdx >= 0) {
+          nextExperiences[existingIdx] = { ...nextExperiences[existingIdx], ...normalizedItem };
+          updatedCount++;
+        } else {
+          nextExperiences.push(normalizedItem);
+          addedCount++;
+        }
+      }
+
+      const nextDestinations = [...destinations];
+      for (const rawDest of incomingDestinations) {
+        if (!rawDest || !rawDest.name) continue;
+        const existingDestIdx = nextDestinations.findIndex(
+          d => d.id === rawDest.id || d.name.trim().toLowerCase() === rawDest.name.trim().toLowerCase()
+        );
+        if (existingDestIdx >= 0) {
+          nextDestinations[existingDestIdx] = { ...nextDestinations[existingDestIdx], ...rawDest };
+        } else {
+          nextDestinations.push({
+            ...rawDest,
+            id: rawDest.id || `dest_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+          });
+        }
+      }
+
+      onUpdateState({
+        experienceLibrary: nextExperiences,
+        destinationLibrary: nextDestinations,
+      });
+      setShowImportModal(false);
+      setImportJsonText('');
+      setAddedToastMessage(`Catalogue JSON imported: ${addedCount} added, ${updatedCount} updated (duplicates prevented).`);
+      setTimeout(() => setAddedToastMessage(null), 4500);
+    } catch (err: any) {
+      setImportError(`Invalid JSON format: ${err?.message || 'Unable to parse JSON.'}`);
+    }
+  };
 
   // Open forms
   const handleOpenAddExperience = () => {
     setExpForm({
       id: `exp_${Date.now()}`,
       name: '',
+      aliases: [],
+      province: 'Western Cape',
       category: 'Sightseeing',
+      subcategory: '',
+      activityType: 'Experience',
       destination: destinations[0]?.name || 'Cape Town',
-      duration: '2 hours',
+      town: '',
+      duration: '3 hours',
+      suitableSlot: 'Morning',
       difficulty: 'Easy',
       location: '',
       images: [],
-      featuredImage: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=800&q=80',
+      featuredImage: 'https://images.unsplash.com/photo-1580060839134-75a5edca2e99?auto=format&fit=crop&w=800&q=80',
       highlights: [],
       luxuryDescription: '',
       shortDescription: '',
@@ -255,7 +419,12 @@ export const ExperienceLibraryView: React.FC<ExperienceLibraryViewProps> = ({
       faqs: [],
       priceAdult: 0,
       priceChild: 0,
-      supplier: ''
+      supplier: 'To be confirmed',
+      sourceUrl: '',
+      operatorUrl: '',
+      availabilityNotes: '',
+      seasonalNotes: '',
+      active: true
     });
     setEditingExperienceId('NEW');
     setNewHighlight('');
@@ -504,10 +673,24 @@ export const ExperienceLibraryView: React.FC<ExperienceLibraryViewProps> = ({
             Manage your corporate, reusable repository of destination guides and luxury excursion items. Details automatically synchronize with the Client Experience portal.
           </p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-2.5">
+          <button
+            type="button"
+            onClick={() => setShowImportModal(true)}
+            className="flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl border border-gray-200 bg-white text-gray-700 hover:bg-gray-50 text-xs font-semibold transition cursor-pointer"
+          >
+            <Upload size={13} /> Import JSON
+          </button>
+          <button
+            type="button"
+            onClick={handleExportCatalogueJson}
+            className="flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl border border-gray-200 bg-white text-gray-700 hover:bg-gray-50 text-xs font-semibold transition cursor-pointer"
+          >
+            <Download size={13} /> Export JSON
+          </button>
           <button 
             onClick={handleResetDefaults}
-            className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-gray-200 bg-white text-gray-500 hover:text-gray-900 hover:bg-gray-50 text-xs font-semibold transition"
+            className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-gray-200 bg-white text-gray-500 hover:text-gray-900 hover:bg-gray-50 text-xs font-semibold transition cursor-pointer"
           >
             <RefreshCcw size={13} /> Reset Factory Defaults
           </button>
@@ -515,7 +698,7 @@ export const ExperienceLibraryView: React.FC<ExperienceLibraryViewProps> = ({
           {editingExperienceId === null && editingDestinationId === null && (
             <button 
               onClick={subTab === 'experiences' ? handleOpenAddExperience : handleOpenAddDestination}
-              className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[#1A3326] text-white hover:bg-[#12241b] text-xs font-bold shadow-md hover:translate-y-[-1px] transition shrink-0"
+              className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[#1A3326] text-white hover:bg-[#12241b] text-xs font-bold shadow-md hover:translate-y-[-1px] transition shrink-0 cursor-pointer"
             >
               <Plus size={14} /> Add {subTab === 'experiences' ? 'Experience' : 'Destination'}
             </button>
@@ -554,7 +737,7 @@ export const ExperienceLibraryView: React.FC<ExperienceLibraryViewProps> = ({
               <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
               <input
                 type="text"
-                placeholder={`Search ${subTab === 'experiences' ? 'experiences...' : 'destinations...'}`}
+                placeholder={`Search ${subTab === 'experiences' ? 'name, alias, town, province...' : 'destinations...'}`}
                 value={searchTerm}
                 onChange={e => setSearchTerm(e.target.value)}
                 className="w-full h-10 pl-10 pr-4 rounded-xl border border-gray-200 text-xs text-gray-800 bg-white focus:border-[#D4AF37] focus:ring-1 transition"
@@ -563,6 +746,15 @@ export const ExperienceLibraryView: React.FC<ExperienceLibraryViewProps> = ({
 
             {subTab === 'experiences' && (
               <>
+                <select
+                  value={provinceFilter}
+                  onChange={e => { setProvinceFilter(e.target.value); setDestinationFilter(''); }}
+                  className="h-10 px-3 rounded-xl border border-gray-200 text-xs font-semibold text-gray-600 bg-white focus:border-[#D4AF37]"
+                >
+                  <option value="">All Provinces</option>
+                  {provinces.map(p => <option key={p} value={p}>{p}</option>)}
+                </select>
+
                 <select
                   value={categoryFilter}
                   onChange={e => setCategoryFilter(e.target.value)}
@@ -720,19 +912,128 @@ export const ExperienceLibraryView: React.FC<ExperienceLibraryViewProps> = ({
                 <div className="grid grid-cols-2 gap-2">
                   <input
                     type="number"
-                    placeholder="Adult Net"
-                    value={expForm.priceAdult || ''}
+                    placeholder="Adult Net (0 = TBC)"
+                    value={expForm.priceAdult ?? ''}
                     onChange={e => setExpForm({ ...expForm, priceAdult: Number(e.target.value) })}
                     className="h-11 px-3 rounded-xl border border-gray-200 text-xs text-gray-800 focus:border-[#D4AF37]"
                   />
                   <input
                     type="number"
-                    placeholder="Child Net"
-                    value={expForm.priceChild || ''}
+                    placeholder="Child Net (0 = TBC)"
+                    value={expForm.priceChild ?? ''}
                     onChange={e => setExpForm({ ...expForm, priceChild: Number(e.target.value) })}
                     className="h-11 px-3 rounded-xl border border-gray-200 text-xs text-gray-800 focus:border-[#D4AF37]"
                   />
                 </div>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-[11px] text-gray-400 font-bold uppercase tracking-wider block">Province</label>
+                <input
+                  type="text"
+                  value={expForm.province || ''}
+                  onChange={e => setExpForm({ ...expForm, province: e.target.value })}
+                  placeholder="e.g. Western Cape, Mpumalanga, KwaZulu-Natal"
+                  className="w-full h-11 px-4 rounded-xl border border-gray-200 text-xs text-gray-800 focus:border-[#D4AF37]"
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-[11px] text-gray-400 font-bold uppercase tracking-wider block">Town / Area</label>
+                <input
+                  type="text"
+                  value={expForm.town || ''}
+                  onChange={e => setExpForm({ ...expForm, town: e.target.value })}
+                  placeholder="e.g. Franschhoek, Simon's Town, Hermanus"
+                  className="w-full h-11 px-4 rounded-xl border border-gray-200 text-xs text-gray-800 focus:border-[#D4AF37]"
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-[11px] text-gray-400 font-bold uppercase tracking-wider block">Activity Type & Subcategory</label>
+                <div className="grid grid-cols-2 gap-2">
+                  <select
+                    value={expForm.activityType || 'Experience'}
+                    onChange={e => setExpForm({ ...expForm, activityType: e.target.value as any })}
+                    className="h-11 px-3 rounded-xl border border-gray-200 text-xs font-semibold text-gray-700 bg-white focus:border-[#D4AF37]"
+                  >
+                    <option value="Experience">Experience</option>
+                    <option value="Activity">Activity</option>
+                    <option value="Landmark">Landmark</option>
+                    <option value="Destination">Destination</option>
+                  </select>
+                  <input
+                    type="text"
+                    value={expForm.subcategory || ''}
+                    onChange={e => setExpForm({ ...expForm, subcategory: e.target.value })}
+                    placeholder="Subcategory"
+                    className="h-11 px-3 rounded-xl border border-gray-200 text-xs text-gray-800 focus:border-[#D4AF37]"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-1.5 md:col-span-2">
+                <label className="text-[11px] text-gray-400 font-bold uppercase tracking-wider block">Search Aliases (Comma-Separated)</label>
+                <input
+                  type="text"
+                  value={(expForm.aliases || []).join(', ')}
+                  onChange={e =>
+                    setExpForm({
+                      ...expForm,
+                      aliases: e.target.value
+                        .split(',')
+                        .map(s => s.trim())
+                        .filter(Boolean),
+                    })
+                  }
+                  placeholder="e.g. penguins, Boulders Beach, Simon's Town penguins"
+                  className="w-full h-11 px-4 rounded-xl border border-gray-200 text-xs text-gray-800 focus:border-[#D4AF37]"
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-[11px] text-gray-400 font-bold uppercase tracking-wider block">Official Source URL</label>
+                <input
+                  type="url"
+                  value={expForm.sourceUrl || ''}
+                  onChange={e => setExpForm({ ...expForm, sourceUrl: e.target.value })}
+                  placeholder="https://www.sanparks.org/..."
+                  className="w-full h-11 px-4 rounded-xl border border-gray-200 text-xs text-gray-800 focus:border-[#D4AF37]"
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-[11px] text-gray-400 font-bold uppercase tracking-wider block">Seasonal / Weather Notes</label>
+                <input
+                  type="text"
+                  value={expForm.seasonalNotes || ''}
+                  onChange={e => setExpForm({ ...expForm, seasonalNotes: e.target.value })}
+                  placeholder="e.g. Peak whale season June to November"
+                  className="w-full h-11 px-4 rounded-xl border border-gray-200 text-xs text-gray-800 focus:border-[#D4AF37]"
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-[11px] text-gray-400 font-bold uppercase tracking-wider block">Availability / Booking Notes</label>
+                <input
+                  type="text"
+                  value={expForm.availabilityNotes || ''}
+                  onChange={e => setExpForm({ ...expForm, availabilityNotes: e.target.value })}
+                  placeholder="e.g. Pre-booking required; conservation fee applies"
+                  className="w-full h-11 px-4 rounded-xl border border-gray-200 text-xs text-gray-800 focus:border-[#D4AF37]"
+                />
+              </div>
+
+              <div className="space-y-1.5 flex items-end">
+                <label className="flex items-center gap-2.5 h-11 px-4 rounded-xl border border-gray-200 bg-slate-50 text-xs font-bold text-slate-800 w-full cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={expForm.active !== false}
+                    onChange={e => setExpForm({ ...expForm, active: e.target.checked })}
+                    className="w-4 h-4 accent-[#1A3326]"
+                  />
+                  <span>Active in Daily Programme Catalogue</span>
+                </label>
               </div>
             </div>
 
@@ -1302,7 +1603,9 @@ export const ExperienceLibraryView: React.FC<ExperienceLibraryViewProps> = ({
           {filteredExperiences.map(item => (
             <div 
               key={item.id} 
-              className="bg-white rounded-[24px] border border-gray-100 overflow-hidden shadow-xs hover:shadow-md hover:translate-y-[-2px] transition duration-300 group flex flex-col justify-between"
+              className={`bg-white rounded-[24px] border overflow-hidden shadow-xs hover:shadow-md hover:translate-y-[-2px] transition duration-300 group flex flex-col justify-between ${
+                item.active === false ? 'border-gray-200 opacity-60' : 'border-gray-100'
+              }`}
             >
               <div className="relative h-48 bg-slate-100 overflow-hidden">
                 <img 
@@ -1314,8 +1617,20 @@ export const ExperienceLibraryView: React.FC<ExperienceLibraryViewProps> = ({
                 <div className="absolute top-4 left-4 bg-[#1A3326]/90 backdrop-blur-md px-3 py-1 rounded-full text-[10px] uppercase tracking-wider font-extrabold text-[#D4AF37] border border-[#D4AF37]/20">
                   {item.category}
                 </div>
+                <button
+                  type="button"
+                  onClick={() => handleToggleExperienceActive(item.id)}
+                  className={`absolute top-4 right-4 px-2.5 py-1 rounded-full text-[9px] font-bold uppercase cursor-pointer ${
+                    item.active === false
+                      ? 'bg-rose-900/90 text-white'
+                      : 'bg-emerald-900/90 text-emerald-100'
+                  }`}
+                  title="Toggle active status in Daily Programme selector"
+                >
+                  {item.active === false ? 'Inactive' : 'Active'}
+                </button>
                 <div className="absolute bottom-4 right-4 bg-slate-950/70 backdrop-blur-md px-2.5 py-1 rounded-lg text-[10px] font-semibold text-white">
-                  R{item.priceAdult} Adult
+                  {item.priceAdult > 0 ? `R${item.priceAdult} Adult` : 'Rate TBC'}
                 </div>
               </div>
 
@@ -1323,7 +1638,9 @@ export const ExperienceLibraryView: React.FC<ExperienceLibraryViewProps> = ({
                 <div className="space-y-2">
                   <div className="flex justify-between items-start gap-2">
                     <div>
-                      <span className="text-[10px] font-bold text-[#D4AF37] uppercase tracking-widest block">{item.destination} Guide</span>
+                      <span className="text-[10px] font-bold text-[#D4AF37] uppercase tracking-widest block">
+                        {item.province ? `${item.province} • ` : ''}{item.destination}
+                      </span>
                       <h3 className="font-bold text-gray-900 text-sm mt-0.5 line-clamp-1">{item.name}</h3>
                     </div>
                   </div>
@@ -1338,6 +1655,16 @@ export const ExperienceLibraryView: React.FC<ExperienceLibraryViewProps> = ({
                       {hl}
                     </span>
                   ))}
+                  {item.sourceUrl && (
+                    <a
+                      href={item.sourceUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="px-2 py-1 bg-slate-100 text-slate-700 hover:text-slate-950 text-[9px] font-bold rounded-lg inline-flex items-center gap-1"
+                    >
+                      Source <ExternalLink size={9} />
+                    </a>
+                  )}
                 </div>
 
                 <div className="border-t border-gray-100 pt-3 flex items-center justify-between gap-2 text-xs">
@@ -1352,7 +1679,7 @@ export const ExperienceLibraryView: React.FC<ExperienceLibraryViewProps> = ({
                         setTargetDay(1);
                         setTargetGroupIds([]);
                         setTargetVenue(item.location || '');
-                        handleTargetSlotChange('Morning', item.duration);
+                        handleTargetSlotChange(item.suitableSlot || 'Morning', item.duration);
                       }}
                       className="px-2.5 py-1 rounded-lg bg-[#1A3326] text-white hover:bg-[#12241b] text-[11px] font-bold flex items-center gap-1 transition shadow-xs cursor-pointer active:scale-95"
                       title="Add this experience to current trip daily programme"
@@ -1606,6 +1933,58 @@ export const ExperienceLibraryView: React.FC<ExperienceLibraryViewProps> = ({
               >
                 <Check size={14} className="text-[#D4AF37]" />
                 <span>Confirm & Add to Day {targetDay}</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* JSON IMPORT MODAL FOR CATALOGUE ADMINISTRATION */}
+      {showImportModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in">
+          <div className="bg-white rounded-2xl max-w-xl w-full p-6 shadow-2xl border border-gray-100 space-y-4">
+            <div className="flex items-center justify-between border-b border-gray-100 pb-3">
+              <div>
+                <span className="text-[10px] uppercase font-bold text-[#D4AF37] tracking-wider block">Catalogue Administration</span>
+                <h3 className="text-base font-bold text-gray-900">Import Catalogue JSON</h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => { setShowImportModal(false); setImportError(null); }}
+                className="w-8 h-8 rounded-lg bg-gray-50 hover:bg-gray-100 text-gray-500 flex items-center justify-center"
+              >
+                ✕
+              </button>
+            </div>
+            <p className="text-xs text-gray-600 leading-relaxed">
+              Paste a JSON array of experiences or a full exported catalogue object. Existing entries with matching IDs or matching Name + Destination will be updated without creating duplicates.
+            </p>
+            <textarea
+              rows={8}
+              value={importJsonText}
+              onChange={e => setImportJsonText(e.target.value)}
+              placeholder='[{"name": "Kirstenbosch Botanical Gardens", "province": "Western Cape", "destination": "Cape Town", "category": "Sightseeing"}]'
+              className="w-full p-3 rounded-xl border border-gray-200 text-xs font-mono text-gray-800 focus:border-[#D4AF37]"
+            />
+            {importError && (
+              <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-xs text-rose-800 font-medium">
+                {importError}
+              </div>
+            )}
+            <div className="flex justify-end gap-2 pt-2">
+              <button
+                type="button"
+                onClick={() => { setShowImportModal(false); setImportError(null); }}
+                className="px-4 py-2 rounded-xl border border-gray-200 text-xs font-bold text-gray-600 hover:bg-gray-50"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleImportCatalogueJson}
+                className="px-5 py-2 rounded-xl bg-[#1A3326] text-white hover:bg-[#12241b] text-xs font-bold shadow-sm cursor-pointer"
+              >
+                Import & Merge Catalogue
               </button>
             </div>
           </div>

@@ -231,8 +231,8 @@ export function buildClientEditorialPages(params: {
   const leadPerson = group.travellers.find((t) => t.id === group.leadTravellerId) || group.travellers[0];
   const confirmedPaxNames = group.travellers.map((t) => t.fullName).join(', ');
 
-  // Page 1: Trip Overview Page
-  const overviewP1 = `${group.groupName || 'Private Journey'} (${group.tripId}) has been curated for Lead Traveller ${
+  // Page 1: Trip Overview Page (Client-facing — no internal reference codes)
+  const overviewP1 = `${group.groupName || 'Private Journey'} has been curated for Lead Traveller ${
     leadPerson?.fullName || 'Valued Guest'
   } and party (${group.travellers.length} traveller${
     group.travellers.length === 1 ? '' : 's'
@@ -242,6 +242,7 @@ export function buildClientEditorialPages(params: {
 
   const arrivalFlight = flights.find((f) => f.direction === 'Arrival');
   const primaryHotel = hotels[0];
+  const firstActiveAct = activities.find((a) => a.status !== 'Cancelled' && (a.heroImageUrl || a.gallery?.[0]));
   const overviewP2 = [
     arrivalFlight
       ? `Arrival arrangements are coordinated for flight ${arrivalFlight.flightNumber} on ${
@@ -257,30 +258,33 @@ export function buildClientEditorialPages(params: {
     .join(' ');
 
   const overviewText = formatApprovedContentIntoTwoParagraphs([overviewP1, overviewP2]);
+  const resolvedOverviewSupportUrl =
+    supportingImageUrl ||
+    firstActiveAct?.heroImageUrl ||
+    firstActiveAct?.gallery?.[0] ||
+    createArchitecturalFallbackDataUri(primaryHotel?.propertyName || destinationLabel, 'supporting');
 
   rawPages.push({
     tripReference: group.tripId,
     pageCategory: 'Trip Overview',
     dateLabel: `${group.defaults.startDate || 'TBC'} — ${group.defaults.endDate || 'TBC'}`,
     title: group.defaults.destination ? `${group.defaults.destination} Itinerary` : 'Travel Itinerary',
-    subtitle: `Prepared for ${leadPerson?.fullName || group.groupName} • ${group.travellers.length} Guests`,
+    subtitle: `Prepared for ${leadPerson?.fullName || group.groupName} • ${group.travellers.length} Guest${group.travellers.length === 1 ? '' : 's'}`,
     heroImage: {
-      url: heroImageUrl || createArchitecturalFallbackDataUri(destinationLabel, 'hero'),
+      url: heroImageUrl || '/hero-bg.jpg',
       alt: group.defaults.destination || 'Trip overview image',
-      caption: group.defaults.destination ? `Primary Destination — ${group.defaults.destination}` : 'Destination to be confirmed',
+      caption: group.defaults.destination ? `${group.defaults.destination} — South Africa` : 'Curated Travel Proposal',
     },
     supportingImage: {
-      url:
-        supportingImageUrl ||
-        createArchitecturalFallbackDataUri(primaryHotel?.propertyName || 'Private Ground Operations', 'supporting'),
-      alt: primaryHotel?.propertyName || 'Curated Ground Experience',
-      caption: primaryHotel ? `Residence: ${primaryHotel.propertyName}` : 'Viemma Concierge Ground Services',
-      isFallback: !supportingImageUrl,
+      url: resolvedOverviewSupportUrl,
+      alt: primaryHotel?.propertyName || firstActiveAct?.title || 'Curated Ground Experience',
+      caption: primaryHotel ? `Residence: ${primaryHotel.propertyName}` : (firstActiveAct?.title || 'Viemma Concierge Ground Services'),
+      isFallback: !supportingImageUrl && !firstActiveAct?.heroImageUrl && !firstActiveAct?.gallery?.[0],
     },
     paragraphs: overviewText.paragraphs,
     insufficientContentFlag: overviewText.insufficientContentFlag,
     insufficientContentReason: overviewText.insufficientContentReason,
-    footerMeta: `${group.tripId} • Client Edition`,
+    footerMeta: `Viemma Tours • Private Travel Proposal`,
   });
 
   // Subsequent Pages: Group by active dates across Hotels, Transfers, and Activities
@@ -327,27 +331,41 @@ export function buildClientEditorialPages(params: {
       paragraphTwoSource || undefined,
     ]);
 
+    const secondaryAct = dayActs[1];
+    const daySupportingUrl =
+      secondaryAct?.heroImageUrl ||
+      secondaryAct?.gallery?.[0] ||
+      primaryAct?.gallery?.[1] ||
+      supportingImageUrl ||
+      heroImageUrl ||
+      '/hero-bg.jpg';
+    const daySupportingCaption = secondaryAct
+      ? `${secondaryAct.title}${secondaryAct.location ? ` — ${secondaryAct.location}` : ''}`
+      : activeHotel
+      ? `Residence: ${activeHotel.propertyName}`
+      : `${destinationLabel} Highlights`;
+
     rawPages.push({
       tripReference: group.tripId,
       pageCategory: 'Daily Experience',
       dateLabel: date,
-      title: primaryAct?.dayTitle || (primaryAct ? primaryAct.title : `Operational Schedule — ${date}`),
-      subtitle: activeHotel ? `Residence: ${activeHotel.propertyName}` : (group.defaults.destination || 'Destination details to be confirmed'),
+      title: primaryAct?.dayTitle || (primaryAct ? primaryAct.title : `Daily Programme — ${date}`),
+      subtitle: activeHotel ? `Residence: ${activeHotel.propertyName}` : (group.defaults.destination || 'South Africa'),
       heroImage: {
-        url: primaryAct?.heroImageUrl || primaryAct?.gallery?.[0] || heroImageUrl || createArchitecturalFallbackDataUri(primaryAct?.title || date, 'hero'),
+        url: primaryAct?.heroImageUrl || primaryAct?.gallery?.[0] || heroImageUrl || '/hero-bg.jpg',
         alt: primaryAct?.title || `Day Schedule ${date}`,
-        caption: primaryAct ? `${primaryAct.title} — ${primaryAct.location || 'Location to be confirmed'}` : `Scheduled Movements (${date})`,
+        caption: primaryAct ? `${primaryAct.title}${primaryAct.location ? ` — ${primaryAct.location}` : ''}` : `Scheduled Experiences (${date})`,
       },
       supportingImage: {
-        url: createArchitecturalFallbackDataUri(activeHotel?.propertyName || date, 'supporting'),
-        alt: activeHotel?.propertyName || 'Supporting View',
-        caption: activeHotel ? activeHotel.propertyName : `Ground Logistics • ${date}`,
-        isFallback: true,
+        url: daySupportingUrl,
+        alt: secondaryAct?.title || activeHotel?.propertyName || 'Supporting View',
+        caption: daySupportingCaption,
+        isFallback: false,
       },
       paragraphs: formattedDayText.paragraphs,
       insufficientContentFlag: formattedDayText.insufficientContentFlag,
       insufficientContentReason: formattedDayText.insufficientContentReason,
-      footerMeta: `${group.tripId} • ${date}`,
+      footerMeta: `Viemma Tours • ${date}`,
     });
   }
 
@@ -398,14 +416,15 @@ export async function verifyPdfBlobIntegrity(blob: Blob | null | undefined): Pro
 export async function exportValidatedPrintPdfDocument(params: {
   containerElement: HTMLElement | null;
   documentTitle: string;
+  orientation?: 'portrait' | 'landscape';
   onStatusChange?: (status: string) => void;
 }): Promise<{ success: boolean; error?: string }> {
-  const { containerElement, documentTitle, onStatusChange } = params;
+  const { containerElement, documentTitle, orientation = 'portrait', onStatusChange } = params;
   if (!containerElement) {
     return { success: false, error: 'Print container element not found in DOM.' };
   }
 
-  onStatusChange?.('Validating images and preparing multi-page A4 layout...');
+  onStatusChange?.(`Validating images and preparing multi-page A4 ${orientation} layout...`);
 
   // 1. Wait for all <img> elements inside the container to finish decoding
   const images = Array.from(containerElement.querySelectorAll('img'));
@@ -442,6 +461,11 @@ export async function exportValidatedPrintPdfDocument(params: {
     .map((el) => el.outerHTML)
     .join('\n');
 
+  const isLandscape = orientation === 'landscape';
+  const pageWidth = isLandscape ? '297mm' : '210mm';
+  const pageHeight = isLandscape ? '210mm' : '297mm';
+  const pagePadding = isLandscape ? '12mm 16mm' : '16mm 18mm';
+
   frameDoc.open();
   frameDoc.write(`<!DOCTYPE html>
 <html>
@@ -451,7 +475,7 @@ export async function exportValidatedPrintPdfDocument(params: {
     ${styleLinks}
     <style>
       @page {
-        size: A4 portrait;
+        size: A4 ${orientation};
         margin: 0mm;
       }
       @page viemma-placard {
@@ -469,10 +493,10 @@ export async function exportValidatedPrintPdfDocument(params: {
         height: auto !important;
       }
       .viemma-pdf-page {
-        width: 210mm !important;
-        min-height: 297mm !important;
-        max-height: 297mm !important;
-        padding: 16mm 18mm !important;
+        width: ${pageWidth} !important;
+        min-height: ${pageHeight} !important;
+        max-height: ${pageHeight} !important;
+        padding: ${pagePadding} !important;
         margin: 0 auto !important;
         box-sizing: border-box !important;
         page-break-after: always !important;

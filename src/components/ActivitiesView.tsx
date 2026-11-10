@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { AppState, Activity, Guide, AttachmentItem, TravellerGroup } from '../types';
 import { DB_DEFAULT } from '../dbDefaults';
-import { DEFAULT_EXPERIENCES } from '../data/libraryDefaults';
+import { DEFAULT_EXPERIENCES, mergeWithMasterCatalogue } from '../data/libraryDefaults';
 import { AttachmentManager } from './AttachmentManager';
 import { 
   Route, 
@@ -105,7 +105,11 @@ export const ActivitiesView: React.FC<ActivitiesViewProps> = ({
   const [isCatalogOpen, setIsCatalogOpen] = useState(false);
   const [catalogSearch, setCatalogSearch] = useState('');
   const [catalogCategory, setCatalogCategory] = useState('');
+  const [catalogProvince, setCatalogProvince] = useState('');
   const [catalogDestination, setCatalogDestination] = useState('');
+  const [catalogActivityType, setCatalogActivityType] = useState('');
+  const [catalogDurationFilter, setCatalogDurationFilter] = useState('');
+  const [selectedCatalogIds, setSelectedCatalogIds] = useState<string[]>([]);
   const [catalogTargetDay, setCatalogTargetDay] = useState<number>(1);
   const [catalogTargetSlot, setCatalogTargetSlot] = useState<'Morning' | 'Afternoon' | 'Evening' | 'Full Day'>('Morning');
   const [assigningActivityId, setAssigningActivityId] = useState<number | null>(null);
@@ -297,32 +301,85 @@ export const ActivitiesView: React.FC<ActivitiesViewProps> = ({
     return !isNaN(d.getTime()) ? d.toISOString().split('T')[0] : '';
   };
 
-  // Catalogue source (merging ExperienceLibrary with default catalog)
+  // Catalogue source (merging ExperienceLibrary with master South African catalogue)
   const catalogueList = useMemo(() => {
-    const list = state.experienceLibrary && state.experienceLibrary.length > 0 
-      ? state.experienceLibrary 
-      : DEFAULT_EXPERIENCES;
-    return list;
+    return mergeWithMasterCatalogue(state.experienceLibrary).filter(item => item.active !== false);
   }, [state.experienceLibrary]);
 
+  const matchesDurationBucket = (durationStr: string | undefined, bucket: string): boolean => {
+    if (!bucket) return true;
+    const raw = (durationStr || '').toLowerCase();
+    const mins = parseDurationMinutes(durationStr);
+    if (bucket === 'short') {
+      return (mins !== null && mins <= 240) || raw.includes('half day') || raw.includes('1–2') || raw.includes('2–3') || raw.includes('2–4');
+    }
+    if (bucket === 'fullday') {
+      return (mins !== null && mins > 240 && mins <= 600) || raw.includes('full day') || raw.includes('6–8') || raw.includes('7–9') || raw.includes('8–10');
+    }
+    if (bucket === 'multiday') {
+      return (mins !== null && mins > 600) || raw.includes('day') && !raw.includes('full day') && !raw.includes('half day') || raw.includes('overnight');
+    }
+    if (bucket === 'evening') {
+      return raw.includes('evening') || raw.includes('sunset') || raw.includes('night') || (mins !== null && mins <= 180 && raw.includes('cruise'));
+    }
+    return true;
+  };
+
   const filteredCatalogItems = useMemo(() => {
+    const query = catalogSearch.trim().toLowerCase();
+    const queryTokens = query ? query.split(/\s+/).filter(Boolean) : [];
+
     return catalogueList.filter(item => {
-      const matchesSearch = !catalogSearch || 
-        item.name.toLowerCase().includes(catalogSearch.toLowerCase()) ||
-        (item.shortDescription || '').toLowerCase().includes(catalogSearch.toLowerCase()) ||
-        (item.location || '').toLowerCase().includes(catalogSearch.toLowerCase());
+      const searchableCorpus = [
+        item.name,
+        ...(item.aliases || []),
+        item.shortDescription,
+        item.luxuryDescription,
+        item.location,
+        item.town,
+        item.destination,
+        item.province,
+        item.category,
+        item.subcategory,
+        item.activityType,
+        ...(item.highlights || []),
+      ]
+        .filter(Boolean)
+        .join(' ')
+        .toLowerCase();
+
+      const matchesSearch =
+        queryTokens.length === 0 ||
+        queryTokens.every(token => searchableCorpus.includes(token)) ||
+        searchableCorpus.includes(query);
+
       const matchesCategory = !catalogCategory || item.category === catalogCategory;
+      const matchesProvince = !catalogProvince || item.province === catalogProvince;
       const matchesDest = !catalogDestination || item.destination === catalogDestination;
-      return matchesSearch && matchesCategory && matchesDest;
+      const matchesType = !catalogActivityType || (item.activityType || 'Experience') === catalogActivityType;
+      const matchesDuration = matchesDurationBucket(item.duration, catalogDurationFilter);
+
+      return matchesSearch && matchesCategory && matchesProvince && matchesDest && matchesType && matchesDuration;
     });
-  }, [catalogueList, catalogSearch, catalogCategory, catalogDestination]);
+  }, [catalogueList, catalogSearch, catalogCategory, catalogProvince, catalogDestination, catalogActivityType, catalogDurationFilter]);
 
   const catalogCategories = useMemo(() => {
     return Array.from(new Set(catalogueList.map(item => item.category).filter(Boolean)));
   }, [catalogueList]);
 
+  const catalogProvinces = useMemo(() => {
+    return Array.from(new Set(catalogueList.map(item => item.province).filter(Boolean))) as string[];
+  }, [catalogueList]);
+
   const catalogDestinations = useMemo(() => {
-    return Array.from(new Set(catalogueList.map(item => item.destination).filter(Boolean)));
+    const base = catalogProvince
+      ? catalogueList.filter(item => item.province === catalogProvince)
+      : catalogueList;
+    return Array.from(new Set(base.map(item => item.destination).filter(Boolean)));
+  }, [catalogueList, catalogProvince]);
+
+  const catalogActivityTypes = useMemo(() => {
+    return Array.from(new Set(catalogueList.map(item => item.activityType || 'Experience').filter(Boolean)));
   }, [catalogueList]);
 
   // Fast Actions
@@ -340,6 +397,53 @@ export const ActivitiesView: React.FC<ActivitiesViewProps> = ({
     });
     setToastMessage(`Moved excursion to Day ${newDay} (${getDayFormattedDate(newDay)})`);
     setTimeout(() => setToastMessage(null), 3000);
+  };
+
+  const handleReorderActivityWithinDay = (activityId: number, direction: 'up' | 'down') => {
+    const target = state.activities.find(a => a.id === activityId);
+    if (!target) return;
+    const sameDayActs = state.activities
+      .filter(a => a.day === target.day && matchesSelectedGroup(a))
+      .sort((a, b) => (a.start || '00:00').localeCompare(b.start || '00:00') || a.id - b.id);
+    const currentIndex = sameDayActs.findIndex(a => a.id === activityId);
+    if (currentIndex === -1) return;
+    const swapIndex = direction === 'up' ? currentIndex - 1 : currentIndex + 1;
+    if (swapIndex < 0 || swapIndex >= sameDayActs.length) return;
+
+    const neighbor = sameDayActs[swapIndex];
+    // Swap start/end times and slots if they differ, or nudge time by 30 mins if identical
+    let nextTargetStart = neighbor.start || '09:00';
+    let nextNeighborStart = target.start || '11:00';
+    if (nextTargetStart === nextNeighborStart) {
+      nextTargetStart = direction === 'up' ? '09:00' : '14:00';
+      nextNeighborStart = direction === 'up' ? '14:00' : '09:00';
+    }
+
+    const updatedActivities = state.activities.map(act => {
+      if (act.id === target.id) {
+        return {
+          ...act,
+          start: nextTargetStart,
+          endTime: neighbor.endTime || act.endTime,
+          slot: neighbor.slot || act.slot,
+          updatedAt: new Date().toISOString(),
+        };
+      }
+      if (act.id === neighbor.id) {
+        return {
+          ...act,
+          start: nextNeighborStart,
+          endTime: target.endTime || act.endTime,
+          slot: target.slot || act.slot,
+          updatedAt: new Date().toISOString(),
+        };
+      }
+      return act;
+    });
+
+    onUpdateState({ activities: updatedActivities });
+    setToastMessage(`Reordered "${target.name}" ${direction === 'up' ? 'earlier' : 'later'} on Day ${target.day}`);
+    setTimeout(() => setToastMessage(null), 2500);
   };
 
   const handleDuplicateActivity = (a: Activity, targetDayNum?: number) => {
@@ -401,7 +505,24 @@ export const ActivitiesView: React.FC<ActivitiesViewProps> = ({
       : `Removed named group assignments from “${activity.name}”.`);
   };
 
-  const handleAddFromCatalog = (catalogItem: any, targetDayNum: number, slot: 'Morning' | 'Afternoon' | 'Evening' | 'Full Day', targetGroupIds: string[] = []) => {
+  const isCatalogItemAlreadyOnDay = (catalogItem: any, targetDayNum: number): boolean => {
+    return state.activities.some(
+      existing =>
+        existing.day === targetDayNum &&
+        existing.status !== 'Cancelled' &&
+        ((existing.catalogueId && existing.catalogueId === catalogItem.id) ||
+          existing.name.trim().toLowerCase() === (catalogItem.name || '').trim().toLowerCase())
+    );
+  };
+
+  const buildActivityFromCatalogItem = (
+    catalogItem: any,
+    targetDayNum: number,
+    slot: 'Morning' | 'Afternoon' | 'Evening' | 'Full Day',
+    targetGroupIds: string[] = [],
+    idOffset = 0,
+    customStartMinutesOffset = 0
+  ): Activity => {
     const slotTimes: Record<string, { start: string; end: string; pickup: string }> = {
       'Morning': { start: '09:00', end: '12:30', pickup: '08:30' },
       'Afternoon': { start: '14:00', end: '17:30', pickup: '13:30' },
@@ -409,52 +530,69 @@ export const ActivitiesView: React.FC<ActivitiesViewProps> = ({
       'Full Day': { start: '08:30', end: '17:00', pickup: '08:00' },
     };
 
-    const times = slotTimes[slot] || slotTimes['Morning'];
-    const durationEndTime = deriveEndTime(times.start, catalogItem.duration);
-    const scheduledEndTime = durationEndTime || times.end;
+    const effectiveSlot = (catalogItem.suitableSlot && slot === 'Morning' && idOffset > 0)
+      ? catalogItem.suitableSlot
+      : slot;
+    const baseTimes = slotTimes[effectiveSlot] || slotTimes['Morning'];
+    const baseStartMins = (parseClockMinutes(baseTimes.start) ?? 540) + customStartMinutesOffset;
+    const clampedStartMins = Math.min(baseStartMins, 20 * 60);
+    const startStr = `${String(Math.floor(clampedStartMins / 60)).padStart(2, '0')}:${String(clampedStartMins % 60).padStart(2, '0')}`;
+    const pickupMins = Math.max(0, clampedStartMins - 30);
+    const pickupStr = `${String(Math.floor(pickupMins / 60)).padStart(2, '0')}:${String(pickupMins % 60).padStart(2, '0')}`;
+
+    const durationEndTime = deriveEndTime(startStr, catalogItem.duration);
+    const scheduledEndTime = durationEndTime || baseTimes.end;
     // Preserve explicit zero prices; missing values remain visibly unpriced until confirmed.
     const priceAd = Number(catalogItem.priceAdult ?? catalogItem.adPrice ?? 0);
     const priceCh = Number(catalogItem.priceChild ?? catalogItem.chPrice ?? Math.round(priceAd * 0.5));
     const assignedGroupIds = Array.from(new Set(targetGroupIds)).filter(id => namedGroups.some(g => g.id === id));
-    const paxIds = getGroupRoster(assignedGroupIds);
+    const paxIds = assignedGroupIds.length > 0
+      ? getGroupRoster(assignedGroupIds)
+      : state.guests.map(g => g.id);
     const counts = countsForRoster(paxIds);
     const calculatedTotal = (priceAd * counts.adults) + (priceCh * counts.children);
 
-    const newActivity: Activity = {
-      id: Date.now(),
+    return {
+      id: Date.now() + idOffset,
+      catalogueId: catalogItem.id,
       day: targetDayNum,
       date: getDayIsoDate(targetDayNum),
-      slot: slot,
+      slot: effectiveSlot,
       name: catalogItem.name,
       desc: catalogItem.shortDescription || catalogItem.luxuryDescription || catalogItem.desc || '',
-      pickup: times.pickup,
-      start: times.start,
+      clientDescription: catalogItem.luxuryDescription || catalogItem.shortDescription || '',
+      pickup: pickupStr,
+      start: startStr,
       endTime: scheduledEndTime,
       dur: catalogItem.duration || '',
-      venue: catalogItem.location || '',
+      venue: catalogItem.location || catalogItem.town || catalogItem.destination || '',
       pickupLoc: catalogItem.pickupLoc || catalogItem.pickupLocation || '',
       responsiblePerson: catalogItem.responsiblePerson || '',
       status: 'Planned',
       conf: '',
-      supplier: catalogItem.supplier || '',
+      supplier: catalogItem.supplier || 'To be confirmed',
       supPhone: catalogItem.supplierPhone || catalogItem.supPhone || '',
       paxIds,
       groupIds: assignedGroupIds,
+      category: catalogItem.category || '',
+      destination: catalogItem.destination || '',
       pAdult: priceAd,
       pChild: priceCh,
       nAdult: counts.adults,
       nChild: counts.children,
       flat: 0,
       total: calculatedTotal,
-      inc: catalogItem.inclusions || [],
+      inc: catalogItem.inclusions || catalogItem.highlights || [],
       backup: catalogItem.backupPlan || catalogItem.backup || '',
-      notes: catalogItem.destination ? `Curated from Viemma Experience Catalog. Destination: ${catalogItem.destination}.` : 'Curated from Viemma Experience Catalog.',
+      notes: catalogItem.destination
+        ? `Curated from Viemma Experience Catalogue (${catalogItem.province ? `${catalogItem.province} — ` : ''}${catalogItem.destination}).`
+        : 'Curated from Viemma Experience Catalogue.',
       isFree: false,
       heroImage: catalogItem.featuredImage || catalogItem.images?.[0] || '',
-      gallery: catalogItem.images || [],
-      difficulty: catalogItem.difficulty || '',
-      suitableAges: catalogItem.suitableAges || '',
-      accessibility: catalogItem.accessibility || [],
+      gallery: catalogItem.images || (catalogItem.featuredImage ? [catalogItem.featuredImage] : []),
+      difficulty: catalogItem.difficulty || 'Easy',
+      suitableAges: catalogItem.familySuitability || catalogItem.suitableAges || 'All Ages',
+      accessibility: catalogItem.accessibility || (catalogItem.accessibilityNotes ? [catalogItem.accessibilityNotes] : []),
       weatherDependency: catalogItem.weatherDependency || '',
       dropoffLoc: catalogItem.dropoffLoc || '',
       excluded: catalogItem.excluded || [],
@@ -462,15 +600,83 @@ export const ActivitiesView: React.FC<ActivitiesViewProps> = ({
       dressCode: catalogItem.dressCode || '',
       safetyNotes: catalogItem.safetyNotes || '',
       photographyOpportunities: catalogItem.photographyOpportunities || '',
-      seasonalAvailability: catalogItem.seasonalAvailability || '',
+      seasonalAvailability: catalogItem.seasonalNotes || catalogItem.seasonalAvailability || '',
       faqs: catalogItem.faqs || [],
-      guideNotes: catalogItem.guideNotes || ''
+      guideNotes: catalogItem.availabilityNotes || catalogItem.guideNotes || '',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
     };
+  };
 
+  const handleAddFromCatalog = (catalogItem: any, targetDayNum: number, slot: 'Morning' | 'Afternoon' | 'Evening' | 'Full Day', targetGroupIds: string[] = []) => {
+    if (isCatalogItemAlreadyOnDay(catalogItem, targetDayNum)) {
+      setToastMessage(`"${catalogItem.name}" is already scheduled on Day ${targetDayNum}. Duplicate skipped.`);
+      setTimeout(() => setToastMessage(null), 3500);
+      return;
+    }
+
+    const newActivity = buildActivityFromCatalogItem(catalogItem, targetDayNum, slot, targetGroupIds, 0, 0);
     onAddActivity(newActivity);
     setAssigningActivityId(newActivity.id);
-    setToastMessage(`Added "${catalogItem.name}" to Day ${targetDayNum}. Assign the participating travellers to complete setup.`);
+    setSelectedCatalogIds(prev => prev.filter(id => id !== catalogItem.id));
+    setToastMessage(`Added "${catalogItem.name}" to Day ${targetDayNum}. Confirm or adjust participating travellers.`);
     setTimeout(() => setToastMessage(null), 3500);
+  };
+
+  const handleBatchAddFromCatalog = () => {
+    const selectedItems = catalogueList.filter(item => selectedCatalogIds.includes(item.id));
+    if (selectedItems.length === 0) return;
+
+    const toAdd: Activity[] = [];
+    const skippedDuplicates: string[] = [];
+
+    selectedItems.forEach((item, idx) => {
+      if (isCatalogItemAlreadyOnDay(item, catalogTargetDay)) {
+        skippedDuplicates.push(item.name);
+        return;
+      }
+      const nextAct = buildActivityFromCatalogItem(
+        item,
+        catalogTargetDay,
+        catalogTargetSlot,
+        catalogTargetGroupIds,
+        idx + 1,
+        toAdd.length * 180
+      );
+      toAdd.push(nextAct);
+    });
+
+    if (toAdd.length === 0) {
+      setToastMessage(`All ${skippedDuplicates.length} selected experience(s) are already scheduled on Day ${catalogTargetDay}.`);
+      setTimeout(() => setToastMessage(null), 3500);
+      return;
+    }
+
+    onUpdateState({
+      activities: [...state.activities, ...toAdd]
+    });
+
+    setSelectedCatalogIds([]);
+    setIsCatalogOpen(false);
+    setCatalogTargetGroupIds([]);
+    const dupMsg = skippedDuplicates.length > 0 ? ` (${skippedDuplicates.length} duplicate(s) skipped)` : '';
+    setToastMessage(`Added ${toAdd.length} experience${toAdd.length === 1 ? '' : 's'} to Day ${catalogTargetDay}${dupMsg}.`);
+    setTimeout(() => setToastMessage(null), 4000);
+  };
+
+  const handleToggleCatalogSelect = (id: string) => {
+    setSelectedCatalogIds(prev =>
+      prev.includes(id) ? prev.filter(item => item !== id) : [...prev, id]
+    );
+  };
+
+  const handleSelectAllVisibleCatalog = () => {
+    const visibleIds = filteredCatalogItems.map(item => item.id);
+    setSelectedCatalogIds(prev => Array.from(new Set([...prev, ...visibleIds])));
+  };
+
+  const handleClearCatalogSelection = () => {
+    setSelectedCatalogIds([]);
   };
 
   const toggleActivityExpand = (id: number) => {
@@ -861,23 +1067,23 @@ export const ActivitiesView: React.FC<ActivitiesViewProps> = ({
           </div>
 
           {editingActivityId === null && (
-            <div className="flex flex-wrap items-center gap-2 shrink-0">
+            <div className="flex flex-wrap items-center gap-2.5 shrink-0">
               <button 
                 onClick={handleOpenCatalogueForCurrentDay}
-                className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-[#D4AF37] text-[#1A3326] hover:bg-[#c29d2b] text-xs font-black shadow-md hover:scale-102 active:scale-95 transition cursor-pointer"
-                title="Browse and select activities from curated DMC library"
+                className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[#D4AF37] text-[#1A3326] hover:bg-[#c29d2b] text-xs font-black shadow-md hover:scale-102 active:scale-95 transition cursor-pointer"
+                title="Open South African Master Experience Catalogue to search and multi-select activities"
               >
-                <BookOpen size={14} />
-                <span>Select from Catalogue</span>
+                <Plus size={15} />
+                <span>+ Add Activities</span>
               </button>
 
               <button 
-                onClick={handleOpenAddForm} 
+                onClick={() => handleOpenAddForm()} 
                 className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-[#1A3326] text-white hover:bg-[#12241b] text-xs font-bold shadow-md hover:scale-102 active:scale-95 transition cursor-pointer"
-                title="Create a custom bespoke excursion from scratch"
+                title="Create a custom manual activity from scratch"
               >
-                <Plus size={14} />
-                <span>+ Custom Outing</span>
+                <Edit3 size={13} />
+                <span>Manual Activity</span>
               </button>
             </div>
           )}
@@ -1963,15 +2169,15 @@ export const ActivitiesView: React.FC<ActivitiesViewProps> = ({
                   onClick={handleOpenCatalogueForCurrentDay}
                   className="px-5 py-2.5 bg-[#D4AF37] text-[#1A3326] rounded-xl text-xs font-black shadow-md hover:bg-[#c29d2b] transition flex items-center gap-2 cursor-pointer active:scale-95"
                 >
-                  <BookOpen size={14} />
-                  <span>Select from Curated Catalogue</span>
+                  <Plus size={14} />
+                  <span>+ Add Activities</span>
                 </button>
                 <button 
-                  onClick={handleOpenAddForm} 
+                  onClick={() => handleOpenAddForm()} 
                   className="px-5 py-2.5 bg-[#1A3326] text-white rounded-xl text-xs font-bold shadow hover:bg-[#12241b] transition flex items-center gap-2 cursor-pointer active:scale-95"
                 >
-                  <Plus size={14} />
-                  <span>Configure Custom Outing</span>
+                  <Edit3 size={14} />
+                  <span>Create Manual Activity</span>
                 </button>
               </div>
             </div>
@@ -2066,19 +2272,19 @@ export const ActivitiesView: React.FC<ActivitiesViewProps> = ({
                                 setCatalogTargetDay(dayNum);
                                 setIsCatalogOpen(true);
                               }}
-                              className="px-3 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-bold transition flex items-center gap-1.5 border border-white/15 cursor-pointer active:scale-95"
-                              title={`Select experience for Day ${dayNum} from catalogue`}
+                              className="px-3.5 py-2 rounded-xl bg-[#D4AF37] text-[#1A3326] text-xs font-black transition flex items-center gap-1.5 shadow-sm hover:bg-[#c29d2b] cursor-pointer active:scale-95"
+                              title={`Search and select activities for Day ${dayNum}`}
                             >
-                              <BookOpen size={13} className="text-[#D4AF37]" />
-                              <span>+ Browse Catalogue</span>
+                              <Plus size={13} />
+                              <span>+ Add Activities</span>
                             </button>
                             <button
                               onClick={() => handleOpenAddForm(dayNum)}
-                              className="px-3 py-2 rounded-xl bg-[#D4AF37] text-[#1A3326] text-xs font-black transition flex items-center gap-1.5 shadow-sm hover:bg-[#c29d2b] cursor-pointer active:scale-95"
-                              title={`Add custom activity to Day ${dayNum}`}
+                              className="px-3 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-bold transition flex items-center gap-1.5 border border-white/15 cursor-pointer active:scale-95"
+                              title={`Add manual activity to Day ${dayNum}`}
                             >
-                              <Plus size={13} />
-                              <span>+ Custom Outing</span>
+                              <Edit3 size={12} className="text-[#D4AF37]" />
+                              <span>Manual Activity</span>
                             </button>
                           </div>
                         </div>
@@ -2113,15 +2319,15 @@ export const ActivitiesView: React.FC<ActivitiesViewProps> = ({
                                     setCatalogTargetDay(dayNum);
                                     setIsCatalogOpen(true);
                                   }}
-                                  className="text-xs font-bold text-[#1A3326] bg-white border border-gray-200 hover:border-[#D4AF37] px-3 py-1.5 rounded-xl transition flex items-center gap-1 shadow-2xs"
+                                  className="text-xs font-bold text-[#1A3326] bg-[#D4AF37] hover:bg-[#c29d2b] px-4 py-2 rounded-xl transition flex items-center gap-1.5 shadow-xs cursor-pointer"
                                 >
-                                  <BookOpen size={12} className="text-[#D4AF37]" />
-                                  <span>Select from Curated Catalogue</span>
+                                  <Plus size={13} />
+                                  <span>+ Add Activities to Day {dayNum}</span>
                                 </button>
                               </div>
                             </div>
                           ) : (
-                            dayActs.map(a => {
+                            dayActs.map((a, actIdx) => {
                               const isExpanded = expandedActivityIds.includes(a.id);
                               const assignedPax = state.guests.filter(g => a.paxIds?.includes(g.id));
                               const conflicts = getActivityConflicts(a);
@@ -2211,6 +2417,30 @@ export const ActivitiesView: React.FC<ActivitiesViewProps> = ({
                                         </div>
 
                                         <div className="flex items-center gap-1">
+                                          {/* Reorder Earlier / Later within Day */}
+                                          {dayActs.length > 1 && (
+                                            <div className="inline-flex items-center rounded-xl border border-gray-200 bg-slate-50 p-0.5 mr-0.5">
+                                              <button
+                                                type="button"
+                                                disabled={actIdx === 0}
+                                                onClick={() => handleReorderActivityWithinDay(a.id, 'up')}
+                                                className="w-7 h-7 rounded-lg text-gray-600 hover:text-[#1A3326] hover:bg-white disabled:opacity-30 flex items-center justify-center transition cursor-pointer disabled:cursor-not-allowed"
+                                                title="Move earlier in the day"
+                                              >
+                                                <ChevronUp size={13} />
+                                              </button>
+                                              <button
+                                                type="button"
+                                                disabled={actIdx === dayActs.length - 1}
+                                                onClick={() => handleReorderActivityWithinDay(a.id, 'down')}
+                                                className="w-7 h-7 rounded-lg text-gray-600 hover:text-[#1A3326] hover:bg-white disabled:opacity-30 flex items-center justify-center transition cursor-pointer disabled:cursor-not-allowed"
+                                                title="Move later in the day"
+                                              >
+                                                <ChevronDown size={13} />
+                                              </button>
+                                            </div>
+                                          )}
+
                                           {/* Move to another day dropdown */}
                                           <div className="flex items-center gap-1 text-[11px] bg-slate-50 border border-gray-200 px-2 py-1 rounded-xl">
                                             <span className="text-gray-400 font-bold uppercase text-[9px]">Day:</span>
@@ -2576,51 +2806,79 @@ export const ActivitiesView: React.FC<ActivitiesViewProps> = ({
         </div>
       )}
 
-      {/* CURATED EXPERIENCE CATALOGUE SLIDE-OVER DRAWER */}
+      {/* SOUTH AFRICAN MASTER EXPERIENCE CATALOGUE & MULTI-SELECT ACTIVITY BUILDER MODAL */}
       {isCatalogOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-xs animate-in fade-in">
-          <div className="bg-white rounded-md max-w-4xl w-full max-h-[90vh] flex flex-col overflow-hidden shadow-sm border border-gray-100 animate-in zoom-in-95">
-            {/* Drawer Header */}
-            <div className="bg-[#1A3326] text-white p-5 flex items-center justify-between shrink-0">
-              <div className="space-y-1">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/70 backdrop-blur-xs animate-in fade-in">
+          <div className="bg-white rounded-xl max-w-6xl w-full max-h-[92vh] flex flex-col overflow-hidden shadow-xl border border-gray-200 animate-in zoom-in-95">
+            {/* Modal Header */}
+            <div className="bg-[#1A3326] text-white px-5 py-4 flex items-center justify-between shrink-0">
+              <div className="space-y-0.5">
                 <span className="text-[10px] uppercase font-bold text-[#D4AF37] tracking-widest block">
-                  Curated DMC Catalogue
+                  South African Master Experience Catalogue • {catalogueList.length} Verified Experiences
                 </span>
-                <h3 className="text-xl font-bold font-sans flex items-center gap-2">
+                <h3 className="text-lg sm:text-xl font-bold font-sans flex items-center gap-2">
                   <BookOpen size={20} className="text-[#D4AF37]" />
-                  Select & Schedule Experiences
+                  Add Activities to Daily Programme
                 </h3>
                 <p className="text-xs text-gray-300">
-                  Select hand-picked Southern African excursions directly into your trip itinerary programme.
+                  Search by activity, landmark, town, province or alias, multi-select experiences, and add them to your chosen day in one click.
                 </p>
               </div>
-              <button 
-                onClick={() => setIsCatalogOpen(false)}
-                className="w-9 h-9 rounded-xl bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition cursor-pointer"
-              >
-                ✕
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    const prefillName = catalogSearch.trim();
+                    setIsCatalogOpen(false);
+                    handleOpenAddForm(catalogTargetDay);
+                    if (prefillName) {
+                      setAForm(prev => ({ ...prev, name: prefillName }));
+                    }
+                  }}
+                  className="px-3.5 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-bold flex items-center gap-1.5 border border-white/20 transition cursor-pointer"
+                >
+                  <Plus size={13} className="text-[#D4AF37]" />
+                  <span>+ Manual Activity</span>
+                </button>
+                <button 
+                  onClick={() => setIsCatalogOpen(false)}
+                  className="w-9 h-9 rounded-xl bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition cursor-pointer"
+                  aria-label="Close activity catalogue"
+                >
+                  ✕
+                </button>
+              </div>
             </div>
 
-            {/* Filter & Target Day Strip */}
+            {/* Search, Filters & Target Day / Group Strip */}
             <div className="p-4 bg-slate-50 border-b border-gray-200 shrink-0 space-y-3">
-              <div className="flex flex-col md:flex-row items-center gap-3">
+              <div className="flex flex-col lg:flex-row items-stretch lg:items-center gap-3">
                 {/* Search Input */}
-                <div className="relative flex-1 w-full">
+                <div className="relative flex-1">
                   <Search size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
                   <input
                     type="text"
-                    placeholder="Search safari, cableway, winery, cruise, penguins..."
+                    placeholder="Search activity, landmark, town or alias (e.g. penguins, Franschhoek, safari, Table Mountain, Soweto)..."
                     value={catalogSearch}
                     onChange={(e) => setCatalogSearch(e.target.value)}
-                    className="w-full pl-9 pr-4 py-2 bg-white rounded-xl border border-gray-200 text-xs text-gray-800 focus:outline-none focus:border-[#D4AF37]"
+                    className="w-full pl-9 pr-8 py-2.5 bg-white rounded-xl border border-gray-200 text-xs text-gray-800 focus:outline-none focus:border-[#D4AF37]"
                   />
+                  {catalogSearch && (
+                    <button
+                      type="button"
+                      onClick={() => setCatalogSearch('')}
+                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-700 text-xs"
+                    >
+                      ✕
+                    </button>
+                  )}
                 </div>
 
-                {/* Target Day Selector */}
-                <div className="flex items-center gap-2 shrink-0 w-full md:w-auto">
+                {/* Target Day & Slot Selectors */}
+                <div className="flex flex-wrap items-center gap-2 shrink-0">
                   <span className="text-[11px] font-bold text-gray-600 uppercase">Target Day:</span>
                   <select
+                    aria-label="Target Programme Day"
                     value={catalogTargetDay}
                     onChange={(e) => setCatalogTargetDay(Number(e.target.value))}
                     className="px-3 py-2 bg-white rounded-xl border border-gray-200 text-xs font-bold text-[#1A3326] focus:outline-none focus:border-[#D4AF37]"
@@ -2632,8 +2890,8 @@ export const ActivitiesView: React.FC<ActivitiesViewProps> = ({
                     ))}
                   </select>
 
-                  {/* Target Slot Selector */}
                   <select
+                    aria-label="Target Time Slot"
                     value={catalogTargetSlot}
                     onChange={(e) => setCatalogTargetSlot(e.target.value as any)}
                     className="px-3 py-2 bg-white rounded-xl border border-gray-200 text-xs font-bold text-[#1A3326] focus:outline-none focus:border-[#D4AF37]"
@@ -2646,102 +2904,272 @@ export const ActivitiesView: React.FC<ActivitiesViewProps> = ({
                 </div>
               </div>
 
+              {/* Structured Filters Row: Province, Destination, Activity Type, Duration */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                <select
+                  aria-label="Filter by Province"
+                  value={catalogProvince}
+                  onChange={e => {
+                    setCatalogProvince(e.target.value);
+                    setCatalogDestination('');
+                  }}
+                  className="px-3 py-2 bg-white rounded-xl border border-gray-200 text-xs font-semibold text-gray-700 focus:outline-none focus:border-[#D4AF37]"
+                >
+                  <option value="">All Provinces ({catalogProvinces.length})</option>
+                  {catalogProvinces.map(prov => (
+                    <option key={prov} value={prov}>{prov}</option>
+                  ))}
+                </select>
+
+                <select
+                  aria-label="Filter by Destination"
+                  value={catalogDestination}
+                  onChange={e => setCatalogDestination(e.target.value)}
+                  className="px-3 py-2 bg-white rounded-xl border border-gray-200 text-xs font-semibold text-gray-700 focus:outline-none focus:border-[#D4AF37]"
+                >
+                  <option value="">All Destinations ({catalogDestinations.length})</option>
+                  {catalogDestinations.map(dest => (
+                    <option key={dest} value={dest}>{dest}</option>
+                  ))}
+                </select>
+
+                <select
+                  aria-label="Filter by Activity Type"
+                  value={catalogActivityType}
+                  onChange={e => setCatalogActivityType(e.target.value)}
+                  className="px-3 py-2 bg-white rounded-xl border border-gray-200 text-xs font-semibold text-gray-700 focus:outline-none focus:border-[#D4AF37]"
+                >
+                  <option value="">All Activity Types</option>
+                  {catalogActivityTypes.map(type => (
+                    <option key={type} value={type}>{type}</option>
+                  ))}
+                </select>
+
+                <select
+                  aria-label="Filter by Duration"
+                  value={catalogDurationFilter}
+                  onChange={e => setCatalogDurationFilter(e.target.value)}
+                  className="px-3 py-2 bg-white rounded-xl border border-gray-200 text-xs font-semibold text-gray-700 focus:outline-none focus:border-[#D4AF37]"
+                >
+                  <option value="">All Durations</option>
+                  <option value="short">Half Day / Under 4 Hours</option>
+                  <option value="fullday">Full Day (4–10 Hours)</option>
+                  <option value="evening">Sunset / Evening</option>
+                  <option value="multiday">Multi-Day / Overnight</option>
+                </select>
+              </div>
+
               {namedGroups.length > 0 && (
-                <div className="space-y-2 rounded-xl border border-slate-200 bg-white p-3">
-                  <p className="text-[10px] font-bold uppercase tracking-wider text-slate-600">Assign this experience to groups</p>
+                <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-slate-200 bg-white px-3.5 py-2.5">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-600">
+                    Traveller Group Assignment:
+                  </span>
                   <div className="flex flex-wrap gap-2">
                     {namedGroups.map(group => (
-                      <label key={group.id} className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-700">
-                        <input type="checkbox" checked={catalogTargetGroupIds.includes(group.id)} onChange={e => setCatalogTargetGroupIds(current => e.target.checked ? Array.from(new Set([...current, group.id])) : current.filter(id => id !== group.id))} className="accent-[#1A3326]" />
-                        <span>{group.name}</span><span className="text-[10px] text-slate-500">({group.memberIds.length})</span>
+                      <label key={group.id} className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs text-slate-700 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={catalogTargetGroupIds.includes(group.id)}
+                          onChange={e =>
+                            setCatalogTargetGroupIds(current =>
+                              e.target.checked
+                                ? Array.from(new Set([...current, group.id]))
+                                : current.filter(id => id !== group.id)
+                            )
+                          }
+                          className="accent-[#1A3326]"
+                        />
+                        <span>{group.name}</span>
+                        <span className="text-[10px] text-slate-500">({group.memberIds.length})</span>
                       </label>
                     ))}
                   </div>
-                  <p className="text-[10px] text-slate-500">Selected group members will be assigned to the activity. Leave groups unchecked to assign individuals afterward.</p>
                 </div>
               )}
 
               {/* Category Filter Pills */}
               <div className="flex items-center gap-1.5 overflow-x-auto pb-1 text-xs">
                 <button
+                  type="button"
                   onClick={() => setCatalogCategory('')}
-                  className={`px-3 py-1 rounded-lg font-bold transition whitespace-nowrap ${
-                    !catalogCategory ? 'bg-[#1A3326] text-white shadow-2xs' : 'bg-white text-gray-600 border border-gray-200'
+                  className={`px-3 py-1 rounded-lg font-bold transition whitespace-nowrap cursor-pointer ${
+                    !catalogCategory ? 'bg-[#1A3326] text-white shadow-2xs' : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-100'
                   }`}
                 >
                   All Categories
                 </button>
                 {catalogCategories.map(cat => (
                   <button
+                    type="button"
                     key={cat}
                     onClick={() => setCatalogCategory(cat)}
-                    className={`px-3 py-1 rounded-lg font-bold transition whitespace-nowrap ${
-                      catalogCategory === cat ? 'bg-[#1A3326] text-white shadow-2xs' : 'bg-white text-gray-600 border border-gray-200'
+                    className={`px-3 py-1 rounded-lg font-bold transition whitespace-nowrap cursor-pointer ${
+                      catalogCategory === cat ? 'bg-[#1A3326] text-white shadow-2xs' : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-100'
                     }`}
                   >
                     {cat}
                   </button>
                 ))}
               </div>
+
+              {/* Multi-Select & Batch Action Bar */}
+              <div className="flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-gray-200 text-xs">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="font-bold text-slate-700">
+                    Showing {filteredCatalogItems.length} of {catalogueList.length} experiences
+                  </span>
+                  <span className="text-slate-300">•</span>
+                  <button
+                    type="button"
+                    onClick={handleSelectAllVisibleCatalog}
+                    className="px-2.5 py-1 rounded-lg border border-slate-300 bg-white hover:bg-slate-100 text-slate-800 font-semibold cursor-pointer"
+                  >
+                    Select all visible results ({filteredCatalogItems.length})
+                  </button>
+                  {selectedCatalogIds.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={handleClearCatalogSelection}
+                      className="px-2.5 py-1 rounded-lg border border-rose-200 bg-rose-50 hover:bg-rose-100 text-rose-800 font-semibold cursor-pointer"
+                    >
+                      Clear selection ({selectedCatalogIds.length})
+                    </button>
+                  )}
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <span className="px-2.5 py-1 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-900 font-bold">
+                    {selectedCatalogIds.length} selected
+                  </span>
+                  <button
+                    type="button"
+                    disabled={selectedCatalogIds.length === 0}
+                    onClick={handleBatchAddFromCatalog}
+                    className="px-4 py-2 rounded-xl bg-[#D4AF37] text-[#1A3326] hover:bg-[#c29d2b] disabled:opacity-40 disabled:cursor-not-allowed font-black shadow-xs transition flex items-center gap-1.5 cursor-pointer"
+                  >
+                    <Check size={14} />
+                    <span>Add Selected ({selectedCatalogIds.length}) to Day {catalogTargetDay}</span>
+                  </button>
+                </div>
+              </div>
             </div>
 
-            {/* Catalog Grid */}
-            <div className="p-6 overflow-y-auto flex-1 grid grid-cols-1 md:grid-cols-2 gap-4">
-              {filteredCatalogItems.map(item => (
-                <div 
-                  key={item.id}
-                  className="bg-white rounded-2xl border border-gray-200 p-4 flex gap-4 hover:shadow-md transition-all hover:border-[#D4AF37]/50 group"
-                >
-                  <div className="w-28 h-28 rounded-xl bg-slate-100 overflow-hidden shrink-0 relative">
-                    <img 
-                      src={item.featuredImage || item.images?.[0]} 
-                      alt={item.name} 
-                      className="w-full h-full object-cover group-hover:scale-105 transition duration-300" 
-                    />
-                    <span className="absolute bottom-1 right-1 bg-black/70 px-1.5 py-0.5 rounded text-[9px] font-bold text-white">
-                      R{item.priceAdult ?? (item as any).adPrice ?? 0}
-                    </span>
-                  </div>
+            {/* Catalogue Results Grid */}
+            <div className="p-5 overflow-y-auto flex-1 grid grid-cols-1 md:grid-cols-2 gap-4">
+              {filteredCatalogItems.map(item => {
+                const isSelected = selectedCatalogIds.includes(item.id);
+                const alreadyOnDay = isCatalogItemAlreadyOnDay(item, catalogTargetDay);
+                const priceAd = Number(item.priceAdult ?? (item as any).adPrice ?? 0);
+                const priceCh = Number(item.priceChild ?? (item as any).chPrice ?? 0);
 
-                  <div className="flex-1 flex flex-col justify-between space-y-2 min-w-0">
-                    <div className="space-y-1">
-                      <div className="flex items-center gap-2">
-                        <span className="text-[9px] font-extrabold uppercase text-[#D4AF37] tracking-wider truncate">
-                          {item.destination} • {item.category}
+                return (
+                  <div 
+                    key={item.id}
+                    onClick={() => handleToggleCatalogSelect(item.id)}
+                    className={`bg-white rounded-2xl border p-4 flex gap-4 transition-all cursor-pointer group ${
+                      isSelected
+                        ? 'border-[#1A3326] ring-2 ring-[#D4AF37]/60 bg-emerald-50/20 shadow-md'
+                        : 'border-gray-200 hover:shadow-md hover:border-[#D4AF37]/60'
+                    }`}
+                  >
+                    <div className="flex flex-col items-center gap-2 shrink-0">
+                      <input
+                        type="checkbox"
+                        checked={isSelected}
+                        onChange={() => handleToggleCatalogSelect(item.id)}
+                        onClick={e => e.stopPropagation()}
+                        aria-label={`Select ${item.name}`}
+                        className="w-4 h-4 rounded accent-[#1A3326] cursor-pointer mt-0.5"
+                      />
+                      <div className="w-28 h-24 rounded-xl bg-slate-100 overflow-hidden relative">
+                        <img 
+                          src={item.featuredImage || item.images?.[0]} 
+                          alt={item.name} 
+                          className="w-full h-full object-cover group-hover:scale-105 transition duration-300" 
+                        />
+                        <span className="absolute bottom-1 right-1 bg-black/75 px-1.5 py-0.5 rounded text-[9px] font-bold text-white">
+                          {priceAd > 0 ? `R${priceAd}` : 'Rate TBC'}
                         </span>
-                        <span className="text-gray-300">•</span>
-                        <span className="text-[10px] text-gray-400 font-medium">{item.duration}</span>
                       </div>
-                      <h4 className="font-bold text-gray-900 text-xs leading-snug line-clamp-1">{item.name}</h4>
-                      <p className="text-[11px] text-gray-500 line-clamp-2 leading-relaxed">
-                        {item.shortDescription || item.luxuryDescription || (item as any).desc}
-                      </p>
                     </div>
 
-                    <div className="flex items-center justify-between pt-1">
-                      <span className="text-[10px] font-mono font-bold text-[#1A3326]">
-                        R{item.priceAdult ?? (item as any).adPrice ?? 0} ad / R{item.priceChild ?? (item as any).chPrice ?? 0} ch
-                      </span>
-                      <button
-                        onClick={() => {
-                          handleAddFromCatalog(item, catalogTargetDay, catalogTargetSlot, catalogTargetGroupIds);
-                          setIsCatalogOpen(false);
-                          setCatalogTargetGroupIds([]);
-                        }}
-                        className="px-3 py-1.5 rounded-lg bg-[#1A3326] text-white hover:bg-[#12241b] text-[11px] font-bold flex items-center gap-1 transition shadow-2xs active:scale-95 cursor-pointer"
-                        title={`Add to Day ${catalogTargetDay} (${catalogTargetSlot})`}
-                      >
-                        <Plus size={12} />
-                        <span>Add to Day {catalogTargetDay}</span>
-                      </button>
+                    <div className="flex-1 flex flex-col justify-between space-y-2 min-w-0">
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className="text-[9px] font-extrabold uppercase text-[#8A6A00] tracking-wider">
+                            {item.province ? `${item.province} • ` : ''}{item.destination}
+                          </span>
+                          <span className="text-gray-300">•</span>
+                          <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-slate-100 text-slate-700">
+                            {item.category}
+                          </span>
+                          {item.activityType && (
+                            <span className="text-[9px] font-semibold px-1.5 py-0.5 rounded bg-amber-50 text-amber-900 border border-amber-200">
+                              {item.activityType}
+                            </span>
+                          )}
+                          <span className="text-[10px] text-gray-500 font-medium ml-auto">{item.duration}</span>
+                        </div>
+                        <h4 className="font-bold text-gray-900 text-xs sm:text-sm leading-snug">{item.name}</h4>
+                        {item.town && (
+                          <p className="text-[10px] text-slate-500 font-medium flex items-center gap-1">
+                            <MapPin size={10} className="text-[#D4AF37]" /> {item.town}{item.location ? ` — ${item.location}` : ''}
+                          </p>
+                        )}
+                        <p className="text-[11px] text-gray-600 line-clamp-2 leading-relaxed">
+                          {item.shortDescription || item.luxuryDescription || (item as any).desc}
+                        </p>
+                      </div>
+
+                      <div className="flex items-center justify-between pt-1.5 border-t border-slate-100">
+                        <span className="text-[10px] font-mono font-bold text-[#1A3326]">
+                          {priceAd > 0 ? `R${priceAd} ad / R${priceCh} ch` : 'Supplier rate TBC'}
+                        </span>
+                        <div className="flex items-center gap-2" onClick={e => e.stopPropagation()}>
+                          {alreadyOnDay ? (
+                            <span className="px-2.5 py-1 rounded-lg bg-emerald-100 text-emerald-800 text-[10px] font-bold">
+                              ✓ On Day {catalogTargetDay}
+                            </span>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                handleAddFromCatalog(item, catalogTargetDay, catalogTargetSlot, catalogTargetGroupIds);
+                              }}
+                              className="px-3 py-1.5 rounded-lg bg-[#1A3326] text-white hover:bg-[#12241b] text-[11px] font-bold flex items-center gap-1 transition shadow-2xs active:scale-95 cursor-pointer"
+                              title={`Quick add "${item.name}" to Day ${catalogTargetDay}`}
+                            >
+                              <Plus size={12} />
+                              <span>Add to Day {catalogTargetDay}</span>
+                            </button>
+                          )}
+                        </div>
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
 
               {filteredCatalogItems.length === 0 && (
-                <div className="col-span-full py-12 text-center text-gray-400 text-xs">
-                  No matching experiences found in curated catalogue.
+                <div className="col-span-full py-12 text-center space-y-3">
+                  <p className="text-gray-500 text-xs font-medium">
+                    No matching experiences found in the catalogue for "{catalogSearch}".
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const prefillName = catalogSearch.trim();
+                      setIsCatalogOpen(false);
+                      handleOpenAddForm(catalogTargetDay);
+                      if (prefillName) {
+                        setAForm(prev => ({ ...prev, name: prefillName }));
+                      }
+                    }}
+                    className="px-4 py-2 rounded-xl bg-[#1A3326] text-white text-xs font-bold inline-flex items-center gap-1.5 cursor-pointer"
+                  >
+                    <Plus size={13} />
+                    <span>Create Manual Activity "{catalogSearch || 'Custom'}" on Day {catalogTargetDay}</span>
+                  </button>
                 </div>
               )}
             </div>

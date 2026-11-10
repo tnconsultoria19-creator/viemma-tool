@@ -91,13 +91,41 @@ export const ClientView: React.FC<Props> = ({ state: rawState, onBackToWorkspace
   const experienceLibrary = state.experienceLibrary || [];
   const destinationLibrary = state.destinationLibrary || [];
 
-  // Group activities by day
+  const [showAllDaysMobile, setShowAllDaysMobile] = useState<boolean>(false);
+
+  // Compute full trip days span from start/end dates and scheduled activities
   const days: number[] = useMemo(() => {
-    const dList = Array.from(new Set(state.activities.filter(a => a.status !== 'Cancelled').map(a => a.day)))
-      .map(Number)
-      .sort((a, b) => a - b);
-    return dList.length > 0 ? dList : [1];
-  }, [state.activities]);
+    let maxDay = 1;
+    if (state.client?.startDate && state.client?.endDate) {
+      const start = new Date(state.client.startDate);
+      const end = new Date(state.client.endDate);
+      if (!Number.isNaN(start.getTime()) && !Number.isNaN(end.getTime()) && end >= start) {
+        const diffDays = Math.floor((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+        maxDay = Math.max(maxDay, Math.min(diffDays, 30));
+      }
+    }
+    const actMax = state.activities
+      .filter(a => a.status !== 'Cancelled')
+      .reduce((m, a) => Math.max(m, Number(a.day) || 1), 0);
+    maxDay = Math.max(maxDay, actMax, 1);
+    return Array.from({ length: maxDay }, (_, idx) => idx + 1);
+  }, [state.client?.startDate, state.client?.endDate, state.activities]);
+
+  const getDayIsoDate = (dayNum: number): string => {
+    if (!state.client?.startDate) return '';
+    const d = new Date(state.client.startDate);
+    if (Number.isNaN(d.getTime())) return '';
+    d.setDate(d.getDate() + (dayNum - 1));
+    return d.toISOString().split('T')[0];
+  };
+
+  const getDayReadableDate = (dayNum: number): string => {
+    const iso = getDayIsoDate(dayNum);
+    if (!iso) return `Day ${dayNum}`;
+    const d = new Date(`${iso}T00:00:00`);
+    if (Number.isNaN(d.getTime())) return iso;
+    return d.toLocaleDateString('en-ZA', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
+  };
 
   const currentDay = activeDay || days[0];
 
@@ -106,6 +134,139 @@ export const ClientView: React.FC<Props> = ({ state: rawState, onBackToWorkspace
       return (a.start || '').localeCompare(b.start || '');
     });
   }, [currentDay, state.activities]);
+
+  // Unified Chronological Timeline Events for any day (Flights + Transfers + Hotel Check-in/out + Activities)
+  const buildChronologicalDayEvents = (dayNum: number) => {
+    const isoDate = getDayIsoDate(dayNum);
+    const events: Array<{
+      id: string;
+      time: string;
+      endTime?: string;
+      kind: 'flight' | 'transfer' | 'hotel' | 'activity';
+      title: string;
+      subtitle: string;
+      location: string;
+      notes?: string;
+      thumbnail?: string;
+      gallery?: string[];
+      inclusions?: string[];
+      duration?: string;
+      statusLabel?: string;
+    }> = [];
+
+    // 1. Flights on this date
+    if (isoDate) {
+      state.flights
+        .filter(f => f.status !== 'Cancelled' && f.date === isoDate)
+        .forEach(f => {
+          events.push({
+            id: `flt-${f.id}`,
+            time: f.depTime || f.arrTime || '08:00',
+            endTime: f.arrTime || undefined,
+            kind: 'flight',
+            title: `${f.type || 'Flight'}: ${f.airline} ${f.flightNo}`,
+            subtitle: `${f.from} → ${f.to}${f.arrTime ? ` (Arrives ${f.arrTime})` : ''}`,
+            location: `${f.from} Airport`,
+            notes: f.luggage ? `Luggage allowance: ${f.luggage}` : undefined,
+            statusLabel: f.status || 'Scheduled',
+          });
+        });
+
+      // 2. Ground Transfers on this date
+      state.transfers
+        .filter(t => t.status !== 'Cancelled' && t.date === isoDate)
+        .forEach(t => {
+          events.push({
+            id: `trf-${t.id}`,
+            time: t.time || '08:30',
+            kind: 'transfer',
+            title: `${t.type || 'Private Transfer'}: ${t.from} → ${t.to}`,
+            subtitle: `${t.veh || 'Private Luxury Vehicle'}${t.pickupTime && t.pickupTime !== t.time ? ` · Collection at ${t.pickupTime}` : ''}`,
+            location: t.from || 'Pickup Point',
+            notes: t.board ? `Welcome Sign: "${t.board}"` : undefined,
+            statusLabel: t.status || 'Scheduled',
+          });
+        });
+
+      // 3. Hotel Check-in / Check-out on this date
+      state.rooms
+        .filter(r => r.status !== 'Cancelled')
+        .forEach(r => {
+          if (r.cin === isoDate) {
+            events.push({
+              id: `htl-in-${r.id}`,
+              time: '14:00',
+              kind: 'hotel',
+              title: `Check-In: ${r.hotel}`,
+              subtitle: `${r.roomType} · ${r.meal} Basis (${r.nights} Nights)`,
+              location: r.address || r.destination || r.hotel,
+              thumbnail: r.propertyImages?.[0],
+              gallery: r.propertyImages,
+              statusLabel: r.status || 'Confirmed',
+            });
+          } else if (r.cout === isoDate) {
+            events.push({
+              id: `htl-out-${r.id}`,
+              time: '10:00',
+              kind: 'hotel',
+              title: `Check-Out: ${r.hotel}`,
+              subtitle: `Departure after breakfast`,
+              location: r.address || r.destination || r.hotel,
+              thumbnail: r.propertyImages?.[0],
+              statusLabel: 'Check-Out',
+            });
+          }
+        });
+    }
+
+    // 4. Activities scheduled on this day
+    state.activities
+      .filter(a => a.day === dayNum && a.status !== 'Cancelled')
+      .forEach(act => {
+        const libMatch = experienceLibrary.find(i => i.name === act.name || (act.catalogueId && i.id === act.catalogueId));
+        const actHero = act.heroImage || libMatch?.featuredImage || libMatch?.images?.[0] || '';
+        const actGallery = act.gallery && act.gallery.length > 0
+          ? act.gallery
+          : libMatch?.images && libMatch.images.length > 0
+            ? libMatch.images
+            : actHero ? [actHero] : [];
+
+        // If activity has a separate pickup time before start time, surface it clearly
+        if (act.pickup && act.pickup !== act.start) {
+          events.push({
+            id: `act-pickup-${act.id}`,
+            time: act.pickup,
+            kind: 'transfer',
+            title: `Departure Pickup for ${act.name}`,
+            subtitle: `Collection from ${act.pickupLoc || 'Hotel Lobby'}`,
+            location: act.pickupLoc || 'Hotel Lobby',
+          });
+        }
+
+        events.push({
+          id: `act-${act.id}`,
+          time: act.start || (act.slot === 'Morning' ? '09:00' : act.slot === 'Lunch' ? '12:30' : act.slot === 'Afternoon' ? '14:30' : '18:30'),
+          endTime: act.endTime || undefined,
+          duration: act.dur || libMatch?.duration || undefined,
+          kind: 'activity',
+          title: act.name,
+          subtitle: act.clientDescription || act.desc || libMatch?.shortDescription || libMatch?.luxuryDescription || '',
+          location: act.venue || act.destination || act.pickupLoc || 'South Africa',
+          notes: [act.packingAdvice, act.dressCode].filter(Boolean).join(' · ') || undefined,
+          thumbnail: actHero,
+          gallery: actGallery,
+          inclusions: act.inc,
+          statusLabel: act.status || 'Scheduled',
+        });
+      });
+
+    return events.sort((a, b) => a.time.localeCompare(b.time));
+  };
+
+  const currentDayTimelineEvents = useMemo(
+    () => buildChronologicalDayEvents(currentDay),
+    [currentDay, state.activities, state.flights, state.transfers, state.rooms, experienceLibrary, state.client?.startDate]
+  );
 
   // Destination resolver for current day
   const activeDestinationInfo = useMemo(() => {
@@ -362,11 +523,8 @@ export const ClientView: React.FC<Props> = ({ state: rawState, onBackToWorkspace
           </div>
 
           <div className="flex items-center gap-2">
-            <span className="px-2.5 py-1 rounded-full bg-black/60 backdrop-blur-md text-white text-[10px] font-bold tracking-wide border border-white/20">
-              Ref: {state.ref}
-            </span>
-            <span className="px-2.5 py-1 rounded-full bg-[#D4AF37] text-[#1A3326] text-[10px] font-extrabold uppercase tracking-wide shadow-xs">
-              {state.guests.length} Guests
+            <span className="px-3 py-1 rounded-full bg-[#D4AF37] text-[#1A3326] text-[10px] font-extrabold uppercase tracking-wide shadow-xs">
+              {state.guests.length} {state.guests.length === 1 ? 'Traveller' : 'Travellers'}
             </span>
           </div>
         </div>
@@ -581,45 +739,72 @@ export const ClientView: React.FC<Props> = ({ state: rawState, onBackToWorkspace
       {/* ========================================================================= */}
       <section id="itinerary-timeline" className="max-w-6xl mx-auto px-4 md:px-8 pt-8 space-y-4">
         
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div>
             <span className="text-[10px] font-serif font-bold uppercase tracking-[0.25em] text-[#D4AF37] block">
-              DAILY SCHEDULE
+              DAILY SCHEDULE & TIMELINE
             </span>
             <h2 className="text-2xl font-serif font-bold text-[#1A3326]">
               Day-by-Day Journey
             </h2>
           </div>
-          <span className="text-xs text-gray-500 font-medium hidden sm:inline">
-            Tap a day to view scheduled highlights
-          </span>
+
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setShowAllDaysMobile(false)}
+              className={`min-h-[40px] px-3.5 py-2 rounded-xl text-xs font-bold transition cursor-pointer ${
+                !showAllDaysMobile
+                  ? 'bg-[#1A3326] text-white shadow-xs'
+                  : 'bg-white text-gray-700 border border-gray-200 hover:bg-gray-50'
+              }`}
+            >
+              Single Day View
+            </button>
+            <button
+              type="button"
+              onClick={() => setShowAllDaysMobile(true)}
+              className={`min-h-[40px] px-3.5 py-2 rounded-xl text-xs font-bold transition cursor-pointer ${
+                showAllDaysMobile
+                  ? 'bg-[#1A3326] text-white shadow-xs'
+                  : 'bg-white text-gray-700 border border-gray-200 hover:bg-gray-50'
+              }`}
+            >
+              All {days.length} Days Timeline
+            </button>
+          </div>
         </div>
 
-        {/* Horizontal Scroll Day Pills with Gold active ring */}
-        <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-none sticky top-14 z-30 bg-[#FDFBF7]/95 backdrop-blur-md py-2">
+        {/* Horizontal Scroll Day Pills with Gold active ring (Touch-friendly >= 44px height) */}
+        <div className="flex gap-2.5 overflow-x-auto pb-2 scrollbar-none sticky top-14 z-30 bg-[#FDFBF7]/95 backdrop-blur-md py-2">
           {days.map(d => {
-            const isCurrent = activeDay === d;
+            const isCurrent = !showAllDaysMobile && currentDay === d;
+            const dTitle = state.dayTitles?.[d] || (d === 1 ? 'Arrival' : d === days.length ? 'Farewell' : 'Exploration');
             return (
               <button
                 key={d}
-                onClick={() => setActiveDay(d)}
-                className={`shrink-0 flex items-center gap-2.5 px-4 py-2.5 rounded-2xl border transition-all duration-300 text-left ${
+                type="button"
+                onClick={() => {
+                  setActiveDay(d);
+                  setShowAllDaysMobile(false);
+                }}
+                className={`min-h-[48px] shrink-0 flex items-center gap-2.5 px-4 py-2.5 rounded-2xl border transition-all duration-200 text-left cursor-pointer ${
                   isCurrent
-                    ? 'bg-[#1A3326] border-[#D4AF37] text-white shadow-lg ring-2 ring-[#D4AF37]/50 scale-102'
+                    ? 'bg-[#1A3326] border-[#D4AF37] text-white shadow-md ring-2 ring-[#D4AF37]/50'
                     : 'bg-white border-gray-200 hover:border-gray-300 text-gray-800 shadow-2xs hover:bg-gray-50'
                 }`}
               >
-                <div className={`w-7 h-7 rounded-xl flex items-center justify-center font-bold text-xs ${
+                <div className={`w-8 h-8 rounded-xl flex items-center justify-center font-bold text-xs ${
                   isCurrent ? 'bg-[#D4AF37] text-[#1A3326]' : 'bg-emerald-50 text-emerald-800'
                 }`}>
-                  D{d}
+                  {String(d).padStart(2, '0')}
                 </div>
                 <div>
-                  <span className="text-xs font-bold block leading-none">Day {d}</span>
-                  <span className={`text-[10px] font-medium block truncate max-w-[110px] mt-0.5 ${
+                  <span className="text-xs font-bold block leading-none">DAY {String(d).padStart(2, '0')}</span>
+                  <span className={`text-[10px] font-medium block truncate max-w-[120px] mt-1 ${
                     isCurrent ? 'text-[#D4AF37]' : 'text-gray-500'
                   }`}>
-                    {d === 1 ? 'Arrival' : d === days.length ? 'Farewell' : 'Exploration'}
+                    {dTitle}
                   </span>
                 </div>
               </button>
@@ -627,10 +812,87 @@ export const ClientView: React.FC<Props> = ({ state: rawState, onBackToWorkspace
           })}
         </div>
 
+        {/* All Days Full Chronological Mobile Scroll View */}
+        {showAllDaysMobile && (
+          <div className="space-y-6 pt-2">
+            {days.map(dayNum => {
+              const events = buildChronologicalDayEvents(dayNum);
+              const dayHeadline = state.dayTitles?.[dayNum] || (dayNum === 1 ? 'Arrival & Welcome' : dayNum === days.length ? 'Departure & Farewell' : `Day ${dayNum} Exploration`);
+              return (
+                <div key={dayNum} className="bg-white rounded-3xl border border-gray-200 shadow-xs overflow-hidden">
+                  <div className="bg-[#1A3326] text-white px-5 py-4 flex flex-wrap items-center justify-between gap-2">
+                    <div>
+                      <span className="text-[10px] font-extrabold uppercase tracking-[0.2em] text-[#D4AF37] block">
+                        DAY {String(dayNum).padStart(2, '0')} • {getDayReadableDate(dayNum)}
+                      </span>
+                      <h3 className="text-lg sm:text-xl font-serif font-bold text-white mt-0.5">
+                        {dayHeadline}
+                      </h3>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setActiveDay(dayNum);
+                        setShowAllDaysMobile(false);
+                      }}
+                      className="px-3 py-1.5 rounded-xl bg-white/15 hover:bg-white/25 text-white text-xs font-bold transition cursor-pointer"
+                    >
+                      Open Day {dayNum} Details
+                    </button>
+                  </div>
+
+                  <div className="p-5 sm:p-6">
+                    {events.length === 0 ? (
+                      <p className="text-xs text-gray-500 italic">Leisure day at your residence or flexible private touring.</p>
+                    ) : (
+                      <div className="relative pl-6 border-l-2 border-[#D4AF37]/50 space-y-5">
+                        {events.map((ev) => (
+                          <div key={ev.id} className="relative">
+                            <span className="absolute -left-[31px] top-1 w-3.5 h-3.5 rounded-full bg-[#1A3326] border-2 border-[#D4AF37]" />
+                            <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3 bg-[#FAF9F6] p-3.5 rounded-2xl border border-gray-200/80">
+                              <div className="space-y-1 min-w-0 flex-1">
+                                <div className="flex flex-wrap items-center gap-2">
+                                  <span className="font-mono text-xs font-extrabold text-[#1A3326] bg-[#D4AF37]/25 px-2 py-0.5 rounded-md">
+                                    {ev.time}{ev.endTime ? ` – ${ev.endTime}` : ''}
+                                  </span>
+                                  <span className="text-[10px] uppercase tracking-wider font-bold text-slate-500">
+                                    {ev.kind === 'flight' ? 'Flight' : ev.kind === 'transfer' ? 'Transfer' : ev.kind === 'hotel' ? 'Accommodation' : 'Experience'}
+                                  </span>
+                                  {ev.duration && <span className="text-[11px] text-gray-500">({ev.duration})</span>}
+                                </div>
+                                <h4 className="text-sm font-serif font-bold text-gray-900">{ev.title}</h4>
+                                {ev.subtitle && <p className="text-xs text-gray-600 leading-relaxed">{ev.subtitle}</p>}
+                                {ev.location && (
+                                  <div className="flex items-center gap-1 text-[11px] text-gray-500 pt-0.5">
+                                    <MapPin size={11} className="text-[#D4AF37] shrink-0" />
+                                    <span>{ev.location}</span>
+                                  </div>
+                                )}
+                              </div>
+                              {ev.thumbnail && (
+                                <img
+                                  src={ev.thumbnail}
+                                  alt={ev.title}
+                                  onClick={() => openLightbox(ev.gallery?.length ? ev.gallery : [ev.thumbnail!], 0)}
+                                  className="w-full sm:w-24 h-28 sm:h-20 rounded-xl object-cover shrink-0 border border-gray-200 cursor-pointer hover:opacity-90 transition"
+                                />
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
         {/* ========================================================================= */}
         {/* 4. ACTIVE DAY VISUAL STORYTELLING PAGE */}
         {/* ========================================================================= */}
-        <div className="space-y-6 animate-in fade-in duration-300">
+        <div className={`space-y-6 animate-in fade-in duration-300 ${showAllDaysMobile ? 'hidden' : ''}`}>
           
           {/* Day Destination Cover Photo Banner (Arched top or full bleed) */}
           <div className="relative rounded-3xl overflow-hidden shadow-xl h-64 sm:h-80 md:h-96 bg-gray-900 group">
@@ -679,11 +941,105 @@ export const ClientView: React.FC<Props> = ({ state: rawState, onBackToWorkspace
             </div>
           </div>
 
+          {/* Mobile & Desktop Quick Previous / Next Day Stepper */}
+          <div className="flex items-center justify-between gap-3 bg-white rounded-2xl px-4 py-3 border border-gray-200/80 shadow-2xs">
+            <button
+              type="button"
+              disabled={currentDay <= 1}
+              onClick={() => setActiveDay(Math.max(1, currentDay - 1))}
+              className="min-h-[44px] px-3.5 py-2 rounded-xl border border-gray-200 bg-gray-50 hover:bg-gray-100 disabled:opacity-40 text-xs font-bold text-gray-800 flex items-center gap-1.5 transition cursor-pointer disabled:cursor-not-allowed"
+            >
+              <ChevronLeft size={15} /> Previous Day
+            </button>
+            <div className="text-center">
+              <span className="text-[10px] font-extrabold uppercase tracking-[0.2em] text-[#D4AF37] block">
+                DAY {String(currentDay).padStart(2, '0')} OF {String(days.length).padStart(2, '0')}
+              </span>
+              <span className="text-xs font-bold text-[#1A3326] block">
+                {getDayReadableDate(currentDay)}
+              </span>
+            </div>
+            <button
+              type="button"
+              disabled={currentDay >= days.length}
+              onClick={() => setActiveDay(Math.min(days.length, currentDay + 1))}
+              className="min-h-[44px] px-3.5 py-2 rounded-xl border border-[#1A3326]/20 bg-[#1A3326] hover:bg-[#234533] disabled:opacity-40 text-xs font-bold text-white flex items-center gap-1.5 transition cursor-pointer disabled:cursor-not-allowed"
+            >
+              Next Day <ChevronRight size={15} />
+            </button>
+          </div>
+
           {/* Activities Timeline Breakdown */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             
-            {/* Left 2 Columns: Excursions & Experiences */}
-            <div className="lg:col-span-2 space-y-4">
+            {/* Left 2 Columns: Chronological Sequence + Excursions & Experiences */}
+            <div className="lg:col-span-2 space-y-6">
+              {/* Unified Chronological Timeline for Active Day */}
+              {currentDayTimelineEvents.length > 0 && (
+                <div className="bg-white rounded-3xl p-5 md:p-7 border border-gray-200/80 shadow-md space-y-5">
+                  <div className="flex items-center justify-between pb-3 border-b border-gray-100">
+                    <div>
+                      <span className="text-[10px] font-bold uppercase tracking-widest text-[#D4AF37] block">
+                        CHRONOLOGICAL SCHEDULE
+                      </span>
+                      <h4 className="text-lg font-serif font-bold text-gray-900">
+                        Day {String(currentDay).padStart(2, '0')} Timeline — {getDayReadableDate(currentDay)}
+                      </h4>
+                    </div>
+                    <span className="px-3 py-1 rounded-full bg-slate-100 text-slate-800 text-xs font-bold">
+                      {currentDayTimelineEvents.length} {currentDayTimelineEvents.length === 1 ? 'Step' : 'Steps'}
+                    </span>
+                  </div>
+
+                  <div className="relative pl-6 border-l-2 border-[#D4AF37]/60 space-y-4">
+                    {currentDayTimelineEvents.map((ev) => (
+                      <div key={ev.id} className="relative">
+                        <span className="absolute -left-[31px] top-1.5 w-3.5 h-3.5 rounded-full bg-[#1A3326] border-2 border-[#D4AF37]" />
+                        <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3 bg-[#FAF9F6] p-3.5 rounded-2xl border border-gray-200/80">
+                          <div className="space-y-1 min-w-0 flex-1">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <span className="font-mono text-xs font-extrabold text-[#1A3326] bg-[#D4AF37]/25 px-2.5 py-0.5 rounded-md">
+                                {ev.time}{ev.endTime ? ` – ${ev.endTime}` : ''}
+                              </span>
+                              <span className="text-[10px] uppercase tracking-wider font-bold px-2 py-0.5 rounded bg-white border border-gray-200 text-gray-700 flex items-center gap-1">
+                                {ev.kind === 'flight' && <Plane size={11} className="text-blue-700" />}
+                                {ev.kind === 'transfer' && <Car size={11} className="text-emerald-700" />}
+                                {ev.kind === 'hotel' && <Hotel size={11} className="text-amber-700" />}
+                                {ev.kind === 'activity' && <Compass size={11} className="text-[#1A3326]" />}
+                                {ev.kind === 'flight' ? 'Flight' : ev.kind === 'transfer' ? 'Transfer / Pickup' : ev.kind === 'hotel' ? 'Residence' : 'Activity'}
+                              </span>
+                              {ev.duration && <span className="text-[11px] text-gray-500 font-medium">({ev.duration})</span>}
+                            </div>
+                            <h5 className="text-sm font-serif font-bold text-gray-900 leading-snug">{ev.title}</h5>
+                            {ev.subtitle && <p className="text-xs text-gray-600 leading-relaxed line-clamp-2">{ev.subtitle}</p>}
+                            <div className="flex flex-wrap items-center gap-3 pt-0.5 text-[11px] text-gray-500">
+                              {ev.location && (
+                                <span className="flex items-center gap-1">
+                                  <MapPin size={11} className="text-[#D4AF37] shrink-0" /> {ev.location}
+                                </span>
+                              )}
+                              {ev.notes && (
+                                <span className="text-emerald-900 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200/70 font-medium">
+                                  {ev.notes}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                          {ev.thumbnail && (
+                            <img
+                              src={ev.thumbnail}
+                              alt={ev.title}
+                              onClick={() => openLightbox(ev.gallery?.length ? ev.gallery : [ev.thumbnail!], 0)}
+                              className="w-full sm:w-24 h-32 sm:h-20 rounded-xl object-cover shrink-0 border border-gray-200 cursor-pointer hover:opacity-90 transition"
+                            />
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               <div className="bg-white rounded-3xl p-5 md:p-7 border border-gray-200/80 shadow-md space-y-6">
                 
                 <div className="flex items-center justify-between pb-3 border-b border-gray-100">

@@ -426,6 +426,7 @@ export interface Activity {
   guideSourceAgentId?: string;
   guideSourceAgentName?: string;
   attachments?: AttachmentItem[];
+  catalogueId?: string;
 }
 
 export interface TravellerGroup {
@@ -440,10 +441,18 @@ export interface TravellerGroup {
 export interface ExperienceLibraryItem {
   id: string;
   name: string;
-  category: string;
+  aliases?: string[];
+  province?: string;
   destination: string;
+  town?: string;
+  category: string;
+  subcategory?: string;
+  activityType?: 'Experience' | 'Activity' | 'Landmark' | 'Destination' | string;
   duration: string;
+  suitableSlot?: 'Morning' | 'Afternoon' | 'Evening' | 'Full Day';
   difficulty: 'Easy' | 'Moderate' | 'Strenuous' | 'N/A';
+  accessibilityNotes?: string;
+  familySuitability?: string;
   location: string;
   images: string[];
   featuredImage: string;
@@ -457,6 +466,11 @@ export interface ExperienceLibraryItem {
   priceAdult: number;
   priceChild: number;
   supplier: string;
+  sourceUrl?: string;
+  operatorUrl?: string;
+  availabilityNotes?: string;
+  seasonalNotes?: string;
+  active?: boolean;
 }
 
 export interface DestinationLibraryItem {

@@ -1647,11 +1647,34 @@ export default function App() {
                 {/* [SHARE] */}
                 <button
                   onClick={() => setIsShareModalOpen(true)}
-                  className="h-9 px-2.5 xl:px-3 rounded-xl border border-white/15 bg-white/5 text-gray-200 hover:text-white hover:bg-white/10 hover:border-[#D4AF37] transition-all text-xs font-bold shadow-xs flex items-center gap-1.5 active:scale-95 shrink-0"
+                  className="h-9 px-2.5 xl:px-3 rounded-xl border border-white/15 bg-white/5 text-gray-200 hover:text-white hover:bg-white/10 hover:border-[#D4AF37] transition-all text-xs font-bold shadow-xs flex items-center gap-1.5 active:scale-95 shrink-0 cursor-pointer"
                   title="Share Live Links with Clients, Agents & Drivers"
                 >
                   <Share2 size={13} className="text-[#D4AF37]" />
                   <span>Share</span>
+                </button>
+
+                {/* [CLIENT MOBILE PREVIEW] */}
+                <button
+                  onClick={() => setIsClientView(!isClientView)}
+                  className={`h-9 px-2.5 xl:px-3 rounded-xl border transition-all text-xs font-bold flex items-center gap-1.5 active:scale-95 shrink-0 cursor-pointer ${
+                    isClientView
+                      ? 'bg-emerald-500 text-white border-emerald-400'
+                      : 'border-white/15 bg-white/5 text-gray-200 hover:text-white hover:bg-white/10'
+                  }`}
+                  title="Toggle Client Mobile Itinerary View"
+                >
+                  <Eye size={13} className="text-[#D4AF37]" />
+                  <span>{isClientView ? 'Exit Client View' : 'Client View'}</span>
+                </button>
+
+                {/* [WORKSPACE SETTINGS & DIRECTORIES] */}
+                <button
+                  onClick={() => setIsSettingsOpen(true)}
+                  className="h-9 w-9 rounded-xl border border-white/15 bg-white/5 text-gray-200 hover:text-white hover:bg-white/10 hover:border-[#D4AF37] transition-all flex items-center justify-center active:scale-95 shrink-0 cursor-pointer"
+                  title="Workspace Settings, Consultant Details & Resource Directories"
+                >
+                  <Settings size={14} className="text-[#D4AF37]" />
                 </button>
               </div>
             ) : (
@@ -2178,65 +2201,171 @@ export default function App() {
       )}
 
 
-      {/* SYSTEM SETTINGS MODAL */}
+      {/* SYSTEM SETTINGS & OPERATIONAL CONFIGURATION MODAL */}
       {isSettingsOpen && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
           <div className="fixed inset-0 bg-black/60 backdrop-blur-xs animate-in fade-in duration-200" onClick={() => setIsSettingsOpen(false)} />
-          <div className="relative bg-white rounded-3xl shadow-2xl max-w-md w-full p-6 text-left animate-in fade-in zoom-in-95 duration-200 border border-gray-200">
-            <div className="flex items-center justify-between border-b border-gray-100 pb-4 mb-4">
-              <div className="flex items-center gap-2">
+          <div className="relative bg-white rounded-3xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto p-6 text-left animate-in fade-in zoom-in-95 duration-200 border border-gray-200">
+            <div className="flex items-center justify-between border-b border-gray-100 pb-4 mb-5">
+              <div className="flex items-center gap-2.5">
                 <Settings className="text-[#D4AF37] w-5 h-5" />
-                <h3 className="text-base font-black text-[#1A3326] uppercase tracking-wider">Workspace Settings</h3>
+                <div>
+                  <h3 className="text-base font-black text-[#1A3326] uppercase tracking-wider">Workspace & Company Settings</h3>
+                  <p className="text-xs text-slate-500">Configure consultant contacts, branding defaults, client presentation, and operational directories.</p>
+                </div>
               </div>
               <button 
                 onClick={() => setIsSettingsOpen(false)}
-                className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-gray-600 transition"
+                className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-gray-600 transition cursor-pointer"
               >
                 <X size={18} />
               </button>
             </div>
 
-            <div className="space-y-4">
-              <div>
-                <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Consultant Name</label>
-                <input 
-                  type="text" 
-                  value={state.consultant || ''} 
-                  onChange={(e) => handleUpdateState({ consultant: e.target.value })}
-                  className="w-full px-3 py-2 text-xs font-semibold border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#D4AF37] text-gray-800"
-                />
+            <div className="space-y-6">
+              {/* Group 1: Consultant & Concierge Contact Info */}
+              <div className="space-y-3">
+                <h4 className="text-xs font-bold uppercase tracking-wider text-[#1A3326] border-b border-slate-100 pb-1.5">
+                  1. Consultant & Concierge Contact Information
+                </h4>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                  <div>
+                    <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1">Consultant Name</label>
+                    <input 
+                      type="text" 
+                      value={state.consultant || ''} 
+                      onChange={(e) => handleUpdateState({ consultant: e.target.value })}
+                      placeholder="e.g., Elena Rostova"
+                      className="w-full px-3 py-2 text-xs font-semibold border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#D4AF37] text-gray-800"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1">Consultant Role / Title</label>
+                    <input 
+                      type="text" 
+                      value={state.consultantRole || ''} 
+                      onChange={(e) => handleUpdateState({ consultantRole: e.target.value })}
+                      placeholder="e.g., Senior Travel Concierge"
+                      className="w-full px-3 py-2 text-xs font-semibold border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#D4AF37] text-gray-800"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1">Concierge Direct Phone</label>
+                    <input 
+                      type="text" 
+                      value={state.consultantPhone || ''} 
+                      onChange={(e) => handleUpdateState({ consultantPhone: e.target.value })}
+                      placeholder="e.g., +27 21 555 0190"
+                      className="w-full px-3 py-2 text-xs font-semibold border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#D4AF37] text-gray-800"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1">Concierge Email</label>
+                    <input 
+                      type="email" 
+                      value={state.consultantEmail || ''} 
+                      onChange={(e) => handleUpdateState({ consultantEmail: e.target.value })}
+                      placeholder="e.g., concierge@viemmatours.com"
+                      className="w-full px-3 py-2 text-xs font-semibold border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#D4AF37] text-gray-800"
+                    />
+                  </div>
+                </div>
               </div>
 
-              <div>
-                <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Itinerary Reference</label>
-                <input 
-                  type="text" 
-                  value={state.ref || ''} 
-                  onChange={(e) => handleUpdateState({ ref: e.target.value })}
-                  className="w-full px-3 py-2 text-xs font-semibold border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#D4AF37] text-gray-800"
-                />
+              {/* Group 2: Dossier Metadata & Welcome Board Branding */}
+              <div className="space-y-3">
+                <h4 className="text-xs font-bold uppercase tracking-wider text-[#1A3326] border-b border-slate-100 pb-1.5">
+                  2. Dossier & Welcome Board Branding Defaults
+                </h4>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
+                  <div>
+                    <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1">Internal Booking Ref</label>
+                    <input 
+                      type="text" 
+                      value={state.ref || ''} 
+                      onChange={(e) => handleUpdateState({ ref: e.target.value })}
+                      className="w-full px-3 py-2 text-xs font-semibold border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#D4AF37] text-gray-800"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1">Operations Priority</label>
+                    <select
+                      value={state.priority || 'confirmed'}
+                      onChange={(e) => handleUpdateState({ priority: e.target.value as 'pending' | 'confirmed' | 'hot' | 'exploratory' })}
+                      className="w-full px-3 py-2 text-xs font-semibold border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#D4AF37] text-gray-800 bg-white"
+                    >
+                      <option value="confirmed">Confirmed Operations</option>
+                      <option value="pending">Pending Verification</option>
+                      <option value="hot">Hot Prospect</option>
+                      <option value="exploratory">Exploratory Stage</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1">Welcome Board Agency Name</label>
+                    <input 
+                      type="text" 
+                      value={state.welcomePlacard?.agencyName ?? 'Vema Tours'} 
+                      onChange={(e) => handleUpdateState({
+                        welcomePlacard: {
+                          showAgencyName: state.welcomePlacard?.showAgencyName ?? true,
+                          guestName: state.welcomePlacard?.guestName || '',
+                          agencyName: e.target.value,
+                        }
+                      })}
+                      placeholder="Vema Tours or partner agency"
+                      className="w-full px-3 py-2 text-xs font-semibold border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#D4AF37] text-gray-800"
+                    />
+                  </div>
+                </div>
               </div>
 
-              <div>
-                <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Operations Priority</label>
-                <select
-                  value={state.priority || 'confirmed'}
-                  onChange={(e) => handleUpdateState({ priority: e.target.value as 'pending' | 'confirmed' | 'hot' | 'exploratory' })}
-                  className="w-full px-3 py-2 text-xs font-semibold border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#D4AF37] text-gray-800 bg-white"
-                >
-                  <option value="confirmed">Confirmed Operations</option>
-                  <option value="pending">Pending Verification</option>
-                  <option value="hot">Hot Prospect</option>
-                  <option value="exploratory">Exploratory Stage</option>
-                </select>
+              {/* Group 3: Quick Access to Operational Resource Directories */}
+              <div className="space-y-3">
+                <h4 className="text-xs font-bold uppercase tracking-wider text-[#1A3326] border-b border-slate-100 pb-1.5">
+                  3. Operational Resource Directories & Administration
+                </h4>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 text-xs">
+                  <button
+                    type="button"
+                    onClick={() => { setActiveTab('library'); setIsSettingsOpen(false); }}
+                    className="p-3 rounded-xl border border-slate-200 bg-slate-50 hover:bg-emerald-50 hover:border-[#1A3326] font-bold text-slate-800 text-left transition cursor-pointer"
+                  >
+                    <span className="block text-[#1A3326]">SA Catalogue</span>
+                    <span className="text-[10px] text-slate-500 font-normal">Manage 35+ Experiences</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { setActiveTab('database'); setIsSettingsOpen(false); }}
+                    className="p-3 rounded-xl border border-slate-200 bg-slate-50 hover:bg-emerald-50 hover:border-[#1A3326] font-bold text-slate-800 text-left transition cursor-pointer"
+                  >
+                    <span className="block text-[#1A3326]">Guides & Hotels</span>
+                    <span className="text-[10px] text-slate-500 font-normal">Translators, Hotels & Agents</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { setActiveTab('drivers'); setIsSettingsOpen(false); }}
+                    className="p-3 rounded-xl border border-slate-200 bg-slate-50 hover:bg-emerald-50 hover:border-[#1A3326] font-bold text-slate-800 text-left transition cursor-pointer"
+                  >
+                    <span className="block text-[#1A3326]">Driver Roster</span>
+                    <span className="text-[10px] text-slate-500 font-normal">Chauffeurs & Licences</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { setActiveTab('fleet'); setIsSettingsOpen(false); }}
+                    className="p-3 rounded-xl border border-slate-200 bg-slate-50 hover:bg-emerald-50 hover:border-[#1A3326] font-bold text-slate-800 text-left transition cursor-pointer"
+                  >
+                    <span className="block text-[#1A3326]">Transport Fleet</span>
+                    <span className="text-[10px] text-slate-500 font-normal">Vehicles & Registrations</span>
+                  </button>
+                </div>
               </div>
 
               <div className="pt-4 border-t border-gray-100 flex justify-end gap-2">
                 <button
                   onClick={() => setIsSettingsOpen(false)}
-                  className="px-4 py-2 bg-[#1A3326] hover:bg-[#224433] text-white font-bold text-xs rounded-xl transition"
+                  className="px-5 py-2.5 bg-[#1A3326] hover:bg-[#224433] text-white font-bold text-xs rounded-xl transition cursor-pointer"
                 >
-                  Save & Close
+                  Save & Close Settings
                 </button>
               </div>
             </div>
