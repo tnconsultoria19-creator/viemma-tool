@@ -39,7 +39,8 @@ import {
   SlidersHorizontal,
   Eye,
   BookOpen,
-  Truck
+  Truck,
+  List
 } from 'lucide-react';
 
 interface ActivitiesViewProps {
@@ -100,7 +101,7 @@ export const ActivitiesView: React.FC<ActivitiesViewProps> = ({
   const [activityValidationError, setActivityValidationError] = useState<string | null>(null);
 
   // Daily Programme & Activity Selection States
-  const [viewMode, setViewMode] = useState<'daily' | 'dayfocus' | 'table' | 'participant'>('daily');
+  const [viewMode, setViewMode] = useState<'daily' | 'dayfocus' | 'table' | 'participant' | 'list'>('daily');
   const [selectedDayFilter, setSelectedDayFilter] = useState<number | 'ALL'>('ALL');
   const [isCatalogOpen, setIsCatalogOpen] = useState(false);
   const [catalogSearch, setCatalogSearch] = useState('');
@@ -1105,6 +1106,17 @@ export const ActivitiesView: React.FC<ActivitiesViewProps> = ({
                 >
                   <Calendar size={13} />
                   <span>Daily Programme</span>
+                </button>
+                <button
+                  onClick={() => setViewMode('list')}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 ${
+                    viewMode === 'list'
+                      ? 'bg-[#1A3326] text-white shadow-xs'
+                      : 'text-gray-600 hover:text-gray-950 hover:bg-gray-50'
+                  }`}
+                >
+                  <List size={13} />
+                  <span>List View</span>
                 </button>
                 <button
                   onClick={() => setViewMode('participant')}
@@ -2643,6 +2655,63 @@ export const ActivitiesView: React.FC<ActivitiesViewProps> = ({
                           )}
                         </div>
                       </div>
+                    );
+                  })}
+                </div>
+              )}
+
+              {/* COMPACT DAILY PROGRAMME LIST VIEW */}
+              {viewMode === 'list' && (
+                <div className="space-y-5">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                    <div>
+                      <h3 className="text-base font-semibold text-slate-900">Programme List</h3>
+                      <p className="text-xs text-slate-500 mt-1">A compact, chronological view of each day's scheduled activities.</p>
+                    </div>
+                    <span className="text-xs text-slate-500">{visibleActivities.length} scheduled activities</span>
+                  </div>
+                  {Array.from({ length: tripDaysCount }).map((_, index) => {
+                    const dayNum = index + 1;
+                    if (selectedDayFilter !== 'ALL' && selectedDayFilter !== dayNum) return null;
+                    const dayActivities = (state.activities || [])
+                      .filter(activity => activity.day === dayNum && activity.status !== 'Cancelled' && matchesSelectedGroup(activity))
+                      .slice()
+                      .sort((a, b) => (a.start || '99:99').localeCompare(b.start || '99:99'));
+                    const dayDate = getDayIsoDate(dayNum);
+                    return (
+                      <section key={dayNum} className="bg-white border border-slate-200 rounded-xl overflow-hidden">
+                        <header className="px-4 py-3 bg-slate-50 border-b border-slate-200 flex items-center justify-between gap-3">
+                          <div>
+                            <h4 className="text-sm font-semibold text-slate-900">{customDayTitles[dayNum] || `Day ${dayNum} Programme`}</h4>
+                            <p className="text-[11px] text-slate-500">{dayDate || getDayFormattedDate(dayNum)} · {dayActivities.length} activities</p>
+                          </div>
+                          <button type="button" onClick={() => { setCatalogTargetDay(dayNum); setIsCatalogOpen(true); }} className="shrink-0 inline-flex items-center gap-1.5 rounded-lg bg-[#1A3326] text-white px-3 py-2 text-xs font-semibold hover:bg-[#274a39]">
+                            <Plus size={13}/> Add
+                          </button>
+                        </header>
+                        {dayActivities.length ? (
+                          <div className="divide-y divide-slate-100">
+                            {dayActivities.map(activity => (
+                              <div key={activity.id} className="px-4 py-3 grid grid-cols-[76px_minmax(0,1fr)_auto] sm:grid-cols-[110px_minmax(0,1fr)_auto] gap-3 items-center hover:bg-slate-50/70">
+                                <div className="text-xs font-semibold tabular-nums text-slate-600">
+                                  {activity.start || 'Time TBC'}
+                                  {activity.endTime ? <span className="block text-[10px] font-normal text-slate-400">to {activity.endTime}</span> : null}
+                                </div>
+                                <div className="min-w-0">
+                                  <p className="text-sm font-semibold text-slate-900 truncate">{activity.name}</p>
+                                  <p className="text-xs text-slate-500 truncate">{activity.venue || activity.destination || activity.pickupLoc || 'Location to be confirmed'}{activity.dur ? ` · ${activity.dur}` : ''}</p>
+                                </div>
+                                <div className="flex items-center gap-1.5">
+                                  <span className="hidden sm:inline-flex rounded-full bg-slate-100 px-2 py-1 text-[10px] text-slate-600">{activity.status}</span>
+                                  <button type="button" title="Edit activity" onClick={() => { setEditingActivityId(activity.id); setAForm({ ...activity }); setActiveTab('basic'); }} className="p-2 rounded-lg text-slate-500 hover:bg-slate-100 hover:text-slate-900"><Edit3 size={14}/></button>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <div className="px-4 py-6 text-center text-xs text-slate-500">No activities scheduled for this day yet.</div>
+                        )}
+                      </section>
                     );
                   })}
                 </div>
