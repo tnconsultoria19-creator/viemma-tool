@@ -59,6 +59,11 @@ service cloud.firestore {
       allow read, write: if isStaff() && isValidId(tripId);
     }
 
+    // Shared staff-only presentation media and bilingual copy library.
+    match /presentationLibraries/{libraryId} {
+      allow read, write: if isStaff() && isValidId(libraryId);
+    }
+
     // Staff and Administrator registries
     match /staff/{uid} {
       allow read: if isSignedIn();
